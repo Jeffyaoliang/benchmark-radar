@@ -32,26 +32,49 @@ _EMPTY_STATE = (
     "arrive in the daily snapshots."
 )
 
+# Sections render the first slice of their grid and hand the rest to a
+# "show all" control -- a theme with several thousand records must not paint
+# them all before a reader scrolls past the first screen.
+_SLICE = 60
+
 _PAGE_STYLE = """
 <style>
-.themes-hero{max-width:60rem;margin:0 auto;padding:1.5rem 1rem 0}
-.themes-lede{margin:.4rem 0}
-.themes-lede-zh{color:inherit;opacity:.75;margin:.2rem 0 0}
-.themes-filter{display:block;margin:1rem 0 .5rem}
-.themes-filter input{width:min(100%,24rem);padding:.45rem .6rem;
-  border:1px solid var(--border,#d0d7de);border-radius:.4rem;background:inherit;
-  color:inherit;font:inherit}
-.theme-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.6rem 0 1.2rem;padding:0}
-.theme-chips a{display:inline-block;padding:.2rem .6rem;border:1px solid var(--border,#d0d7de);
-  border-radius:999px;text-decoration:none;color:inherit;font-size:.85rem}
-.theme-chips a:hover{background:var(--border,#d0d7de)}
-.theme-group{max-width:60rem;margin:0 auto 2rem;padding:0 1rem}
-.theme-group h2{font-size:1.15rem;margin:0 0 .6rem}
-.theme-record{border-top:1px solid var(--border,#d0d7de);padding:.7rem 0}
-.theme-record-title{font-weight:600;color:inherit}
-.theme-record-meta{margin:.15rem 0;font-size:.82rem;opacity:.7}
-.theme-record-summary{margin:0;font-size:.92rem}
-.themes-empty{max-width:60rem;margin:2rem auto;padding:0 1rem}
+.themes-page{max-width:72rem;margin:0 auto;padding:1.2rem 0 3rem}
+.themes-page h1{font-size:clamp(1.5rem,3vw,2rem);margin:.2rem 0 .5rem}
+.themes-lede{color:var(--muted);margin:.3rem 0;max-width:52rem}
+.themes-lede-zh{color:var(--muted);font-size:.92rem;margin:.2rem 0 0}
+.themes-toolbar{position:sticky;top:.6rem;z-index:5;display:flex;flex-wrap:wrap;
+  gap:.5rem;align-items:center;background:var(--panel);border:1px solid var(--edge);
+  border-radius:var(--radius);padding:.7rem .8rem;margin:1.1rem 0 1.3rem;
+  box-shadow:0 2px 10px rgba(21,36,42,.06)}
+.themes-filter{flex:1 1 15rem}
+.themes-filter input{width:100%;padding:.55rem .75rem;border:1px solid var(--ink);
+  border-radius:var(--radius-sm);background:var(--canvas,#fff);color:var(--ink);font:inherit}
+.theme-chip{border:1px solid var(--edge);border-radius:999px;background:var(--panel);
+  color:var(--ink);padding:.32rem .7rem;font:inherit;font-size:.82rem;cursor:pointer}
+.theme-chip:hover{border-color:var(--ink)}
+.theme-chip.active{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.theme-chip .n{opacity:.65;font-size:.78rem}
+.theme-section{margin:1.6rem 0}
+.theme-section>header{display:flex;align-items:baseline;gap:.5rem;margin:0 0 .7rem}
+.theme-section h2{font-size:1.1rem;margin:0}
+.theme-count{color:var(--muted);font-size:.85rem}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(19rem,1fr));gap:.7rem}
+.theme-card{display:flex;flex-direction:column;gap:.3rem;background:var(--panel);
+  border:1px solid var(--edge);border-radius:var(--radius);padding:.75rem .85rem}
+.theme-card-title{color:var(--ink);font-weight:600;text-decoration:none;line-height:1.35}
+.theme-card-title:hover{text-decoration:underline}
+.theme-card-meta{font-size:.78rem;color:var(--muted)}
+.theme-card-summary{margin:0;font-size:.87rem}
+.theme-more{margin-top:.7rem;border:1px solid var(--edge);border-radius:var(--radius-sm);
+  background:var(--panel);color:var(--ink);padding:.4rem .8rem;font:inherit;
+  font-size:.85rem;cursor:pointer}
+.theme-more:hover{border-color:var(--ink)}
+.themes-empty{background:var(--panel);border:1px solid var(--edge);
+  border-radius:var(--radius);padding:1.2rem;margin:1.4rem 0}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap}
+.hidden-by-filter{display:none!important}
 </style>
 """
 
@@ -96,7 +119,9 @@ def build_theme_groups(snapshots: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 if key in seen:
                     continue
                 seen.add(key)
-                group = groups.setdefault(tag, {"category": tag, "count": 0, "records": []})
+                group = groups.setdefault(
+                    tag, {"category": tag, "count": 0, "records": []}
+                )
                 group["records"].append(
                     {
                         "source_id": source_id,
@@ -114,18 +139,24 @@ def build_theme_groups(snapshots: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return ordered
 
 
-def _record_card(record: dict[str, Any]) -> str:
+def _record_card(record: dict[str, Any], *, hidden: bool = False) -> str:
     meta = " · ".join(part for part in (record["source"], record["date"]) if part)
+    summary_text = " ".join(str(record.get("summary") or "").split())[:_SUMMARY_CLIP]
     summary = (
-        f'<p class="theme-record-summary">{esc(record["summary"])}</p>' if record["summary"] else ""
+        f'<p class="theme-card-summary">{esc(summary_text)}</p>' if summary_text else ""
     )
+    hidden_attr = " hidden" if hidden else ""
     return (
-        f'<article class="theme-record">'
-        f'<a class="theme-record-title" href="{esc(record["url"])}">{esc(record["title"])}</a>'
-        f'<p class="theme-record-meta">{esc(meta)}</p>'
+        f'<article class="theme-card"{hidden_attr}>'
+        f'<a class="theme-card-title" href="{esc(record["url"])}">{esc(record["title"])}</a>'
+        f'<p class="theme-card-meta">{esc(meta)}</p>'
         f"{summary}"
         f"</article>"
     )
+
+
+def _slug(category: str) -> str:
+    return "".join(char if char.isalnum() else "-" for char in category).strip("-")
 
 
 def _themes_page(
@@ -136,51 +167,102 @@ def _themes_page(
 ) -> str:
     total_records = len({row["source_id"] for group in groups for row in group["records"]})
     chips = "".join(
-        f'<a href="#theme-{esc(group["category"].replace(":", "-"))}">'
-        f'{esc(group["category"])} <span aria-hidden="true">{group["count"]}</span></a>'
+        f'<button type="button" class="theme-chip" data-target="theme-{_slug(group["category"])}">'
+        f'{esc(group["category"])} <span class="n">{group["count"]}</span></button>'
         for group in groups
     )
-    sections = "".join(
-        f'<section class="theme-group" id="theme-{esc(group["category"].replace(":", "-"))}" '
-        f'aria-labelledby="theme-{esc(group["category"].replace(":", "-"))}-heading">'
-        f'<h2 id="theme-{esc(group["category"].replace(":", "-"))}-heading">'
-        f'{esc(group["category"])} <span aria-hidden="true">({group["count"]})</span></h2>'
-        + "".join(_record_card(record) for record in group["records"])
-        + "</section>"
-        for group in groups
-    )
-    empty = f'<p class="themes-empty">{esc(_EMPTY_STATE)}</p>' if not groups else ""
+    sections = []
+    for group in groups:
+        slug = _slug(group["category"])
+        records = group["records"]
+        cards = "".join(_record_card(record) for record in records[:_SLICE])
+        more = ""
+        if len(records) > _SLICE:
+            cards += "".join(
+                _record_card(record, hidden=True) for record in records[_SLICE:]
+            )
+            more = (
+                f'<button type="button" class="theme-more" data-section="{slug}">'
+                f"Show all {len(records)} records</button>"
+            )
+        sections.append(
+            f'<section class="theme-section" id="theme-{slug}" data-slug="{slug}">'
+            f"<header><h2>{esc(group['category'])}</h2>"
+            f'<span class="theme-count">{group["count"]} records</span></header>'
+            f'<div class="theme-grid">{cards}</div>{more}</section>'
+        )
+    body_sections = "".join(sections)
+    empty = f'<div class="themes-empty">{esc(_EMPTY_STATE)}</div>' if not groups else ""
     body = f"""{_PAGE_STYLE}
-<div class="themes-hero">
+<div class="themes-page">
   <h1>Browse benchmarks by theme</h1>
   <p class="themes-lede">Every discovery record that carries a source taxonomy tag,
   grouped for browsing. Tags arrive from the source that knows the record best —
   the XBsleepy digest's capability themes ride in as <code>xbsleepy:</code>
   categories, and other sources can join the same convention.</p>
   <p class="themes-lede-zh" lang="zh-Hans">按主题浏览带来源标签的记录，标签随来源自带。</p>
-  <label class="themes-filter">Filter records
-    <input id="theme-filter" type="search" placeholder="Type to filter…"
-      autocomplete="off" aria-label="Filter records by title or summary">
-  </label>
-  <nav class="theme-chips" aria-label="Theme index">{chips}</nav>
+  <div class="themes-toolbar">
+    <label class="themes-filter">
+      <span class="visually-hidden">Filter records by title or summary</span>
+      <input id="theme-filter" type="search" placeholder="Filter by title, source, summary…"
+        autocomplete="off">
+    </label>
+    {chips}
+  </div>
+  {body_sections}
+  {empty}
 </div>
-{sections}
-{empty}
 <script>
 (() => {{
-  const box = document.getElementById("theme-filter");
-  if (!box) return;
-  box.addEventListener("input", () => {{
-    const query = box.value.trim().toLowerCase();
-    document.querySelectorAll(".theme-record").forEach((card) => {{
-      card.hidden = Boolean(query) && !card.textContent.toLowerCase().includes(query);
-    }});
-    document.querySelectorAll(".theme-group").forEach((section) => {{
-      const anyVisible = Array.from(section.querySelectorAll(".theme-record"))
-        .some((card) => !card.hidden);
-      section.hidden = Boolean(query) && !anyVisible;
+  const filter = document.getElementById("theme-filter");
+  const sections = Array.from(document.querySelectorAll(".theme-section"));
+  const chips = Array.from(document.querySelectorAll(".theme-chip"));
+
+  sections.forEach((section) => {{
+    const grid = section.querySelector(".theme-grid");
+    const extra = Array.from(grid.querySelectorAll(".theme-card[hidden]"));
+    const button = section.querySelector(".theme-more");
+    if (!button || !extra.length) return;
+    button.addEventListener("click", () => {{
+      extra.forEach((card) => card.removeAttribute("hidden"));
+      button.remove();
     }});
   }});
+
+  let pinned = null;
+  chips.forEach((chip) => {{
+    chip.addEventListener("click", () => {{
+      const target = chip.dataset.target;
+      if (pinned === target) {{
+        pinned = null;
+        chips.forEach((c) => c.classList.remove("active"));
+        sections.forEach((s) => s.classList.remove("hidden-by-filter"));
+        return;
+      }}
+      pinned = target;
+      chips.forEach((c) => c.classList.toggle("active", c === chip));
+      sections.forEach((s) => s.classList.toggle("hidden-by-filter", s.dataset.slug !== target));
+      applyFilter();
+      window.scrollTo({{ top: 0, behavior: "smooth" }});
+    }});
+  }});
+
+  function applyFilter() {{
+    const query = (filter.value || "").trim().toLowerCase();
+    sections.forEach((section) => {{
+      if (pinned && section.dataset.slug !== pinned) return;
+      let visible = 0;
+      section.querySelectorAll(".theme-card").forEach((card) => {{
+        const hidden = Boolean(query) && !card.textContent.toLowerCase().includes(query);
+        card.classList.toggle("hidden-by-filter", hidden);
+        if (!hidden) visible += 1;
+      }});
+      section.classList.toggle("hidden-by-filter", Boolean(query) && visible === 0);
+      const more = section.querySelector(".theme-more");
+      if (query && more) more.click();
+    }});
+  }}
+  if (filter) filter.addEventListener("input", applyFilter);
 }})();
 </script>"""
     canonical = f"{SITE_URL}{THEMES_PATH}"
@@ -247,7 +329,9 @@ def write_themes(
     chrome = extract_site_chrome(dashboard_html, active_path=THEMES_PATH)
     chrome_i18n = chrome_i18n_table(chrome, app_js)
     groups = build_theme_groups(snapshots)
-    updated = next((group["records"][0]["date"] for group in groups if group["records"]), None)
+    updated = next(
+        (group["records"][0]["date"] for group in groups if group["records"]), None
+    )
     page = _themes_page(groups, chrome, chrome_i18n, updated)
     output_dir = site_dir / "themes"
     staging = site_dir / "themes.staging"
