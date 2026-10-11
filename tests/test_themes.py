@@ -1,5 +1,6 @@
 import json
 import re
+from html import unescape
 from pathlib import Path
 
 import pytest
@@ -89,7 +90,9 @@ def test_browse_renders_beyond_the_previous_cap_and_searches_entire_catalog(tmp_
     assert report["records"] == report["rendered"] == 85
     assert report["omitted"] == 0
     assert page.count('class="theme-card"') == 85
-    assert set(re.findall(r'data-record="([^"]+)"', page)) == {row["key"] for row in rows}
+    assert {unescape(key) for key in re.findall(r'data-record="([^"]+)"', page)} == {
+        row["key"] for row in rows
+    }
     assert "85 benchmark records across 1 sources" in page
     assert "0 records omitted" in page
     assert "Search all benchmarks" in page
@@ -148,6 +151,6 @@ def test_generated_page_covers_the_fresh_unified_catalog(tmp_path):
     assert report["records"] == report["rendered"] == catalog["count"]
     assert sum(report["source_counts"].values()) == catalog["count"]
     assert page.count('class="theme-card"') == catalog["count"]
-    assert set(re.findall(r'data-record="([^"]+)"', page)) == {
+    assert {unescape(key) for key in re.findall(r'data-record="([^"]+)"', page)} == {
         row["key"] for row in catalog["benchmarks"]
     }
