@@ -134,3 +134,20 @@ def test_footer_link_is_required(tmp_path):
     linkless = DASHBOARD_HTML.replace('<a href="/themes/" data-i18n="Themes">Themes</a>', "")
     with pytest.raises(ValueError):
         write_themes(tmp_path, catalog_path=path, dashboard_html=linkless, app_js=APP_JS)
+
+
+def test_generated_page_covers_the_fresh_unified_catalog(tmp_path):
+    catalog_path = SITE_DIR / "data" / "benchmark-index.json"
+    catalog = json.loads(catalog_path.read_text())
+    assert len(catalog["benchmarks"]) >= 1259
+    assert len({row["source"] for row in catalog["benchmarks"]}) >= 4
+    report = write_themes(
+        tmp_path, catalog_path=catalog_path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS
+    )
+    page = (tmp_path / "themes" / "index.html").read_text()
+    assert report["records"] == report["rendered"] == catalog["count"]
+    assert sum(report["source_counts"].values()) == catalog["count"]
+    assert page.count('class="theme-card"') == catalog["count"]
+    assert set(re.findall(r'data-record="([^"]+)"', page)) == {
+        row["key"] for row in catalog["benchmarks"]
+    }
