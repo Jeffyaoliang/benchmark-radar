@@ -1527,10 +1527,11 @@ def rebuild_dashboard(
         # brief can never describe a day the published corpus has moved past.
         blog = write_blog(snapshots, sitemap_output.parent)
         blog_entries = blog["sitemap_entries"]
-        # The theme browse (issue #380 part three) is built from the same
-        # validated snapshots in the same run, so its groups can never name a
-        # record the published corpus has moved past.
-        themes = write_themes(snapshots, sitemap_output.parent)
+        # Benchmark browsing uses the unified catalog, not discovery snapshots.
+        # Missing catalog input fails visibly; never substitute a shortlist.
+        themes = write_themes(
+            sitemap_output.parent, catalog_path=output.parent / "benchmark-index.json"
+        )
         page_entries.extend(themes["sitemap_entries"])
     write_sitemap(
         snapshots,

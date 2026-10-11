@@ -319,6 +319,10 @@ def test_rebuild_can_publish_the_feed_from_the_same_snapshot_history(tmp_path, s
     write_snapshot(radar_run(27), snapshot_dir)
     feed_output = tmp_path / "site" / "feed.xml"
     site_shell(tmp_path / "site")
+    (tmp_path / "site" / "data").mkdir(exist_ok=True)
+    (tmp_path / "site" / "data" / "benchmark-index.json").write_text(
+        json.dumps({"benchmarks": [], "count": 0})
+    )
 
     rebuild_dashboard(
         snapshot_dir,
@@ -340,6 +344,10 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     data_output = tmp_path / "site" / "data" / "radar.json"
     feed_output = tmp_path / "site" / "feed.xml"
     site_shell(tmp_path / "site")
+    (tmp_path / "site" / "data").mkdir(exist_ok=True)
+    (tmp_path / "site" / "data" / "benchmark-index.json").write_text(
+        json.dumps({"benchmarks": [], "count": 0})
+    )
     shard_dir = tmp_path / "shards"
     shard_dir.mkdir()
     for slug in ("alpha-bench", "zeta-bench"):
@@ -395,9 +403,10 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
         f"{SITE_URL}/themes/",
     ]
     lastmods = [node.text for node in root.findall("sm:url/sm:lastmod", ns)]
-    # The two shards carry no dated evidence, so their pages claim no lastmod
+    # The two shards and empty catalog theme page have no dated evidence, so
+    # their pages claim no lastmod
     # rather than borrowing today's snapshot date.
-    assert lastmods == ["2026-07-27"] * (len(urls) - 2)
+    assert lastmods == ["2026-07-27"] * (len(urls) - 3)
 
 
 def test_rescore_applies_a_new_category_to_older_snapshots(tmp_path):
@@ -1575,6 +1584,10 @@ def test_rebuild_publishes_a_brief_for_every_snapshot_and_lists_them(tmp_path, s
     write_snapshot(radar_run(27), snapshot_dir)
     site_dir = tmp_path / "site"
     site_shell(site_dir)
+    (site_dir / "data").mkdir(exist_ok=True)
+    (site_dir / "data" / "benchmark-index.json").write_text(
+        json.dumps({"benchmarks": [], "count": 0})
+    )
 
     rebuild_dashboard(
         snapshot_dir,
@@ -1603,6 +1616,10 @@ def test_the_site_feed_and_the_blog_feed_stay_separate(tmp_path, site_shell):
     write_snapshot(radar_run(27), snapshot_dir)
     site_dir = tmp_path / "site"
     site_shell(site_dir)
+    (site_dir / "data").mkdir(exist_ok=True)
+    (site_dir / "data" / "benchmark-index.json").write_text(
+        json.dumps({"benchmarks": [], "count": 0})
+    )
 
     rebuild_dashboard(
         snapshot_dir,

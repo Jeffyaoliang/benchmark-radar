@@ -1,22 +1,12 @@
-"""Theme browse page: discovery records grouped by the themes their source tagged.
+"""Browse the complete unified benchmark catalog using its existing categories.
 
-Issue #380 part three. The XBsleepy digest classifies each agent-benchmark paper
-by capability theme, and ``fetch_xbsleepy`` carries those through in
-``RadarItem.source_tags``, namespaced by source. This page renders that
-classification: pick a theme, see every record carrying it, newest first. It
-groups whatever tags arrive rather than hardcoding a taxonomy, so another source
-joins by namespacing its own.
-
-The population is the daily discovery snapshots, not the benchmark catalog in
-``benchmark-index.json``. It answers "what themes are arriving" rather than "how
-many benchmarks does the product cover", so it states no catalog count and must
-not be read as one (``principle.md``). Every record it is built from stays
-accounted for on the page: records no source has themed yet are listed under
-their own heading instead of being dropped.
+Source-native discovery tags remain provenance in the connector; this surface
+uses the catalog's categories without creating another taxonomy or population.
 """
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 from typing import Any
@@ -34,21 +24,16 @@ THEMES_PATH = "/themes/"
 
 _SUMMARY_CLIP = 220
 
-_EMPTY_STATE = (
-    "No source has tagged a record with a theme yet. The themes fill in as "
-    "tagged records arrive in the daily snapshots; everything collected so far "
-    "is listed under “No theme tag yet” below."
-)
+_EMPTY_STATE = "No benchmarks are present in the catalog yet."
+_UNTHEMED = "Uncategorized"
 
-# Records no source has themed. Shown rather than dropped so the page accounts
-# for every record it was built from.
-_UNTHEMED = "No theme tag yet"
-
-# Each section renders its newest slice and no more. The page is a browse
-# surface, not an export: rendering every record made it a 9 MB document with
-# the overflow parked in `hidden` cards, and Pages serves a 100 GB/month
-# bandwidth cap. The ledger states the trim, and Explore holds the full corpus.
-_SLICE = 60
+_SOURCE_NAMES = {
+    "llm_stats": "LLM Stats",
+    "model_reports": "Model reports",
+    "claire_radar": "Claire Radar",
+    "artificial_analysis": "Artificial Analysis",
+    "opencompass_hub": "OpenCompass Hub",
+}
 
 _PAGE_STYLE = """
 <style>
@@ -64,16 +49,12 @@ _PAGE_STYLE = """
 .themes-filter{flex:1 1 15rem}
 .themes-filter input{width:100%;padding:.55rem .75rem;border:1px solid var(--ink);
   border-radius:var(--radius-sm);background:var(--canvas,#fff);color:var(--ink);font:inherit}
-.theme-chip{border:1px solid var(--edge);border-radius:999px;background:var(--panel);
-  color:var(--ink);padding:.32rem .7rem;font:inherit;font-size:.82rem;cursor:pointer}
-.theme-chip:hover{border-color:var(--ink)}
-.theme-chip.active{background:var(--ink);color:var(--panel);border-color:var(--ink)}
-.theme-chip .n{opacity:.65;font-size:.78rem}
-.theme-section{margin:1.6rem 0}
-.theme-section>header{display:flex;align-items:baseline;gap:.5rem;margin:0 0 .7rem}
-.theme-section h2{font-size:1.1rem;margin:0}
-.theme-count{color:var(--muted);font-size:.85rem}
-.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(19rem,1fr));gap:.7rem}
+.themes-category{flex:0 1 20rem;min-width:0}
+.themes-category select{max-width:100%;width:100%;padding:.55rem .75rem;font:inherit;
+  border:1px solid var(--edge);border-radius:var(--radius-sm);background:var(--panel);
+  color:var(--ink)}
+.themes-coverage{color:var(--muted);font-size:.85rem;margin:.7rem 0}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(19rem,100%),1fr));gap:.7rem}
 .theme-card{display:flex;flex-direction:column;gap:.3rem;background:var(--panel);
   border:1px solid var(--edge);border-radius:var(--radius);padding:.75rem .85rem}
 .theme-card-title{color:var(--ink);font-weight:600;text-decoration:none;line-height:1.35}
@@ -89,90 +70,83 @@ _PAGE_STYLE = """
 """
 
 
-def _items_of(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
-    # Schema v1 stored discovery records under "items"; v2 renamed them to
-    # "evidence_items". write_blog consumes the same mixed list, so the page
-    # must read both instead of assuming one.
-    for key in ("evidence_items", "items"):
-        value = snapshot.get(key)
-        if isinstance(value, list):
-            return [row for row in value if isinstance(row, dict)]
-    return []
+def build_theme_index(catalog: dict[str, Any]) -> dict[str, Any]:
+    """Keep every source record and group by the categories already in the index.
 
-
-def build_theme_index(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
-    """Group every discovery record by the source theme tags it carries.
-
-    Returns the theme groups ordered by record count then name, the records no
-    source has themed, and the accounting the page states: distinct records
-    read, and how many of those carry at least one theme tag.
-
-    A record is identified by ``(source, source_id)``. Source ids are only
-    unique within the source that minted them, so keying on the id alone merges
-    two sources' different records into one. The same record recurs across
-    daily snapshots; the newest copy supplies the displayed date and summary.
+    Missing dates, scores, descriptions and categories never exclude a record.
+    Duplicate source keys or malformed input fail instead of publishing a subset.
     """
-    newest: dict[tuple[str, str], dict[str, Any]] = {}
+    rows = catalog.get("benchmarks")
+    if not isinstance(rows, list):
+        raise ValueError("theme browse requires the complete benchmark index")
+    if catalog.get("count", len(rows)) != len(rows):
+        raise ValueError("benchmark index count does not match its records")
+    records = {}
     members: dict[str, set[tuple[str, str]]] = {}
-    tagged: set[tuple[str, str]] = set()
+    categorized: set[tuple[str, str]] = set()
+    source_counts: dict[str, int] = {}
+    for item in rows:
+        if not isinstance(item, dict):
+            raise ValueError("benchmark index records must be objects")
+        source, key = item.get("source"), item.get("key")
+        name, slug = item.get("name"), item.get("slug")
+        if not all(isinstance(value, str) and value.strip() for value in (source, key, name, slug)):
+            raise ValueError("benchmark index record requires source, key, name and slug")
+        identity = (source, key)
+        if identity in records:
+            raise ValueError(f"duplicate benchmark source record: {identity}")
+        categories = item.get("categories", [])
+        if not isinstance(categories, list) or any(
+            not isinstance(category, str) or not category.strip() for category in categories
+        ):
+            raise ValueError(f"invalid benchmark categories: {key}")
+        records[identity] = {
+            "source": source,
+            "source_id": key,
+            "categories": sorted(set(categories)),
+            "title": name,
+            "url": f"/benchmarks/{slug}/",
+            "date": str(item.get("released") or "")[:10],
+            "summary": " ".join(str(item.get("description") or "").split())[:_SUMMARY_CLIP],
+        }
+        source_counts[source] = source_counts.get(source, 0) + 1
+        for category in set(categories):
+            members.setdefault(category, set()).add(identity)
+            categorized.add(identity)
 
-    for snapshot in snapshots:
-        for item in _items_of(snapshot):
-            title = str(item.get("title") or "").strip()
-            url = str(item.get("url") or "").strip()
-            if not title or not url:
-                continue
-            identity = (str(item.get("source") or "").strip(), str(item.get("source_id") or url))
-            record = {
-                "source": identity[0],
-                "source_id": identity[1],
-                "title": title,
-                "url": url,
-                "date": str(
-                    item.get("updated_at") or item.get("published_at") or snapshot.get("date") or ""
-                )[:10],
-                "summary": " ".join(str(item.get("summary") or "").split())[:_SUMMARY_CLIP],
-            }
-            previous = newest.get(identity)
-            if previous is None or record["date"] > previous["date"]:
-                newest[identity] = record
-            tags = item.get("source_tags")
-            if not isinstance(tags, list):
-                continue
-            for raw_tag in tags:
-                tag = str(raw_tag).strip()
-                if tag:
-                    members.setdefault(tag, set()).add(identity)
-                    tagged.add(identity)
-
-    def _ordered(identities: set[tuple[str, str]]) -> list[dict[str, Any]]:
+    def ordered(identities):
         return sorted(
-            (newest[identity] for identity in identities),
-            key=lambda row: (row["date"], row["title"]),
+            (records[identity] for identity in identities),
+            key=lambda row: (row["date"], row["title"], row["source_id"]),
             reverse=True,
         )
 
     groups = [
-        {"category": tag, "count": len(identities), "records": _ordered(identities)}
-        for tag, identities in sorted(members.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        {"category": category, "count": len(identities), "records": ordered(identities)}
+        for category, identities in sorted(
+            members.items(), key=lambda pair: (-len(pair[1]), pair[0])
+        )
     ]
-    unthemed = _ordered(set(newest) - tagged)
-    dates = [row["date"] for row in newest.values() if row["date"]]
+    dates = [row["date"] for row in records.values() if row["date"]]
     return {
         "groups": groups,
-        "unthemed": unthemed,
-        "records": len(newest),
-        "tagged": len(tagged),
+        "all_records": ordered(set(records)),
+        "unthemed": ordered(set(records) - categorized),
+        "records": len(records),
+        "tagged": len(categorized),
+        "source_counts": dict(sorted(source_counts.items())),
         "updated": max(dates) if dates else None,
     }
 
 
 def _record_card(record: dict[str, Any]) -> str:
-    meta = " · ".join(part for part in (record["source"], record["date"]) if part)
+    source_name = _SOURCE_NAMES.get(record["source"], record["source"])
+    meta = f"{source_name} · {record['date'] or 'Release date unknown'}"
     summary_text = " ".join(str(record.get("summary") or "").split())[:_SUMMARY_CLIP]
     summary = f'<p class="theme-card-summary">{esc(summary_text)}</p>' if summary_text else ""
     return (
-        f'<article class="theme-card">'
+        f'<article class="theme-card" data-record="{esc(record["source_id"])}" '
+        f'data-categories="{esc(json.dumps(record["categories"], ensure_ascii=False))}">'
         f'<a class="theme-card-title" href="{esc(record["url"])}">{esc(record["title"])}</a>'
         f'<p class="theme-card-meta">{esc(meta)}</p>'
         f"{summary}"
@@ -180,166 +154,115 @@ def _record_card(record: dict[str, Any]) -> str:
     )
 
 
-def _slug(category: str) -> str:
-    return "".join(char if char.isalnum() else "-" for char in category).strip("-")
-
-
-def _section(category: str, records: list[dict[str, Any]]) -> tuple[str, int]:
-    slug = _slug(category)
-    shown = records[:_SLICE]
-    cards = "".join(_record_card(record) for record in shown)
-    count = f"{len(records)} records"
-    if len(records) > len(shown):
-        count += f" · newest {len(shown)} shown"
-    return (
-        f'<section class="theme-section" id="theme-{slug}" data-slug="{slug}">'
-        f"<header><h2>{esc(category)}</h2>"
-        f'<span class="theme-count">{count}</span></header>'
-        f'<div class="theme-grid">{cards}</div></section>',
-        len(shown),
-    )
-
-
 def _themes_page(
-    index: dict[str, Any],
-    chrome: SiteChrome,
-    chrome_i18n: dict[str, str],
+    index: dict[str, Any], chrome: SiteChrome, chrome_i18n: dict[str, str]
 ) -> tuple[str, int]:
     groups = index["groups"]
-    unthemed = index["unthemed"]
-    rendered = 0
-    sections = []
-    for group in groups:
-        html, shown = _section(group["category"], group["records"])
-        sections.append(html)
-        rendered += shown
-    chips = "".join(
-        f'<button type="button" class="theme-chip" data-target="{_slug(group["category"])}">'
-        f'{esc(group["category"])} <span class="n">{group["count"]}</span></button>'
-        for group in groups
+    options = "".join(
+        f'<option value="{esc(group["category"])}">'
+        f"{esc(group['category'])} ({group['count']})</option>"
+        for group in sorted(groups, key=lambda group: group["category"].casefold())
     )
-    if unthemed:
-        html, shown = _section(_UNTHEMED, unthemed)
-        sections.append(html)
-        rendered += shown
-        chips += (
-            f'<button type="button" class="theme-chip" data-target="{_slug(_UNTHEMED)}">'
-            f'{esc(_UNTHEMED)} <span class="n">{len(unthemed)}</span></button>'
+    if index["unthemed"]:
+        options += (
+            f'<option value="__uncategorized__">Uncategorized ({len(index["unthemed"])})</option>'
         )
-    empty = f'<div class="themes-empty">{esc(_EMPTY_STATE)}</div>' if not groups else ""
-    # A bounded page is a trim, and principle.md says a trim gets counted and
-    # published rather than left for the reader to guess at.
-    ledger = (
-        f"{index['records']} discovery records read from the daily snapshots: "
-        f"{index['tagged']} carry a source theme tag, {len(unthemed)} do not. "
-        f"Each section renders its newest {_SLICE}, so {rendered} of "
-        f"{index['records']} are on this page; the full corpus is in "
-        '<a href="/explore/">Explore</a>.'
+    cards = "".join(_record_card(record) for record in index["all_records"])
+    source_ledger = " · ".join(
+        f"{_SOURCE_NAMES.get(source, source)}: {count}"
+        for source, count in index["source_counts"].items()
     )
+    ledger = (
+        f"{index['records']} benchmark records across {len(index['source_counts'])} sources: "
+        f"{index['tagged']} categorized, {len(index['unthemed'])} uncategorized. "
+        "Every source record appears once. Category counts can overlap. "
+        f"0 records omitted. {esc(source_ledger)}"
+    )
+    empty = f'<div class="themes-empty">{esc(_EMPTY_STATE)}</div>' if not index["records"] else ""
     body = f"""{_PAGE_STYLE}
 <div class="themes-page">
-  <h1>Browse new arrivals by theme</h1>
-  <p class="themes-lede">Find newly discovered papers, repositories and datasets by the
-  capability themes their sources assign. Browse the full benchmark catalog in Explore.</p>
-  <p class="themes-lede-zh" lang="zh-Hans">按来源自带的能力主题浏览每日新发现的记录，
-  不是 benchmark 目录的计数。</p>
-  <p class="themes-ledger">{ledger}</p>
+  <h1>Browse benchmarks by category</h1>
+  <p class="themes-lede">Find benchmarks across the full catalog using its existing
+  categories. Search by name or choose a category; open any record for scores and sources.</p>
+  <p class="themes-lede-zh" lang="zh-Hans">按目录现有分类浏览全部 benchmark；
+  未分类、没有分数或发布日期的记录也保留在这里。</p>
+  <details class="themes-coverage"><summary>Catalog coverage / 目录覆盖</summary>
+    <p class="themes-ledger">{ledger}</p></details>
   <div class="themes-toolbar">
-    <label class="themes-filter">
-      <span class="visually-hidden">Filter the records rendered on this page</span>
-      <input id="theme-filter" type="search" placeholder="Filter what's shown below…"
+    <label class="themes-filter"><span class="visually-hidden">Search all benchmark records</span>
+      <input id="theme-filter" type="search" placeholder="Search all benchmarks…"
         autocomplete="off">
     </label>
-    {chips}
+    <label class="themes-category"><span class="visually-hidden">Benchmark category</span>
+      <select id="theme-category"><option value="">All categories ({index["records"]})</option>
+      {options}</select></label>
   </div>
-  {"".join(sections)}
+  <p id="theme-results" role="status">Showing {index["records"]} of
+    {index["records"]} benchmark records</p>
+  <div class="theme-grid">{cards}</div>
+  <p id="theme-no-results" class="themes-empty" hidden>No benchmarks match these filters.</p>
   {empty}
 </div>
 <script>
 (() => {{
   const filter = document.getElementById("theme-filter");
-  const sections = Array.from(document.querySelectorAll(".theme-section"));
-  const chips = Array.from(document.querySelectorAll(".theme-chip"));
-
-  // Chips pin by the section's own slug. They used to carry a "theme-" prefix
-  // the sections did not, so no slug ever matched and one click hid every
-  // section on the page.
-  let pinned = null;
-  chips.forEach((chip) => {{
-    chip.addEventListener("click", () => {{
-      const target = chip.dataset.target;
-      if (pinned === target) {{
-        pinned = null;
-        chips.forEach((c) => c.classList.remove("active"));
-        sections.forEach((s) => s.classList.remove("hidden-by-filter"));
-        return;
-      }}
-      pinned = target;
-      chips.forEach((c) => c.classList.toggle("active", c === chip));
-      sections.forEach((s) => s.classList.toggle("hidden-by-filter", s.dataset.slug !== target));
-      applyFilter();
-      window.scrollTo({{ top: 0, behavior: "smooth" }});
-    }});
-  }});
-
-  // The filter only sees the rendered slice, which is why the ledger above
-  // says how much of the corpus is on the page. A query with no hits means
-  // "nothing in the newest {_SLICE} of any section", not "nothing collected".
+  const category = document.getElementById("theme-category");
+  const cards = Array.from(document.querySelectorAll(".theme-card"));
+  const records = cards.map(card => ({{
+    card, categories: JSON.parse(card.dataset.categories), text: card.textContent.toLowerCase()
+  }}));
   function applyFilter() {{
-    const query = (filter.value || "").trim().toLowerCase();
-    sections.forEach((section) => {{
-      if (pinned && section.dataset.slug !== pinned) return;
-      let visible = 0;
-      section.querySelectorAll(".theme-card").forEach((card) => {{
-        const hidden = Boolean(query) && !card.textContent.toLowerCase().includes(query);
-        card.classList.toggle("hidden-by-filter", hidden);
-        if (!hidden) visible += 1;
-      }});
-      section.classList.toggle("hidden-by-filter", Boolean(query) && visible === 0);
+    const query = filter.value.trim().toLowerCase();
+    const selected = category.value;
+    let visible = 0;
+    records.forEach(record => {{
+      const matchesCategory = !selected || (selected === "__uncategorized__"
+        ? record.categories.length === 0 : record.categories.includes(selected));
+      const matches = matchesCategory && (!query || record.text.includes(query));
+      record.card.classList.toggle("hidden-by-filter", !matches);
+      if (matches) visible += 1;
     }});
+    document.getElementById("theme-results").textContent =
+      `Showing ${{visible}} of ${{cards.length}} benchmark records`;
+    document.getElementById("theme-no-results").hidden = visible !== 0;
   }}
-  if (filter) filter.addEventListener("input", applyFilter);
+  filter.addEventListener("input", applyFilter);
+  category.addEventListener("change", applyFilter);
 }})();
 </script>"""
     canonical = f"{SITE_URL}{THEMES_PATH}"
-    title = "Browse new arrivals by theme | Benchmark Radar"
+    title = "Browse benchmarks by category | Benchmark Radar"
     description = (
-        "Daily discovery records grouped by the capability themes their own source "
-        f"tagged — {index['tagged']} of {index['records']} records across "
-        f"{len(groups)} themes."
+        f"Browse all {index['records']} benchmark records across "
+        f"{len(index['source_counts'])} sources by the catalog's existing categories, "
+        "including uncategorized records."
     )
-    schemas = [
-        webpage_schema(
-            title=title,
-            description="Discovery records grouped by their source's own theme tags.",
-            canonical=canonical,
-            languages=("en", "zh-Hans"),
-        ),
-        breadcrumb_schema(
-            ("Benchmark Radar", f"{SITE_URL}/"),
-            ("Themes", canonical),
-            canonical=canonical,
-        ),
-    ]
-    return (
-        render_page(
-            title=title,
-            description=description,
-            canonical=canonical,
-            body=body,
-            chrome=chrome,
-            updated=index["updated"],
-            chrome_i18n=chrome_i18n,
-            schemas=schemas,
-        ),
-        rendered,
-    )
+    return render_page(
+        title=title,
+        description=description,
+        canonical=canonical,
+        body=body,
+        chrome=chrome,
+        updated=index["updated"],
+        chrome_i18n=chrome_i18n,
+        schemas=[
+            webpage_schema(
+                title=title,
+                description=description,
+                canonical=canonical,
+                languages=("en", "zh-Hans"),
+            ),
+            breadcrumb_schema(
+                ("Benchmark Radar", f"{SITE_URL}/"), ("Themes", canonical), canonical=canonical
+            ),
+        ],
+    ), len(index["all_records"])
 
 
 def write_themes(
-    snapshots: list[dict[str, Any]],
     site_dir: Path,
     *,
+    catalog_path: Path | None = None,
     dashboard_html: str | None = None,
     app_js: str | None = None,
 ) -> dict[str, Any]:
@@ -370,7 +293,9 @@ def write_themes(
         app_js = app_js_source.read_text(encoding="utf-8")
     chrome = extract_site_chrome(dashboard_html, active_path=THEMES_PATH)
     chrome_i18n = chrome_i18n_table(chrome, app_js)
-    index = build_theme_index(snapshots)
+    catalog_path = catalog_path or site_dir / "data" / "benchmark-index.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    index = build_theme_index(catalog)
     page, rendered = _themes_page(index, chrome, chrome_i18n)
     output_dir = site_dir / "themes"
     staging = site_dir / "themes.staging"
@@ -388,5 +313,7 @@ def write_themes(
         "tagged": index["tagged"],
         "unthemed": len(index["unthemed"]),
         "rendered": rendered,
+        "source_counts": index["source_counts"],
+        "omitted": 0,
         "sitemap_entries": [(THEMES_PATH, index["updated"])],
     }
