@@ -5733,7 +5733,7 @@ results:
     read_from: html_text
     reported_by: Microsoft
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5769,7 +5769,7 @@ results:
     read_from: html_text
     reported_by: Microsoft
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5805,7 +5805,7 @@ results:
     read_from: html_text
     reported_by: Microsoft
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5841,7 +5841,7 @@ results:
     read_from: html_text
     reported_by: Microsoft
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5877,7 +5877,7 @@ results:
     read_from: html_text
     reported_by: Microsoft
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5913,7 +5913,7 @@ results:
     read_from: html_text
     reported_by: Microsoft
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5947,7 +5947,7 @@ results:
     value: 71.8
     read_from: html_text
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
@@ -5980,7 +5980,7 @@ results:
     value: 94.6
     read_from: html_text
   - benchmark_id: gpqa_diamond
-    instrument: gpqa_diamond_198
+    instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A identifies AIME 2024; maximum
       sequence length 32768; common temperature unspecified; sampling count and starred-row provenance not
       explained
