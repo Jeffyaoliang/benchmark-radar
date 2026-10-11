@@ -655,6 +655,7 @@ def test_phi_4_mini_reasoning_comparison_preserves_exact_source_matrix():
     }
     for row in rows:
         assert row["reported_by"] == (None if row["organization"] == "Microsoft" else "Microsoft")
+        assert row["model"] in row["protocol"]
         if row["benchmark_id"] == "gpqa_diamond":
             assert row["instrument"] == "gpqa_diamond"
 

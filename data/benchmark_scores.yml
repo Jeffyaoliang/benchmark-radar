@@ -5711,9 +5711,9 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for o1-mini; starred
-      source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      o1-mini; starred source row with unexplained asterisk
     model: o1-mini
     organization: OpenAI
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5724,9 +5724,9 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for o1-mini; starred
-      source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      o1-mini; starred source row with unexplained asterisk
     model: o1-mini
     organization: OpenAI
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5737,9 +5737,9 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for o1-mini; starred
-      source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      o1-mini; starred source row with unexplained asterisk
     model: o1-mini
     organization: OpenAI
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5750,8 +5750,8 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       DeepSeek-R1-Distill-Qwen-7B; unstarred source row
     model: DeepSeek-R1-Distill-Qwen-7B
     organization: DeepSeek
@@ -5763,8 +5763,8 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       DeepSeek-R1-Distill-Qwen-7B; unstarred source row
     model: DeepSeek-R1-Distill-Qwen-7B
     organization: DeepSeek
@@ -5776,8 +5776,8 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       DeepSeek-R1-Distill-Qwen-7B; unstarred source row
     model: DeepSeek-R1-Distill-Qwen-7B
     organization: DeepSeek
@@ -5789,8 +5789,8 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       DeepSeek-R1-Distill-Llama-8B; unstarred source row
     model: DeepSeek-R1-Distill-Llama-8B
     organization: DeepSeek
@@ -5802,8 +5802,8 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       DeepSeek-R1-Distill-Llama-8B; unstarred source row
     model: DeepSeek-R1-Distill-Llama-8B
     organization: DeepSeek
@@ -5815,8 +5815,8 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       DeepSeek-R1-Distill-Llama-8B; unstarred source row
     model: DeepSeek-R1-Distill-Llama-8B
     organization: DeepSeek
@@ -5828,9 +5828,9 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Bespoke-
-      Stratos-7B; starred source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Bespoke-Stratos-7B; starred source row with unexplained asterisk
     model: Bespoke-Stratos-7B
     organization: Bespoke Labs
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5841,9 +5841,9 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Bespoke-
-      Stratos-7B; starred source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Bespoke-Stratos-7B; starred source row with unexplained asterisk
     model: Bespoke-Stratos-7B
     organization: Bespoke Labs
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5854,9 +5854,9 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Bespoke-
-      Stratos-7B; starred source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Bespoke-Stratos-7B; starred source row with unexplained asterisk
     model: Bespoke-Stratos-7B
     organization: Bespoke Labs
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5867,9 +5867,9 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for OpenThinker-7B;
-      starred source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      OpenThinker-7B; starred source row with unexplained asterisk
     model: OpenThinker-7B
     organization: OpenThoughts
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5880,9 +5880,9 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for OpenThinker-7B;
-      starred source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      OpenThinker-7B; starred source row with unexplained asterisk
     model: OpenThinker-7B
     organization: OpenThoughts
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5893,9 +5893,9 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for OpenThinker-7B;
-      starred source row with unexplained asterisk
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      OpenThinker-7B; starred source row with unexplained asterisk
     model: OpenThinker-7B
     organization: OpenThoughts
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5906,8 +5906,8 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       Llama-3.2-3B-Instruct; unstarred source row
     model: Llama-3.2-3B-Instruct
     organization: Meta
@@ -5919,8 +5919,8 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       Llama-3.2-3B-Instruct; unstarred source row
     model: Llama-3.2-3B-Instruct
     organization: Meta
@@ -5932,8 +5932,8 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
       Llama-3.2-3B-Instruct; unstarred source row
     model: Llama-3.2-3B-Instruct
     organization: Meta
@@ -5945,9 +5945,9 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Phi-4-Mini (base
-      model, 3.8B); unstarred source row
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-Mini (base model, 3.8B); unstarred source row
     model: Phi-4-Mini (base model, 3.8B)
     organization: Microsoft
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5957,9 +5957,9 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Phi-4-Mini (base
-      model, 3.8B); unstarred source row
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-Mini (base model, 3.8B); unstarred source row
     model: Phi-4-Mini (base model, 3.8B)
     organization: Microsoft
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5969,9 +5969,9 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Phi-4-Mini (base
-      model, 3.8B); unstarred source row
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-Mini (base model, 3.8B); unstarred source row
     model: Phi-4-Mini (base model, 3.8B)
     organization: Microsoft
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5981,9 +5981,9 @@ results:
   - benchmark_id: aime
     instrument: aime_2024
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Phi-4-mini-
-      reasoning (3.8B); unstarred source row
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-mini-reasoning (3.8B); unstarred source row
     model: Phi-4-mini-reasoning (3.8B)
     organization: Microsoft
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -5993,9 +5993,9 @@ results:
   - benchmark_id: math_500
     instrument: math_500
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Phi-4-mini-
-      reasoning (3.8B); unstarred source row
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-mini-reasoning (3.8B); unstarred source row
     model: Phi-4-mini-reasoning (3.8B)
     organization: Microsoft
     source_id: microsoft_phi_4_mini_reasoning_model_card
@@ -6005,9 +6005,9 @@ results:
   - benchmark_id: gpqa_diamond
     instrument: gpqa_diamond
     protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
-      sequence length 32768 and common temperature without specifying its value; matching per-
-      row sampling and prompts not established; row-specific unknown setup for Phi-4-mini-
-      reasoning (3.8B); unstarred source row
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-mini-reasoning (3.8B); unstarred source row
     model: Phi-4-mini-reasoning (3.8B)
     organization: Microsoft
     source_id: microsoft_phi_4_mini_reasoning_model_card
