@@ -239,12 +239,8 @@ def _themes_page(
     body = f"""{_PAGE_STYLE}
 <div class="themes-page">
   <h1>Browse new arrivals by theme</h1>
-  <p class="themes-lede">What the radar's daily discovery keeps finding, grouped by the
-  capability theme each record's own source gave it. Tags come from the source that knows
-  the record best — the XBsleepy digest's capability themes ride in namespaced as
-  <code>xbsleepy:</code>, and any source can join the same convention. This is a view over
-  newly discovered papers, repositories and datasets, not a count of the benchmark
-  catalog.</p>
+  <p class="themes-lede">Find newly discovered papers, repositories and datasets by the
+  capability themes their sources assign. Browse the full benchmark catalog in Explore.</p>
   <p class="themes-lede-zh" lang="zh-Hans">按来源自带的能力主题浏览每日新发现的记录，
   不是 benchmark 目录的计数。</p>
   <p class="themes-ledger">{ledger}</p>
