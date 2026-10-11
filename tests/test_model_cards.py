@@ -893,3 +893,69 @@ def test_the_registrys_vbench_is_linked_to_the_crawl_record_of_the_same_benchmar
     assert group["inherit_from"] == "opencompass:1375"
     # VBench++ and VBench-2.0 are separate instruments, never members here.
     assert not {member for member in group["members"] if member.startswith("model-reports:vbench_")}
+
+
+def test_cohere_private_evaluations_remain_in_the_export_without_guessed_task_urls():
+    from benchmark_radar.benchmark_scores import load_scores
+    from benchmark_radar.catalog_reports import normalize_reports
+
+    # These instruments are named in the public release, even though their
+    # tasks are private. Unknown task URLs and unlabelled scores stay unknown.
+    expected = {
+        "cohere_m_tau_bench",
+        "cohere_north_answer_satisfaction",
+        "cohere_north_multihop_search",
+        "cohere_absolute_safety",
+        "cohere_over_refusal",
+    }
+    registry = load_registry()
+    card = next(
+        card
+        for card in registry["model_cards"]
+        if card["id"] == "cohere_command_a_reasoning_release"
+    )
+    assert expected <= set(card["benchmarks"])
+    records = {
+        record["source_benchmark_id"]: record
+        for record in normalize_reports(registry, load_scores())["source_records"]
+        if record["source_benchmark_id"] in expected
+    }
+    assert set(records) == expected
+    for record in records.values():
+        assert record["artifacts"] == []
+        assert record["released"] is None
+        assert any(
+            document["source_id"] == "cohere_command_a_reasoning_release"
+            and document["source_url"] == "https://cohere.com/blog/command-a-reasoning"
+            for document in record["documents"]
+        )
+    observations = build_score_progression(DEFAULT_SCORES_PATH, registry)["benchmarks"]
+    for benchmark_id in expected - {"cohere_m_tau_bench"}:
+        assert not observations.get(benchmark_id, {}).get("observations")
+
+
+def test_cohere_agentic_chart_retains_all_twelve_labelled_scores():
+    from benchmark_radar.benchmark_scores import load_scores
+
+    # Public chart labels, in BFCL-v3 / tau-bench / m-tau-bench column order.
+    expected = {
+        "Command A Reasoning": (70.3, 59.8, 46.5),
+        "DeepSeek-R1-0528": (63.8, 58.7, 44.2),
+        "gpt-oss-120b": (61.6, 58.5, 42.7),
+        "Magistral Medium": (50.4, 39.8, 23.4),
+    }
+    rows = [
+        row
+        for row in load_scores()["results"]
+        if row["source_id"] == "cohere_command_a_reasoning_release"
+    ]
+    assert len(rows) == 12
+    assert {(row["model"], row["benchmark_id"]): row["value"] for row in rows} == {
+        (model, benchmark_id): value
+        for model, values in expected.items()
+        for benchmark_id, value in zip(
+            ("bfcl", "tau_bench", "cohere_m_tau_bench"), values, strict=True
+        )
+    }
+    for row in rows:
+        assert row["reported_by"] == (None if row["organization"] == "Cohere" else "Cohere")
