@@ -1619,12 +1619,6 @@ benchmarks:
       Only 50 examples are public; the full set is on request.
 
 
-# Model cards, technical reports and release posts.
-#
-# `organization` is the publisher of the document. `benchmarks` is the set of
-# canonical ids that document reports a result for. It is a set, not a ranking:
-# a card that reports AIME once and a card that reports it in four
-# configurations both contribute exactly one adoption.
   - id: deepresearch_bench
     name: DeepResearch Bench
     aliases:
@@ -1633,6 +1627,14 @@ benchmarks:
     domain: tool_use
     url: https://deepresearch-bench.github.io/
     caveat: RACE grades report quality while FACT grades retrieval and citation behavior; the task language, agent scaffold, and judge must be recorded because they are different measurements.
+
+
+# Model cards, technical reports and release posts.
+#
+# `organization` is the publisher of the document. `benchmarks` is the set of
+# canonical ids that document reports a result for. It is a set, not a ranking:
+# a card that reports AIME once and a card that reports it in four
+# configurations both contribute exactly one adoption.
 
 model_cards:
   - id: openai_gpt_5_system_card
