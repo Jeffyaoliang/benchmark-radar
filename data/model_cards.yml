@@ -1624,7 +1624,7 @@ benchmarks:
     aliases:
     - DeepResearch Bench
     - DeepResearchBench
-    domain: tool_use
+    domain: agent
     url: https://deepresearch-bench.github.io/
     caveat: RACE grades report quality while FACT grades retrieval and citation behavior; the task language, agent scaffold, and judge must be recorded because they are different measurements.
 

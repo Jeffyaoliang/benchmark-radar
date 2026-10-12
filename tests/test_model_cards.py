@@ -933,6 +933,15 @@ def test_cohere_private_evaluations_remain_in_the_export_without_guessed_task_ur
     for benchmark_id in expected - {"cohere_m_tau_bench"}:
         assert not observations.get(benchmark_id, {}).get("observations")
 
+    # The referenced primary paper evaluates agents producing research reports;
+    # adoption-domain routing must not describe it as a tool-call episode.
+    entry = next(
+        row
+        for row in adoption_rank(registry)["entries"]
+        if row["benchmark_id"] == "deepresearch_bench"
+    )
+    assert entry["domain"] == "agent"
+
 
 def test_cohere_agentic_chart_retains_all_twelve_labelled_scores():
     from benchmark_radar.benchmark_scores import load_scores
