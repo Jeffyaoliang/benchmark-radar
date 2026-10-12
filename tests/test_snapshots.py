@@ -1835,3 +1835,41 @@ def test_primary_revision_retains_previously_merged_digest_evidence(reverse):
     score_item(revision, taxonomy, now=revision_run.generated_at)
     assert record["total_score"] == revision.total_score
     assert record["recommended"] is True
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_merged_provenance_removes_title_only_relevance_penalty(reverse):
+    from benchmark_radar.pipeline import score_item
+
+    taxonomy = {"benchmark": ["benchmark"]}
+    old_run = radar_run(27)
+    old_run.items[0].authors = ["Digest Author"]
+    old_run.items[0].contributing_sources = ["XBsleepy", "arXiv"]
+    old_run.items[0].artifact_urls = ["https://arxiv.org/pdf/2607.0027"]
+    score_item(old_run.items[0], taxonomy, now=old_run.generated_at)
+    first = snapshot_for_run(old_run)
+    new_run = radar_run(27)
+    new_run.generated_at += timedelta(hours=1)
+    primary = new_run.items[0]
+    primary.summary = ""
+    primary.authors = []
+    primary.organizations = []
+    primary.artifact_urls = []
+    primary.metrics = {}
+    primary.updated_at = new_run.generated_at
+    primary.event_kind = "updated"
+    score_item(primary, taxonomy, now=new_run.generated_at)
+    assert any("title-only provenance" in reason for reason in primary.rationale)
+    second = snapshot_for_run(new_run)
+    second["selection"] = {"recommendation_score": 40}
+    merged = merge_snapshots(second, first) if reverse else merge_snapshots(first, second)
+    row = merged["evidence_items"][0]
+    primary.authors = row["authors"]
+    primary.organizations = row["organizations"]
+    primary.artifact_urls = row["artifact_urls"]
+    primary.metrics = row["metrics"]
+    score_item(primary, taxonomy, now=new_run.generated_at)
+    assert row["relevance_score"] == primary.relevance_score
+    assert row["total_score"] == primary.total_score
+    assert row["recommended"] == (primary.total_score >= 40)
+    assert not any("title-only provenance" in reason for reason in row["rationale"])

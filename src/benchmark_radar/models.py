@@ -40,6 +40,8 @@ class RadarItem:
     contributing_sources: list[str] = field(default_factory=list)
     evidence_score: float = 0.0
     relevance_score: float = 0.0
+    # Retain the pre-deduction score so merged provenance can replay capped deductions.
+    relevance_base_score: float | None = None
     recency_score: float = 0.0
     adoption_score: float = 0.0
     total_score: float = 0.0

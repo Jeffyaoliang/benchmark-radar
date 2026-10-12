@@ -256,6 +256,47 @@ def _matches_structural_signal(item: RadarItem, signal: dict[str, Any]) -> bool:
     raise ValueError(f"unknown structural signal condition: {signal['condition']}")
 
 
+def refresh_structural_relevance(item: RadarItem, prior: RadarItem) -> None:
+    """Replay provenance deductions after a merge without changing text or time."""
+    haystack = f"{prior.title} {prior.summary}".lower()
+    text = [
+        signal
+        for signal in rubric.LOW_VALUE_SIGNALS
+        if re.search(str(signal["pattern"]), haystack, flags=re.IGNORECASE)
+    ]
+    before = [s for s in rubric.STRUCTURAL_SIGNALS if _matches_structural_signal(prior, s)]
+    after = [s for s in rubric.STRUCTURAL_SIGNALS if _matches_structural_signal(item, s)]
+    old_deduction = min(
+        rubric.MAX_LOW_VALUE_DEDUCTION,
+        sum(float(s["deduction"]) for s in [*text, *before]),
+    )
+    new_deduction = min(
+        rubric.MAX_LOW_VALUE_DEDUCTION,
+        sum(float(s["deduction"]) for s in [*text, *after]),
+    )
+    base = prior.relevance_base_score
+    if base is None and prior.relevance_score > 0:
+        base = prior.relevance_score + old_deduction
+    # A historical zero has lost its pre-clamp value; do not invent that score.
+    if base is not None:
+        item.relevance_base_score = base
+        item.relevance_score = max(0.0, base - new_deduction)
+    item.rationale = [
+        reason
+        for reason in item.rationale
+        if not reason.startswith(("Structural demotion:", "Structural gate:"))
+    ]
+    labels = {str(s["label"]) for s in rubric.STRUCTURAL_SIGNALS}
+    item.suppression_reasons = [r for r in item.suppression_reasons if r not in labels]
+    for signal in after:
+        prefix = "Structural gate" if signal["action"] == "suppress" else "Structural demotion"
+        item.rationale.append(
+            f"{prefix}: {signal['label']} (-{float(signal['deduction']):g} relevance)"
+        )
+        if signal["action"] == "suppress":
+            item.suppression_reasons.append(str(signal["label"]))
+
+
 def score_evidence_and_adoption(item: RadarItem) -> None:
     """Refresh evidence, adoption and the total while retaining text/time scores.
 
@@ -352,6 +393,7 @@ def score_item(
         rubric.MAX_LOW_VALUE_DEDUCTION,
         sum(float(signal["deduction"]) for signal in deductions),
     )
+    item.relevance_base_score = relevance
     item.relevance_score = max(0.0, relevance - deduction)
     item.suppression_reasons = [
         str(signal["label"]) for signal in deductions if signal["action"] == "suppress"

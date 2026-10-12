@@ -26,7 +26,12 @@ from .insights import build_insights
 from .kw_bench_tracks import classification_layer, derive_tracks
 from .model_cards import DEFAULT_REGISTRY_PATH, adoption_rank, load_registry
 from .models import RadarItem, RadarRun
-from .pipeline import match_phrase, match_proximity_rule, score_evidence_and_adoption
+from .pipeline import (
+    match_phrase,
+    match_proximity_rule,
+    refresh_structural_relevance,
+    score_evidence_and_adoption,
+)
 from .release_leaderboard import (
     SIGNAL_SOURCES,
     SIGNAL_VALUE_KINDS,
@@ -772,6 +777,32 @@ def merge_snapshots(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[
                     relevance_score=float(selected.get("relevance_score") or 0),
                     recency_score=float(selected.get("recency_score") or 0),
                 )
+                prior = RadarItem(
+                    source=selected["source"],
+                    source_id=selected["source_id"],
+                    title=selected["title"],
+                    url=selected["url"],
+                    published_at=scored.published_at,
+                    summary=selected.get("summary") or "",
+                    authors=list(selected.get("authors") or []),
+                    organizations=list(selected.get("organizations") or []),
+                    artifact_urls=list(selected.get("artifact_urls") or []),
+                    metrics=dict(selected.get("metrics") or {}),
+                    relevance_score=scored.relevance_score,
+                    relevance_base_score=selected.get("relevance_base_score"),
+                )
+                scored.summary = prior.summary
+                scored.organizations = merged["organizations"]
+                scored.rationale = merged["rationale"]
+                scored.suppression_reasons = list(selected.get("suppression_reasons") or [])
+                refresh_structural_relevance(scored, prior)
+                for field in (
+                    "relevance_score",
+                    "relevance_base_score",
+                    "rationale",
+                    "suppression_reasons",
+                ):
+                    merged[field] = getattr(scored, field)
                 score_evidence_and_adoption(scored)
                 for field in ("evidence_score", "adoption_score", "total_score"):
                     merged[field] = getattr(scored, field)
