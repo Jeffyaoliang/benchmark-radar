@@ -258,16 +258,6 @@ equivalent:
     reviewed_at: 2026-09-12
     note: Both are VBench (Huang et al., 2023).
 
-  # Pending human review (not an active equivalence):
-  # model-reports:deepresearch_bench <-> opencompass:1987.
-  # Suggested donor: opencompass:1987.
-  # Source evidence: https://deepresearch-bench.github.io/ links
-  # arxiv:2506.11763 and gh:Ayanami0730/deep_research_bench, also
-  # recorded by OpenCompass 1987. This AI-assisted proposal supplies no
-  # independent human warrant. A human must confirm identity and sign the
-  # group before adding it to equivalent. Both source records and their
-  # observations remain separate in the meantime.
-
 # Related, cross-linked, never merged. Two kinds share this block:
 #
 # The first three are the OpenCompass-internal anchor-sharing pairs from
