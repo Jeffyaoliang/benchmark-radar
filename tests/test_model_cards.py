@@ -1007,7 +1007,7 @@ def test_cohere_unknown_competitor_setups_do_not_establish_comparability():
     assert len(observations) == 12
 
 
-def test_cohere_multilingual_metric_does_not_guess_unspecified_pass_at_one():
+def test_cohere_multilingual_metric_retains_reviewed_tau_pass_at_one_identity():
     from benchmark_radar.benchmark_scores import load_scores
     from benchmark_radar.catalog_reports import normalize_reports
 
@@ -1018,8 +1018,8 @@ def test_cohere_multilingual_metric_does_not_guess_unspecified_pass_at_one():
         if row["key"] == "model-reports:cohere_m_tau_bench"
         and row["source_id"] == "cohere_command_a_reasoning_release"
     ]
-    # Source footnote 1 explicitly names pass^1 only for English tau-bench.
-    # M-taubench is described as an average score over languages/domains/runs.
+    # Maintainer review interprets translated tau tasks under the same pass@1
+    # metric; footnote 1 does not repeat that metric in its multilingual clause.
     assert len(observations) == 4
     series = [
         row
@@ -1027,4 +1027,4 @@ def test_cohere_multilingual_metric_does_not_guess_unspecified_pass_at_one():
         if row["key"] == "model-reports:cohere_m_tau_bench"
     ]
     assert len(series) == 1
-    assert series[0]["metric"] == "score"
+    assert series[0]["metric"] == "pass@1"
