@@ -1634,7 +1634,7 @@ benchmarks:
   - id: cohere_m_tau_bench
     name: Cohere m-tau-bench (internal multilingual translation)
     aliases: ["Cohere m-tau-bench", "Cohere M-taubench"]
-    domain: multilingual
+    domain: tool_use
     caveat: >-
       Cohere's in-house tau-bench translation, not the public English task set.
       The release caption says five translated languages; footnote 1 lists Ja,

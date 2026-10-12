@@ -942,6 +942,16 @@ def test_cohere_private_evaluations_remain_in_the_export_without_guessed_task_ur
     )
     assert entry["domain"] == "agent"
 
+    # Translation changes the task language, not the retail/airline tool task.
+    # Both normalization and the actual adoption surface must keep its shape.
+    assert records["cohere_m_tau_bench"]["categories"] == ["tool_use"]
+    translated_tau = next(
+        row
+        for row in adoption_rank(registry)["entries"]
+        if row["benchmark_id"] == "cohere_m_tau_bench"
+    )
+    assert translated_tau["domain"] == "tool_use"
+
 
 def test_cohere_agentic_chart_retains_all_twelve_labelled_scores():
     from benchmark_radar.benchmark_scores import load_scores
