@@ -656,8 +656,23 @@ def test_phi_4_mini_reasoning_comparison_preserves_exact_source_matrix():
     for row in rows:
         assert row["reported_by"] == (None if row["organization"] == "Microsoft" else "Microsoft")
         assert row["model"] in row["protocol"]
-        if row["benchmark_id"] == "gpqa_diamond":
-            assert row["instrument"] == "gpqa_diamond"
+        assert (
+            row["instrument"]
+            == {
+                "aime": "aime_2024",
+                "math_500": "math_500",
+                "gpqa_diamond": "gpqa_diamond",
+            }[row["benchmark_id"]]
+        )
+        # Upload history does not establish public visibility on April 29.
+        # The cited Microsoft announcement confirms all three releases April 30.
+        assert row["reported_at"] == "2025-04-30"
+    card = next(
+        card
+        for card in load_registry()["model_cards"]
+        if card["id"] == "microsoft_phi_4_mini_reasoning_model_card"
+    )
+    assert card["published"] == "2025-04-30"
 
 
 def test_phi_4_unknown_comparison_setups_do_not_form_a_shared_series():
