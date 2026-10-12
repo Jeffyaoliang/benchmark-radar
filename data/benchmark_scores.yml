@@ -543,7 +543,7 @@ benchmarks:
     unit: percent
 
   - benchmark_id: cohere_m_tau_bench
-    metric: pass@1
+    metric: score
     direction: higher_is_better
     unit: percent
 
