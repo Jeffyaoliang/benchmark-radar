@@ -5737,7 +5737,7 @@ results:
     read_from: table_image
   - benchmark_id: bfcl
     instrument: bfcl_v3
-    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; official BFCL leaderboard score where available, otherwise best of prompted and FC evaluation; individual score origin and generation settings not specified
+    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; official BFCL leaderboard score where available, otherwise best of prompted and FC evaluation; individual score origin and generation settings not specified; unknown setup for DeepSeek-R1-0528
     model: DeepSeek-R1-0528
     organization: DeepSeek
     source_id: cohere_command_a_reasoning_release
@@ -5747,7 +5747,7 @@ results:
     reported_by: Cohere
   - benchmark_id: tau_bench
     instrument: tau_bench_airline_retail_average
-    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; average of airline and retail; competitor officially reported values where available; run count not stated for these values
+    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; average of airline and retail; competitor officially reported values where available; run count not stated for these values; unknown setup for DeepSeek-R1-0528
     model: DeepSeek-R1-0528
     organization: DeepSeek
     source_id: cohere_command_a_reasoning_release
@@ -5757,7 +5757,7 @@ results:
     reported_by: Cohere
   - benchmark_id: bfcl
     instrument: bfcl_v3
-    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; official BFCL leaderboard score where available, otherwise best of prompted and FC evaluation; individual score origin and generation settings not specified
+    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; official BFCL leaderboard score where available, otherwise best of prompted and FC evaluation; individual score origin and generation settings not specified; unknown setup for gpt-oss-120b
     model: gpt-oss-120b
     organization: OpenAI
     source_id: cohere_command_a_reasoning_release
@@ -5767,7 +5767,7 @@ results:
     reported_by: Cohere
   - benchmark_id: tau_bench
     instrument: tau_bench_airline_retail_average
-    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; average of airline and retail; competitor officially reported values where available; run count not stated for these values
+    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; average of airline and retail; competitor officially reported values where available; run count not stated for these values; unknown setup for gpt-oss-120b
     model: gpt-oss-120b
     organization: OpenAI
     source_id: cohere_command_a_reasoning_release
@@ -5777,7 +5777,7 @@ results:
     reported_by: Cohere
   - benchmark_id: bfcl
     instrument: bfcl_v3
-    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; official BFCL leaderboard score where available, otherwise best of prompted and FC evaluation; individual score origin and generation settings not specified
+    protocol: Cohere Command A Reasoning launch comparison; highest available reasoning; official BFCL leaderboard score where available, otherwise best of prompted and FC evaluation; individual score origin and generation settings not specified; unknown setup for Magistral Medium
     model: Magistral Medium
     organization: Mistral
     source_id: cohere_command_a_reasoning_release

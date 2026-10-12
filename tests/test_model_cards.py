@@ -959,3 +959,30 @@ def test_cohere_agentic_chart_retains_all_twelve_labelled_scores():
     }
     for row in rows:
         assert row["reported_by"] == (None if row["organization"] == "Cohere" else "Cohere")
+
+
+def test_cohere_unknown_competitor_setups_do_not_establish_comparability():
+    from benchmark_radar.benchmark_scores import load_scores
+    from benchmark_radar.catalog_reports import normalize_reports
+
+    normalized = normalize_reports(load_registry(), load_scores())
+    observations = [
+        row
+        for row in normalized["score_observations"]
+        if row["source_id"] == "cohere_command_a_reasoning_release"
+    ]
+    groups = {
+        benchmark: {
+            row["model_name"]: row["comparable_group"]
+            for row in observations
+            if row["key"] == f"model-reports:{benchmark}"
+        }
+        for benchmark in ("bfcl", "tau_bench", "cohere_m_tau_bench")
+    }
+    assert len(set(groups["bfcl"].values())) == 4
+    assert len(set(groups["tau_bench"].values())) == 3
+    assert groups["tau_bench"]["Command A Reasoning"] == groups["tau_bench"]["Magistral Medium"]
+    # Footnote 1 explicitly identifies one ten-run translated-task setup for
+    # all four models, so the repair must retain that documented comparison.
+    assert len(set(groups["cohere_m_tau_bench"].values())) == 1
+    assert len(observations) == 12
