@@ -258,22 +258,15 @@ equivalent:
     reviewed_at: 2026-09-12
     note: Both are VBench (Huang et al., 2023).
 
-  # The project's site links the introducing paper and code also recorded by
-  # OpenCompass 1987. Keep the two source records and their scores separate;
-  # only missing identity metadata inherits. This contributor-side source
-  # review is AI-assisted and remains subject to the maintainer's review.
-  - group_id: deepresearch-bench
-    basis: reviewer_asserted
-    members: [model-reports:deepresearch_bench, opencompass:1987]
-    inherit_from: opencompass:1987
-    anchors: [arxiv:2506.11763, gh:Ayanami0730/deep_research_bench]
-    reviewed_by: "Codex (AI-assisted source review; maintainer review pending)"
-    reviewed_at: 2026-10-11
-    note: >-
-      Both identify DeepResearch Bench (Du et al., 2025). The model-report
-      registry cites https://deepresearch-bench.github.io/, which links the
-      same paper and code as the committed OpenCompass record. No score or
-      evaluation-protocol equivalence is inferred from benchmark identity.
+  # Pending human review (not an active equivalence):
+  # model-reports:deepresearch_bench <-> opencompass:1987.
+  # Suggested donor: opencompass:1987.
+  # Source evidence: https://deepresearch-bench.github.io/ links
+  # arxiv:2506.11763 and gh:Ayanami0730/deep_research_bench, also
+  # recorded by OpenCompass 1987. This AI-assisted proposal supplies no
+  # independent human warrant. A human must confirm identity and sign the
+  # group before adding it to equivalent. Both source records and their
+  # observations remain separate in the meantime.
 
 # Related, cross-linked, never merged. Two kinds share this block:
 #

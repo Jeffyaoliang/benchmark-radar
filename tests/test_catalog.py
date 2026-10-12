@@ -1347,7 +1347,7 @@ def test_no_curated_layer_still_attributes_a_model_to_google_deepmind():
         assert "Google DeepMind" not in text, name
 
 
-def test_deepresearch_bench_reviewed_identity_inherits_only_source_metadata(full_records):
+def test_deepresearch_bench_pending_identity_does_not_inherit_metadata(full_records):
     from benchmark_radar.catalog_identity import (
         DEFAULT_IDENTITY_PATH,
         apply_inherited_identity,
@@ -1362,14 +1362,10 @@ def test_deepresearch_bench_reviewed_identity_inherits_only_source_metadata(full
         record["key"]: record for record in apply_inherited_identity(full_records, identity)
     }
     assert len(resolved) == len(original)
-    assert identity.siblings_for(recipient_key)[0]["key"] == donor_key
-    assert identity.siblings_for(donor_key)[0]["key"] == recipient_key
-    recipient, donor = resolved[recipient_key], original[donor_key]
-    assert recipient["released"] == donor["released"] == "2025-06-13"
-    assert recipient["publisher"] == donor["publisher"]
-    assert recipient["openness"] == donor["openness"]
-    assert recipient["identity_inheritance"]["donor_key"] == donor_key
-    assert resolved[donor_key] == donor
-    # The launch document belongs to the report record; identity inheritance
-    # retains that evidence and never copies the crawl's score observations.
-    assert recipient["documents"] == original[recipient_key]["documents"]
+    # AI-assisted source evidence is a proposal, not the independent human
+    # review warrant required to activate inheritance or equivalence.
+    assert not identity.siblings_for(recipient_key)
+    assert not identity.inheritance_for(recipient_key)
+    assert resolved[recipient_key] == original[recipient_key]
+    assert resolved[donor_key] == original[donor_key]
+    assert "identity_inheritance" not in resolved[recipient_key]

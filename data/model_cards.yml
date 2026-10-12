@@ -1639,6 +1639,8 @@ benchmarks:
       Cohere's in-house tau-bench translation, not the public English task set.
       The release caption says five translated languages; footnote 1 lists Ja,
       Ko, Ar, Es, Fr and En, averaged across airline and retail over ten runs.
+      Unlike the adjacent English tau-bench footnote, the multilingual footnote
+      does not explicitly name pass@1; the published metric stays generic score.
       The release provides no translated task set or complete reproduction details.
 
   - id: cohere_north_answer_satisfaction
