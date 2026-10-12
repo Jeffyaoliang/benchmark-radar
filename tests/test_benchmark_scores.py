@@ -641,6 +641,16 @@ def test_phi_4_mini_reasoning_comparison_preserves_exact_source_matrix():
         "Phi-4-Mini (base model, 3.8B)": (10.0, 71.8, 36.9),
         "Phi-4-mini-reasoning (3.8B)": (57.5, 94.6, 52.0),
     }
+    organizations = {
+        "o1-mini": "OpenAI",
+        "DeepSeek-R1-Distill-Qwen-7B": "DeepSeek",
+        "DeepSeek-R1-Distill-Llama-8B": "DeepSeek",
+        "Bespoke-Stratos-7B": "Bespoke Labs",
+        "OpenThinker-7B": "OpenThoughts",
+        "Llama-3.2-3B-Instruct": "Meta",
+        "Phi-4-Mini (base model, 3.8B)": "Microsoft",
+        "Phi-4-mini-reasoning (3.8B)": "Microsoft",
+    }
     benchmark_ids = ("aime", "math_500", "gpqa_diamond")
     rows = [
         row
@@ -654,7 +664,9 @@ def test_phi_4_mini_reasoning_comparison_preserves_exact_source_matrix():
         for benchmark_id, value in zip(benchmark_ids, values, strict=True)
     }
     for row in rows:
-        assert row["reported_by"] == (None if row["organization"] == "Microsoft" else "Microsoft")
+        organization = organizations[row["model"]]
+        assert row["organization"] == organization
+        assert row["reported_by"] == (None if organization == "Microsoft" else "Microsoft")
         assert row["model"] in row["protocol"]
         assert (
             row["instrument"]
