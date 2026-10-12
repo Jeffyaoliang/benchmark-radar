@@ -264,7 +264,18 @@ def refresh_structural_relevance(item: RadarItem, prior: RadarItem) -> None:
         for signal in rubric.LOW_VALUE_SIGNALS
         if re.search(str(signal["pattern"]), haystack, flags=re.IGNORECASE)
     ]
-    before = [s for s in rubric.STRUCTURAL_SIGNALS if _matches_structural_signal(prior, s)]
+    # Historical merged rows can already contain restored fields while their
+    # score and rationale still describe the earlier title-only observation.
+    before = [
+        signal
+        for signal in rubric.STRUCTURAL_SIGNALS
+        if _matches_structural_signal(prior, signal)
+        or any(
+            reason.startswith(f"Structural {kind}: {signal['label']} ")
+            for reason in prior.rationale
+            for kind in ("gate", "demotion")
+        )
+    ]
     after = [s for s in rubric.STRUCTURAL_SIGNALS if _matches_structural_signal(item, s)]
     old_deduction = min(
         rubric.MAX_LOW_VALUE_DEDUCTION,

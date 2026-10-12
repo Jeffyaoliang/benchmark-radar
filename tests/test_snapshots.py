@@ -1873,3 +1873,41 @@ def test_merged_provenance_removes_title_only_relevance_penalty(reverse):
     assert row["total_score"] == primary.total_score
     assert row["recommended"] == (primary.total_score >= 40)
     assert not any("title-only provenance" in reason for reason in row["rationale"])
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_legacy_merged_penalty_is_recovered_from_its_rationale(reverse):
+    from benchmark_radar.pipeline import score_item
+
+    taxonomy = {"benchmark": ["benchmark"]}
+    original = radar_run(27)
+    primary = original.items[0]
+    primary.summary = ""
+    primary.authors = []
+    primary.artifact_urls = []
+    primary.metrics = {}
+    score_item(primary, taxonomy, now=original.generated_at)
+    penalized = primary.relevance_score
+    assert any("title-only provenance" in r for r in primary.rationale)
+    # Simulate a snapshot merged by the old implementation: corroborating
+    # fields are present, but its stale score and rationale remain.
+    primary.authors = ["Digest Author"]
+    primary.artifact_urls = ["https://arxiv.org/pdf/2607.0027"]
+    primary.relevance_base_score = None
+    old = snapshot_for_run(original)
+    digest_run = radar_run(27)
+    digest_run.generated_at += timedelta(hours=1)
+    digest = digest_run.items[0]
+    digest.source = "XBsleepy"
+    digest.metrics = {"citations": 5000}
+    score_item(digest, taxonomy, now=digest_run.generated_at)
+    latest = snapshot_for_run(digest_run)
+    combined = merge_snapshots(latest, old) if reverse else merge_snapshots(old, latest)
+    row = combined["evidence_items"][0]
+    expected = primary
+    expected.metrics = row["metrics"]
+    score_item(expected, taxonomy, now=original.generated_at)
+    assert row["source"] == "arXiv"
+    assert row["relevance_score"] == expected.relevance_score == penalized + 15
+    assert row["total_score"] == expected.total_score
+    assert not any("title-only provenance" in r for r in row["rationale"])

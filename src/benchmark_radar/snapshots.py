@@ -790,6 +790,7 @@ def merge_snapshots(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[
                     metrics=dict(selected.get("metrics") or {}),
                     relevance_score=scored.relevance_score,
                     relevance_base_score=selected.get("relevance_base_score"),
+                    rationale=list(selected.get("rationale") or []),
                 )
                 scored.summary = prior.summary
                 scored.organizations = merged["organizations"]
