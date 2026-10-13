@@ -38,6 +38,10 @@ const category = nodes.get("theme-category");
 search.value = process.argv[3] || "";
 category.value = process.argv[4] || "";
 search.listeners.input();
+if (process.argv[5] === "invalid") {
+  assert.match(nodes.get("theme-results").textContent, /Enter a search term/);
+  assert.equal(nodes.get("theme-no-results").hidden, false);
+}
 console.log(JSON.stringify(cards.filter((card) => !card.hidden)
   .sort((a, b) => Number(a.style.order || 0) - Number(b.style.order || 0))
   .map((card) => card.id)));

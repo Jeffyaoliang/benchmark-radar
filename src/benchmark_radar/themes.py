@@ -318,8 +318,9 @@ def _themes_page(
     const normalized = fold(value.normalize("NFKD"));
     const cjk = config.tokenizer.cjk;
     const latin = config.tokenizer.latinExtended;
+    const positive = config.tokenizer.positive;
     const pattern = new RegExp(
-      `[a-z0-9]+|(?<cjk>[${{cjk}}]+)|(?:(?![${{cjk}}${{latin}}])[\\p{{L}}\\p{{Nl}}\\p{{No}}])+`,
+      `[a-z0-9]+|(?<cjk>[${{cjk}}]+)|(?:(?![${{cjk}}${{latin}}])[${{positive}}])+`,
       "gu"
     );
     return Array.from(normalized.matchAll(pattern)).flatMap(match => {{
@@ -333,7 +334,9 @@ def _themes_page(
     }});
   }}
   function applyFilter() {{
-    const query = [...new Set(queryTokens(filter.value.trim()))];
+    const rawQuery = filter.value.trim();
+    const query = [...new Set(queryTokens(rawQuery))];
+    const invalidQuery = rawQuery.length > 0 && query.length === 0;
     const selected = category.value;
     const queryWeight = query.reduce((total, token) => total + idf(token), 0);
     const ranked = query.length ? records.map(record => ({{
@@ -344,15 +347,20 @@ def _themes_page(
     records.forEach(record => {{
       const matchesCategory = !selected || (selected === "__uncategorized__"
         ? record.categories.length === 0 : record.categories.includes(selected));
-      const matches = matchesCategory &&
+      const matches = matchesCategory && !invalidQuery &&
         (!query.length || ranks.has(record));
       record.card.classList.toggle("hidden-by-filter", !matches);
       record.card.style.order = query.length ? (ranks.get(record) ?? cards.length) : "";
       if (matches) visible += 1;
     }});
-    document.getElementById("theme-results").textContent =
-      `Showing ${{visible}} of ${{cards.length}} benchmark records`;
-    document.getElementById("theme-no-results").hidden = visible !== 0;
+    document.getElementById("theme-results").textContent = invalidQuery
+      ? "Enter a search term containing letters or numbers."
+      : `Showing ${{visible}} of ${{cards.length}} benchmark records`;
+    const empty = document.getElementById("theme-no-results");
+    empty.hidden = visible !== 0;
+    empty.textContent = invalidQuery
+      ? "This search has no searchable letters or numbers."
+      : "No benchmarks match these filters.";
   }}
   filter.addEventListener("input", applyFilter);
   category.addEventListener("change", applyFilter);

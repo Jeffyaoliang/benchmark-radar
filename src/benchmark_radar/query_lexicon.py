@@ -76,9 +76,26 @@ def search_field_tokens(record: dict[str, Any]) -> dict[str, tuple[str, ...]]:
 @lru_cache(maxsize=1)
 def browser_tokenizer_contract() -> dict[str, Any]:
     """Export Python's full case fold and exact token classes to the static page."""
+    # JavaScript's Unicode property classes follow the reader's browser, which
+    # may recognize letters that this Python runtime does not (or vice versa).
+    # Serialize the positive class used by _TOKEN_PARTS as compact codepoint
+    # ranges, so both sides agree even across Unicode database versions.
+    positive = re.compile(r"[^\W\d_]")
+    runs: list[list[int]] = []
+    for codepoint in range(0x110000):
+        if not positive.fullmatch(chr(codepoint)):
+            continue
+        if runs and runs[-1][1] + 1 == codepoint:
+            runs[-1][1] = codepoint
+        else:
+            runs.append([codepoint, codepoint])
+    positive_ranges = "".join(
+        f"\\u{{{start:X}}}" + (f"-\\u{{{end:X}}}" if end != start else "") for start, end in runs
+    )
     return {
         "cjk": _CJK_CHARS,
         "latinExtended": _LATIN_EXTENDED,
+        "positive": positive_ranges,
         "casefold": {
             char: folded
             for codepoint in range(0x110000)

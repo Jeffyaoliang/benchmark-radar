@@ -39,7 +39,7 @@ def _write(items, tmp_path):
     return write_themes(tmp_path, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
 
 
-def _browser_results(tmp_path, query, category=""):
+def _browser_results(tmp_path, query, category="", *, invalid=False):
     node = shutil.which("node")
     if not node:
         pytest.skip("node is not installed")
@@ -50,6 +50,7 @@ def _browser_results(tmp_path, query, category=""):
             str(tmp_path / "themes" / "index.html"),
             query,
             category,
+            "invalid" if invalid else "",
         ],
         check=True,
         text=True,
@@ -143,6 +144,14 @@ def test_browse_search_matches_query_service_unicode_casefold_and_latin_ranges(t
             if (match := _match(doc, query_tokens=query_tokens, corpus=corpus)) is not None
         )
         assert _browser_results(tmp_path, query) == [key for _, key in expected]
+
+
+def test_browse_does_not_treat_tokenless_input_as_an_empty_search(tmp_path):
+    _write([_item()], tmp_path)
+    for query in ("!!!", "😀", "Ł", "\U00011db0"):
+        assert _tokens(query) == ()
+        assert _browser_results(tmp_path, query, invalid=True) == []
+    assert _browser_results(tmp_path, "") == ["llm-stats:agent-bench"]
 
 
 def test_same_key_from_different_sources_stays_separate():
