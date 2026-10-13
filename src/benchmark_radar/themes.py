@@ -25,6 +25,7 @@ from .query_lexicon import (
     FIELD_WEIGHTS,
     NAME_MATCH_MULTIPLIERS,
     PHRASE_MULTIPLIER,
+    browser_tokenizer_contract,
     search_field_tokens,
 )
 from .site_shell import breadcrumb_schema, esc, webpage_schema
@@ -204,7 +205,9 @@ def _themes_page(
             "b": BM25_B,
             "nameMultipliers": NAME_MATCH_MULTIPLIERS,
             "phraseMultiplier": PHRASE_MULTIPLIER,
-        }
+            "tokenizer": browser_tokenizer_contract(),
+        },
+        ensure_ascii=False,
     )
     body = rf"""{_PAGE_STYLE}
 <div class="themes-page">
@@ -274,6 +277,8 @@ def _themes_page(
   const contains = (haystack, needle) => needle.length <= haystack.length &&
     haystack.some((_, i) => needle.every((part, j) => haystack[i + j] === part));
   const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  const fold = value => Array.from(value, letter =>
+    config.tokenizer.casefold[letter] ?? letter).join("");
   function rankedKey(record, query, queryWeight) {{
     const matched = query.filter(token => record.allTokens.has(token));
     if (!matched.length) return null;
@@ -300,7 +305,7 @@ def _themes_page(
     const coverage = matched.reduce((total, token) => total + idf(token), 0) / queryWeight;
     const tier = nameTier < 3 ? nameTier : matched.length === query.length ? 3 : 4;
     return [-score, -coverage, tier, -record.completeness,
-      record.name.length, record.name.toLowerCase(), record.key];
+      Array.from(record.name).length, fold(record.name), record.key];
   }}
   function compareKeys(left, right) {{
     for (let i = 0; i < left.length; i++) {{
@@ -310,13 +315,16 @@ def _themes_page(
     return 0;
   }}
   function queryTokens(value) {{
-    const normalized = value.normalize("NFKD").toLowerCase();
-    const cjk = /[々\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}ー]/u;
-    const parts = normalized.match(
-      /[a-z0-9]+|[々\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}ー]+|[\p{{L}}]+/gu
-    ) || [];
-    return parts.flatMap(part => {{
-      if (cjk.test(part)) {{
+    const normalized = fold(value.normalize("NFKD"));
+    const cjk = config.tokenizer.cjk;
+    const latin = config.tokenizer.latinExtended;
+    const pattern = new RegExp(
+      `[a-z0-9]+|(?<cjk>[${{cjk}}]+)|(?:(?![${{cjk}}${{latin}}])[\\p{{L}}\\p{{Nl}}\\p{{No}}])+`,
+      "gu"
+    );
+    return Array.from(normalized.matchAll(pattern)).flatMap(match => {{
+      const part = match[0];
+      if (match.groups?.cjk !== undefined) {{
         const letters = Array.from(part.normalize("NFC"));
         return letters.length === 1 ? letters
           : letters.slice(1).map((_, i) => letters[i] + letters[i + 1]);

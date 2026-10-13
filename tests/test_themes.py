@@ -127,6 +127,24 @@ def test_browse_search_ranking_matches_query_service(tmp_path, query):
         assert _browser_results(tmp_path, query)[0] == "llm-stats:mmlu"
 
 
+def test_browse_search_matches_query_service_unicode_casefold_and_latin_ranges(tmp_path):
+    rows = [
+        _item(key="llm-stats:strasse", slug="strasse", name="Straße"),
+        _item(key="llm-stats:lodz", slug="lodz", name="Łódź"),
+        _item(key="llm-stats:orsted", slug="orsted", name="Ørsted"),
+    ]
+    _write(rows, tmp_path)
+    corpus = _build_search_corpus(rows)
+    for query in ("Straße", "STRASSE", "Łódź", "Ørsted"):
+        query_tokens = _tokens(query)
+        expected = sorted(
+            (match[0], doc.record["key"])
+            for doc in corpus.documents
+            if (match := _match(doc, query_tokens=query_tokens, corpus=corpus)) is not None
+        )
+        assert _browser_results(tmp_path, query) == [key for _, key in expected]
+
+
 def test_same_key_from_different_sources_stays_separate():
     rows = [_item(key="shared"), _item(source="model_reports", key="shared", slug="report-shared")]
     index = build_theme_index(_catalog(rows))

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Any
 
 FIELD_ORDER = (
@@ -70,3 +71,17 @@ def search_field_tokens(record: dict[str, Any]) -> dict[str, tuple[str, ...]]:
             field_text(record.get("name")) + " " + field_text(record["aliases"])
         )
     return result
+
+
+@lru_cache(maxsize=1)
+def browser_tokenizer_contract() -> dict[str, Any]:
+    """Export Python's full case fold and exact token classes to the static page."""
+    return {
+        "cjk": _CJK_CHARS,
+        "latinExtended": _LATIN_EXTENDED,
+        "casefold": {
+            char: folded
+            for codepoint in range(0x110000)
+            if (folded := (char := chr(codepoint)).casefold()) != char
+        },
+    }
