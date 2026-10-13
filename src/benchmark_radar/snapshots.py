@@ -1529,9 +1529,7 @@ def rebuild_dashboard(
         blog_entries = blog["sitemap_entries"]
         # Benchmark browsing uses the unified catalog, not discovery snapshots.
         # Missing catalog input fails visibly; never substitute a shortlist.
-        themes = write_themes(
-            sitemap_output.parent, catalog_path=output.parent / "benchmark-index.json"
-        )
+        themes = write_themes(sitemap_output.parent)
         page_entries.extend(themes["sitemap_entries"])
     write_sitemap(
         snapshots,

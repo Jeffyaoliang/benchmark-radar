@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import math
-import re
-import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +12,9 @@ from typing import TYPE_CHECKING, Any
 
 from .citation import citation_block, required_citations
 from .corpus import exact_artifact_key
+from .query_lexicon import FIELD_ORDER as _FIELD_ORDER
+from .query_lexicon import search_field_tokens
+from .query_lexicon import tokens as _tokens
 from .science_domains import science_domains_for_record
 from .snapshots import REQUIRED_SOURCES, load_snapshots
 
@@ -26,15 +27,6 @@ DEFAULT_SHARD_DIR = Path("site/data/benchmarks")
 DEFAULT_SNAPSHOT_DIR = Path("data/snapshots")
 SEARCH_SCOPES = ("catalog", "radar", "all")
 
-_FIELD_ORDER = (
-    "name",
-    "description",
-    "categories",
-    "publisher",
-    "modality",
-    "languages",
-    "source",
-)
 _FIELD_WEIGHTS = {
     "name": 5.0,
     "description": 1.0,
@@ -48,18 +40,6 @@ _BM25_K1 = 1.2
 _BM25_B = 0.75
 _NAME_MATCH_MULTIPLIERS = (3.0, 1.5, 0.75)
 _PHRASE_MULTIPLIER = 0.5
-# Han ideographs plus hiragana and katakana, which share unspaced text with Han.
-_CJK_CHARS = (
-    r"\u3005\u3041-\u309f\u30a1-\u30fa\u30fc-\u30ff\u31f0-\u31ff"
-    r"\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
-)
-# Latin letters outside ASCII are left out of the word alternative so Latin text
-# keeps its original ASCII tokens, and English scores stay unchanged.
-_LATIN_EXTENDED = r"\u00c0-\u02af\u1e00-\u1eff\u2c60-\u2c7f\ua720-\ua7ff\uab30-\uab6f"
-_TOKEN_PARTS = re.compile(
-    rf"[a-z0-9]+|(?P<cjk>[{_CJK_CHARS}]+)"
-    rf"|(?:(?![{_CJK_CHARS}{_LATIN_EXTENDED}])[^\W\d_])+"
-)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -138,31 +118,6 @@ def _validate_index_record(record: dict[str, Any], *, position: int) -> None:
             raise QueryError(f"{label} {field} must be a boolean", code="invalid_data")
 
 
-def _tokens(value: Any) -> tuple[str, ...]:
-    normalized = unicodedata.normalize("NFKD", str(value or "")).casefold()
-    tokens: list[str] = []
-    for match in _TOKEN_PARTS.finditer(normalized):
-        part = match.group()
-        if match.lastgroup == "cjk":
-            # Han and kana text has no spaces between words. Adjacent character
-            # pairs let a short query find a longer source description without
-            # treating every shared single character as a strong match. NFKD
-            # split voiced kana such as が from their marks, so recompose first.
-            part = unicodedata.normalize("NFC", part)
-            tokens.extend(part[index : index + 2] for index in range(len(part) - 1))
-            if len(part) == 1:
-                tokens.append(part)
-        else:
-            tokens.append(part)
-    return tuple(tokens)
-
-
-def _field_text(value: Any) -> str:
-    if isinstance(value, list):
-        return " ".join(str(item) for item in value)
-    return str(value or "")
-
-
 def _filter_value(value: Any) -> str:
     return str(value or "").strip().casefold()
 
@@ -206,13 +161,7 @@ def _build_search_corpus(records: list[dict[str, Any]]) -> _SearchCorpus:
     total_field_lengths: Counter[str] = Counter()
     total_unicode_field_lengths: Counter[str] = Counter()
     for record in records:
-        field_tokens = {field: _tokens(_field_text(record.get(field))) for field in _FIELD_ORDER}
-        # Registered aliases are name evidence for every source. Keep the
-        # published display name and the shared ranking algorithm unchanged.
-        if record.get("aliases"):
-            field_tokens["name"] = _tokens(
-                _field_text(record.get("name")) + " " + _field_text(record["aliases"])
-            )
+        field_tokens = search_field_tokens(record)
         field_counts = {field: Counter(tokens) for field, tokens in field_tokens.items()}
         ascii_lengths = {
             field: sum(token.isascii() for token in tokens)

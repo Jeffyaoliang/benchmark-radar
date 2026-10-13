@@ -1,5 +1,7 @@
 import json
 import re
+import shutil
+import subprocess
 from html import unescape
 from pathlib import Path
 
@@ -61,6 +63,28 @@ def test_catalog_categories_preserve_all_sources_and_missing_measurements():
 def test_source_tags_do_not_replace_catalog_categories():
     index = build_theme_index(_catalog([_item(source_tags=["xbsleepy:planning"])]))
     assert [group["category"] for group in index["groups"]] == ["Agents"]
+
+
+def test_browse_search_uses_shared_catalog_tokens_including_registered_aliases(tmp_path):
+    rows = [
+        _item(name="Humanity's Last Exam", aliases=["HLE"], description="A difficult exam."),
+        _item(key="llm-stats:other", slug="other", name="Other benchmark", categories=[]),
+    ]
+    index = build_theme_index(_catalog(rows))
+    exam = next(row for row in index["all_records"] if row["title"] == rows[0]["name"])
+    assert "hle" in exam["search_tokens"]
+    _write(rows, tmp_path)
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    subprocess.run(
+        [
+            node,
+            str(Path(__file__).with_name("themes_filter_harness.mjs")),
+            str(tmp_path / "themes" / "index.html"),
+        ],
+        check=True,
+    )
 
 
 def test_same_key_from_different_sources_stays_separate():

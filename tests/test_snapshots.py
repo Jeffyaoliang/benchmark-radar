@@ -337,6 +337,26 @@ def test_rebuild_can_publish_the_feed_from_the_same_snapshot_history(tmp_path, s
     ]
 
 
+def test_rebuild_uses_site_catalog_when_dashboard_data_is_published_elsewhere(tmp_path, site_shell):
+    snapshot_dir = tmp_path / "snapshots"
+    write_snapshot(radar_run(27), snapshot_dir)
+    site_dir = tmp_path / "site"
+    site_shell(site_dir)
+    (site_dir / "data").mkdir(exist_ok=True)
+    (site_dir / "data" / "benchmark-index.json").write_text(
+        json.dumps({"benchmarks": [], "count": 0})
+    )
+
+    rebuild_dashboard(
+        snapshot_dir,
+        tmp_path / "custom" / "radar.json",
+        feed_output=site_dir / "feed.xml",
+    )
+
+    assert (site_dir / "themes" / "index.html").exists()
+    assert (site_dir / "sitemap.xml").exists()
+
+
 def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     """The Pages build must publish the URL advertised by robots.txt."""
     snapshot_dir = tmp_path / "snapshots"

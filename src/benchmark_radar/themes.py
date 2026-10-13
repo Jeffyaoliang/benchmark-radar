@@ -18,6 +18,7 @@ from .blog_shell import (
     render_page,
 )
 from .feed import SITE_URL
+from .query_lexicon import search_field_tokens
 from .site_shell import breadcrumb_schema, esc, webpage_schema
 
 THEMES_PATH = "/themes/"
@@ -108,6 +109,9 @@ def build_theme_index(catalog: dict[str, Any]) -> dict[str, Any]:
             "url": f"/benchmarks/{slug}/",
             "date": str(item.get("released") or "")[:10],
             "summary": " ".join(str(item.get("description") or "").split())[:_SUMMARY_CLIP],
+            "search_tokens": sorted(
+                set().union(*(set(parts) for parts in search_field_tokens(item).values()))
+            ),
         }
         source_counts[source] = source_counts.get(source, 0) + 1
         for category in set(categories):
@@ -146,7 +150,8 @@ def _record_card(record: dict[str, Any]) -> str:
     summary = f'<p class="theme-card-summary">{esc(summary_text)}</p>' if summary_text else ""
     return (
         f'<article class="theme-card" data-record="{esc(record["source_id"])}" '
-        f'data-categories="{esc(json.dumps(record["categories"], ensure_ascii=False))}">'
+        f'data-categories="{esc(json.dumps(record["categories"], ensure_ascii=False))}" '
+        f'data-search="{esc(" ".join(record["search_tokens"]))}">'
         f'<a class="theme-card-title" href="{esc(record["url"])}">{esc(record["title"])}</a>'
         f'<p class="theme-card-meta">{esc(meta)}</p>'
         f"{summary}"
@@ -179,7 +184,7 @@ def _themes_page(
         f"0 records omitted. {esc(source_ledger)}"
     )
     empty = f'<div class="themes-empty">{esc(_EMPTY_STATE)}</div>' if not index["records"] else ""
-    body = f"""{_PAGE_STYLE}
+    body = rf"""{_PAGE_STYLE}
 <div class="themes-page">
   <h1>Browse benchmarks by category</h1>
   <p class="themes-lede">Find benchmarks across the full catalog using its existing
@@ -209,16 +214,35 @@ def _themes_page(
   const category = document.getElementById("theme-category");
   const cards = Array.from(document.querySelectorAll(".theme-card"));
   const records = cards.map(card => ({{
-    card, categories: JSON.parse(card.dataset.categories), text: card.textContent.toLowerCase()
+    card, categories: JSON.parse(card.dataset.categories),
+    tokens: new Set(card.dataset.search.split(" "))
   }}));
+  // The published tokens come from the same lexical fields and tokenizer as
+  // QueryService, including registered aliases and untruncated descriptions.
+  function queryTokens(value) {{
+    const normalized = value.normalize("NFKD").toLowerCase();
+    const cjk = /[々\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}ー]/u;
+    const parts = normalized.match(
+      /[a-z0-9]+|[々\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}ー]+|[\p{{L}}]+/gu
+    ) || [];
+    return parts.flatMap(part => {{
+      if (cjk.test(part)) {{
+        const letters = Array.from(part.normalize("NFC"));
+        return letters.length === 1 ? letters
+          : letters.slice(1).map((_, i) => letters[i] + letters[i + 1]);
+      }}
+      return [part];
+    }});
+  }}
   function applyFilter() {{
-    const query = filter.value.trim().toLowerCase();
+    const query = queryTokens(filter.value.trim());
     const selected = category.value;
     let visible = 0;
     records.forEach(record => {{
       const matchesCategory = !selected || (selected === "__uncategorized__"
         ? record.categories.length === 0 : record.categories.includes(selected));
-      const matches = matchesCategory && (!query || record.text.includes(query));
+      const matches = matchesCategory &&
+        (!query.length || query.some(token => record.tokens.has(token)));
       record.card.classList.toggle("hidden-by-filter", !matches);
       if (matches) visible += 1;
     }});
