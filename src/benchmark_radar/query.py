@@ -12,7 +12,12 @@ from typing import TYPE_CHECKING, Any
 
 from .citation import citation_block, required_citations
 from .corpus import exact_artifact_key
+from .query_lexicon import BM25_B as _BM25_B
+from .query_lexicon import BM25_K1 as _BM25_K1
 from .query_lexicon import FIELD_ORDER as _FIELD_ORDER
+from .query_lexicon import FIELD_WEIGHTS as _FIELD_WEIGHTS
+from .query_lexicon import NAME_MATCH_MULTIPLIERS as _NAME_MATCH_MULTIPLIERS
+from .query_lexicon import PHRASE_MULTIPLIER as _PHRASE_MULTIPLIER
 from .query_lexicon import search_field_tokens
 from .query_lexicon import tokens as _tokens
 from .science_domains import science_domains_for_record
@@ -27,19 +32,6 @@ DEFAULT_SHARD_DIR = Path("site/data/benchmarks")
 DEFAULT_SNAPSHOT_DIR = Path("data/snapshots")
 SEARCH_SCOPES = ("catalog", "radar", "all")
 
-_FIELD_WEIGHTS = {
-    "name": 5.0,
-    "description": 1.0,
-    "categories": 2.5,
-    "publisher": 0.6,
-    "modality": 1.2,
-    "languages": 0.3,
-    "source": 0.2,
-}
-_BM25_K1 = 1.2
-_BM25_B = 0.75
-_NAME_MATCH_MULTIPLIERS = (3.0, 1.5, 0.75)
-_PHRASE_MULTIPLIER = 0.5
 
 LOGGER = logging.getLogger(__name__)
 

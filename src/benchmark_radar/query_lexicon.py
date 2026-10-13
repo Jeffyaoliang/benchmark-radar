@@ -15,6 +15,19 @@ FIELD_ORDER = (
     "languages",
     "source",
 )
+FIELD_WEIGHTS = {
+    "name": 5.0,
+    "description": 1.0,
+    "categories": 2.5,
+    "publisher": 0.6,
+    "modality": 1.2,
+    "languages": 0.3,
+    "source": 0.2,
+}
+BM25_K1 = 1.2
+BM25_B = 0.75
+NAME_MATCH_MULTIPLIERS = (3.0, 1.5, 0.75)
+PHRASE_MULTIPLIER = 0.5
 
 # Han ideographs plus hiragana and katakana, which share unspaced text with Han.
 _CJK_CHARS = (

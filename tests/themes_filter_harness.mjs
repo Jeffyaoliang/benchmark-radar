@@ -8,18 +8,21 @@ assert.ok(script, "theme filter script is present");
 const cards = [...html.matchAll(/<article class="theme-card"([^>]*)>/g)].map(([, attrs]) => {
   const attribute = (name) => attrs.match(new RegExp(`data-${name}="([^"]*)"`))?.[1];
   const card = {
-    id: attribute("record"),
+    id: attribute("record").replaceAll("&#x27;", "'"),
     dataset: {
       categories: attribute("categories").replaceAll("&quot;", '"'),
-      search: attribute("search"),
+      searchFields: attribute("search-fields").replaceAll("&quot;", '"'),
+      name: attribute("name").replaceAll("&#x27;", "'"),
+      record: attribute("record").replaceAll("&#x27;", "'"),
+      completeness: attribute("completeness"),
     },
     hidden: false,
+    style: { order: "" },
   };
   card.classList = { toggle: (_name, hidden) => { card.hidden = hidden; } };
   return card;
 });
-assert.equal(cards.length, 2);
-const visibility = () => Object.fromEntries(cards.map((card) => [card.id, card.hidden]));
+assert.ok(cards.length > 0);
 
 const nodes = new Map();
 for (const id of ["theme-filter", "theme-category", "theme-results", "theme-no-results"]) {
@@ -32,13 +35,9 @@ const document = {
 runInNewContext(script, { document });
 const search = nodes.get("theme-filter");
 const category = nodes.get("theme-category");
-search.value = "HLE";
+search.value = process.argv[3] || "";
+category.value = process.argv[4] || "";
 search.listeners.input();
-assert.deepEqual(visibility(), { "llm-stats:other": true, "llm-stats:agent-bench": false });
-assert.match(nodes.get("theme-results").textContent, /Showing 1 of 2/);
-category.value = "__uncategorized__";
-category.listeners.change();
-assert.deepEqual(visibility(), { "llm-stats:other": true, "llm-stats:agent-bench": true });
-search.value = "Other";
-search.listeners.input();
-assert.deepEqual(visibility(), { "llm-stats:other": false, "llm-stats:agent-bench": true });
+console.log(JSON.stringify(cards.filter((card) => !card.hidden)
+  .sort((a, b) => Number(a.style.order || 0) - Number(b.style.order || 0))
+  .map((card) => card.id)));

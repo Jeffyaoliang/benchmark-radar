@@ -541,6 +541,18 @@ def test_daily_radar_runs_after_the_arxiv_rss_bulletin():
     assert int(hour) >= 5
 
 
+def test_daily_radar_builds_the_untracked_catalog_before_publishing_theme_page():
+    workflow = yaml.safe_load(Path(".github/workflows/daily-radar.yml").read_text())
+    steps = workflow["jobs"]["build-report"]["steps"]
+    names = [step.get("name") for step in steps]
+    assert names.index("Install") < names.index("Normalize benchmark catalog")
+    assert names.index("Normalize benchmark catalog") < names.index(
+        "Collect evidence and public attention"
+    )
+    normalize = steps[names.index("Normalize benchmark catalog")]
+    assert normalize["run"] == "benchmark-radar normalize-catalog"
+
+
 def test_pages_rebuilds_when_any_package_module_changes():
     """Dashboard output depends on transitive package imports, not snapshots.py alone."""
     workflow_path = Path(".github/workflows/pages.yml")

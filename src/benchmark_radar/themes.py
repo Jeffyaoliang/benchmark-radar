@@ -18,7 +18,15 @@ from .blog_shell import (
     render_page,
 )
 from .feed import SITE_URL
-from .query_lexicon import search_field_tokens
+from .query_lexicon import (
+    BM25_B,
+    BM25_K1,
+    FIELD_ORDER,
+    FIELD_WEIGHTS,
+    NAME_MATCH_MULTIPLIERS,
+    PHRASE_MULTIPLIER,
+    search_field_tokens,
+)
 from .site_shell import breadcrumb_schema, esc, webpage_schema
 
 THEMES_PATH = "/themes/"
@@ -101,6 +109,7 @@ def build_theme_index(catalog: dict[str, Any]) -> dict[str, Any]:
             not isinstance(category, str) or not category.strip() for category in categories
         ):
             raise ValueError(f"invalid benchmark categories: {key}")
+        field_tokens = search_field_tokens(item)
         records[identity] = {
             "source": source,
             "source_id": key,
@@ -109,9 +118,11 @@ def build_theme_index(catalog: dict[str, Any]) -> dict[str, Any]:
             "url": f"/benchmarks/{slug}/",
             "date": str(item.get("released") or "")[:10],
             "summary": " ".join(str(item.get("description") or "").split())[:_SUMMARY_CLIP],
-            "search_tokens": sorted(
-                set().union(*(set(parts) for parts in search_field_tokens(item).values()))
-            ),
+            "search_fields": [field_tokens[field] for field in FIELD_ORDER],
+            "completeness": sum(
+                item.get(field) not in (None, "") for field in ("publisher", "released", "modality")
+            )
+            + sum(bool(item.get(field)) for field in ("has_paper", "has_repo", "has_dataset")),
         }
         source_counts[source] = source_counts.get(source, 0) + 1
         for category in set(categories):
@@ -150,8 +161,10 @@ def _record_card(record: dict[str, Any]) -> str:
     summary = f'<p class="theme-card-summary">{esc(summary_text)}</p>' if summary_text else ""
     return (
         f'<article class="theme-card" data-record="{esc(record["source_id"])}" '
+        f'data-name="{esc(record["title"])}" '
         f'data-categories="{esc(json.dumps(record["categories"], ensure_ascii=False))}" '
-        f'data-search="{esc(" ".join(record["search_tokens"]))}">'
+        f'data-search-fields="{esc(json.dumps(record["search_fields"], ensure_ascii=False))}" '
+        f'data-completeness="{record["completeness"]}">'
         f'<a class="theme-card-title" href="{esc(record["url"])}">{esc(record["title"])}</a>'
         f'<p class="theme-card-meta">{esc(meta)}</p>'
         f"{summary}"
@@ -184,6 +197,15 @@ def _themes_page(
         f"0 records omitted. {esc(source_ledger)}"
     )
     empty = f'<div class="themes-empty">{esc(_EMPTY_STATE)}</div>' if not index["records"] else ""
+    search_config = json.dumps(
+        {
+            "weights": [FIELD_WEIGHTS[field] for field in FIELD_ORDER],
+            "k1": BM25_K1,
+            "b": BM25_B,
+            "nameMultipliers": NAME_MATCH_MULTIPLIERS,
+            "phraseMultiplier": PHRASE_MULTIPLIER,
+        }
+    )
     body = rf"""{_PAGE_STYLE}
 <div class="themes-page">
   <h1>Browse benchmarks by category</h1>
@@ -213,12 +235,80 @@ def _themes_page(
   const filter = document.getElementById("theme-filter");
   const category = document.getElementById("theme-category");
   const cards = Array.from(document.querySelectorAll(".theme-card"));
+  const config = {search_config};
   const records = cards.map(card => ({{
     card, categories: JSON.parse(card.dataset.categories),
-    tokens: new Set(card.dataset.search.split(" "))
+    fields: JSON.parse(card.dataset.searchFields),
+    name: card.dataset.name, key: card.dataset.record,
+    completeness: Number(card.dataset.completeness)
   }}));
-  // The published tokens come from the same lexical fields and tokenizer as
-  // QueryService, including registered aliases and untruncated descriptions.
+  // The published fields, weights, and tokenizer come from QueryService's
+  // lexical contract, including aliases and untruncated descriptions.
+  const sums = Array.from({{length: config.weights.length}}, () => [0, 0]);
+  const frequency = new Map();
+  const ascii = token => [...token].every(letter => letter.charCodeAt(0) < 128);
+  for (const record of records) {{
+    record.lengths = [];
+    record.counts = record.fields.map((tokens, field) => {{
+      const counts = new Map();
+      const lengths = [0, 0];
+      for (const token of tokens) {{
+        counts.set(token, (counts.get(token) || 0) + 1);
+        lengths[ascii(token) ? 0 : 1] += 1;
+      }}
+      record.lengths.push(lengths);
+      sums[field][0] += lengths[0];
+      sums[field][1] += lengths[1];
+      return counts;
+    }});
+    record.allTokens = new Set(record.fields.flat());
+    for (const token of record.allTokens) {{
+      frequency.set(token, (frequency.get(token) || 0) + 1);
+    }}
+  }}
+  const average = sums.map(pair => pair.map(total => total / records.length || 1));
+  const idf = token => Math.log1p(
+    (records.length - (frequency.get(token) || 0) + .5) /
+    ((frequency.get(token) || 0) + .5)
+  );
+  const contains = (haystack, needle) => needle.length <= haystack.length &&
+    haystack.some((_, i) => needle.every((part, j) => haystack[i + j] === part));
+  const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  function rankedKey(record, query, queryWeight) {{
+    const matched = query.filter(token => record.allTokens.has(token));
+    if (!matched.length) return null;
+    const name = record.fields[0];
+    const nameTier = name.length === query.length && contains(name, query) ? 0
+      : contains(name.slice(0, query.length), query) ? 1
+      : contains(name, query) ? 2 : 3;
+    let bm25f = 0;
+    for (const token of query) {{
+      let weighted = 0;
+      for (let field = 0; field < record.fields.length; field++) {{
+        const count = record.counts[field].get(token) || 0;
+        if (!count) continue;
+        const kind = ascii(token) ? 0 : 1;
+        const length = record.lengths[field][kind];
+        const normalization = 1 - config.b + config.b * length / average[field][kind];
+        weighted += config.weights[field] * count / normalization;
+      }}
+      if (weighted) bm25f += idf(token) * weighted * (config.k1 + 1) / (config.k1 + weighted);
+    }}
+    const nonNamePhrase = record.fields.slice(1).some(field => contains(field, query));
+    const score = bm25f + (nonNamePhrase ? queryWeight * config.phraseMultiplier : 0)
+      + (nameTier < 3 ? queryWeight * config.nameMultipliers[nameTier] : 0);
+    const coverage = matched.reduce((total, token) => total + idf(token), 0) / queryWeight;
+    const tier = nameTier < 3 ? nameTier : matched.length === query.length ? 3 : 4;
+    return [-score, -coverage, tier, -record.completeness,
+      record.name.length, record.name.toLowerCase(), record.key];
+  }}
+  function compareKeys(left, right) {{
+    for (let i = 0; i < left.length; i++) {{
+      const result = compare(left[i], right[i]);
+      if (result) return result;
+    }}
+    return 0;
+  }}
   function queryTokens(value) {{
     const normalized = value.normalize("NFKD").toLowerCase();
     const cjk = /[々\p{{Script=Han}}\p{{Script=Hiragana}}\p{{Script=Katakana}}ー]/u;
@@ -235,15 +325,21 @@ def _themes_page(
     }});
   }}
   function applyFilter() {{
-    const query = queryTokens(filter.value.trim());
+    const query = [...new Set(queryTokens(filter.value.trim()))];
     const selected = category.value;
+    const queryWeight = query.reduce((total, token) => total + idf(token), 0);
+    const ranked = query.length ? records.map(record => ({{
+      record, key: rankedKey(record, query, queryWeight)
+    }})).filter(hit => hit.key).sort((a, b) => compareKeys(a.key, b.key)) : [];
+    const ranks = new Map(ranked.map((hit, rank) => [hit.record, rank]));
     let visible = 0;
     records.forEach(record => {{
       const matchesCategory = !selected || (selected === "__uncategorized__"
         ? record.categories.length === 0 : record.categories.includes(selected));
       const matches = matchesCategory &&
-        (!query.length || query.some(token => record.tokens.has(token)));
+        (!query.length || ranks.has(record));
       record.card.classList.toggle("hidden-by-filter", !matches);
+      record.card.style.order = query.length ? (ranks.get(record) ?? cards.length) : "";
       if (matches) visible += 1;
     }});
     document.getElementById("theme-results").textContent =

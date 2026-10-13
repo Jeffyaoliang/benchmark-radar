@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from benchmark_radar.query import QueryPaths, QueryService, _build_search_corpus, _match, _tokens
 from benchmark_radar.themes import build_theme_index, write_themes
 
 SITE_DIR = Path(__file__).resolve().parents[1] / "site"
@@ -36,6 +37,25 @@ def _write(items, tmp_path):
     path = tmp_path / "benchmark-index.json"
     path.write_text(json.dumps(_catalog(items)), encoding="utf-8")
     return write_themes(tmp_path, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
+
+
+def _browser_results(tmp_path, query, category=""):
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    result = subprocess.run(
+        [
+            node,
+            str(Path(__file__).with_name("themes_filter_harness.mjs")),
+            str(tmp_path / "themes" / "index.html"),
+            query,
+            category,
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return json.loads(result.stdout)
 
 
 def test_catalog_categories_preserve_all_sources_and_missing_measurements():
@@ -70,21 +90,41 @@ def test_browse_search_uses_shared_catalog_tokens_including_registered_aliases(t
         _item(name="Humanity's Last Exam", aliases=["HLE"], description="A difficult exam."),
         _item(key="llm-stats:other", slug="other", name="Other benchmark", categories=[]),
     ]
-    index = build_theme_index(_catalog(rows))
-    exam = next(row for row in index["all_records"] if row["title"] == rows[0]["name"])
-    assert "hle" in exam["search_tokens"]
     _write(rows, tmp_path)
-    node = shutil.which("node")
-    if not node:
-        pytest.skip("node is not installed")
-    subprocess.run(
-        [
-            node,
-            str(Path(__file__).with_name("themes_filter_harness.mjs")),
-            str(tmp_path / "themes" / "index.html"),
-        ],
-        check=True,
+    assert _browser_results(tmp_path, "HLE") == ["llm-stats:agent-bench"]
+    assert _browser_results(tmp_path, "HLE", "__uncategorized__") == []
+    assert _browser_results(tmp_path, "Other", "__uncategorized__") == ["llm-stats:other"]
+
+
+@pytest.mark.parametrize("query", ["MMLU", "MMLU tasks", "New MMLU", "模型评测"])
+def test_browse_search_ranking_matches_query_service(tmp_path, query):
+    rows = [
+        _item(key="llm-stats:mmlu", slug="mmlu", name="MMLU", released="2023-01-01"),
+        _item(
+            key="llm-stats:mmlu-extended",
+            slug="mmlu-extended",
+            name="New MMLU Extended",
+            released="2026-09-09",
+            description="MMLU tasks and MMLU scoring.",
+        ),
+        _item(
+            key="llm-stats:other",
+            slug="other",
+            name="Other benchmark",
+            description="多语言模型评测。",
+        ),
+    ]
+    _write(rows, tmp_path)
+    corpus = _build_search_corpus(rows)
+    query_tokens = _tokens(query)
+    expected = sorted(
+        (match[0], doc.record["key"])
+        for doc in corpus.documents
+        if (match := _match(doc, query_tokens=query_tokens, corpus=corpus)) is not None
     )
+    assert _browser_results(tmp_path, query) == [key for _, key in expected]
+    if query == "MMLU":
+        assert _browser_results(tmp_path, query)[0] == "llm-stats:mmlu"
 
 
 def test_same_key_from_different_sources_stays_separate():
@@ -178,3 +218,15 @@ def test_generated_page_covers_the_fresh_unified_catalog(tmp_path):
     assert {unescape(key) for key in re.findall(r'data-record="([^"]+)"', page)} == {
         row["key"] for row in catalog["benchmarks"]
     }
+
+
+@pytest.mark.parametrize("query", ["MMLU", "HLE", "agent coding", "模型评测"])
+def test_generated_page_uses_query_service_order_on_the_complete_catalog(tmp_path, query):
+    catalog_path = SITE_DIR / "data" / "benchmark-index.json"
+    write_themes(tmp_path, catalog_path=catalog_path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
+    browser = _browser_results(tmp_path, query)
+    service = QueryService(
+        QueryPaths(index=catalog_path, shards=catalog_path.parent / "benchmarks")
+    ).search(query, scope="catalog", limit=200)
+    assert len(browser) == service["candidate_count"]
+    assert browser[:20] == [item["key"] for item in service["results"][:20]]
