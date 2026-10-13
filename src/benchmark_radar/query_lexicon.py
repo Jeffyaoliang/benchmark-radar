@@ -96,6 +96,16 @@ def browser_tokenizer_contract() -> dict[str, Any]:
         "cjk": _CJK_CHARS,
         "latinExtended": _LATIN_EXTENDED,
         "positive": positive_ranges,
+        "nfkd": {
+            char: decomposed
+            for codepoint in range(0x110000)
+            if (decomposed := unicodedata.normalize("NFKD", char := chr(codepoint))) != char
+        },
+        "combining": {
+            char: level
+            for codepoint in range(0x110000)
+            if (level := unicodedata.combining(char := chr(codepoint)))
+        },
         "casefold": {
             char: folded
             for codepoint in range(0x110000)

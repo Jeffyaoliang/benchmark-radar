@@ -237,6 +237,7 @@ def _themes_page(
 (() => {{
   const filter = document.getElementById("theme-filter");
   const category = document.getElementById("theme-category");
+  const grid = document.querySelector(".theme-grid");
   const cards = Array.from(document.querySelectorAll(".theme-card"));
   const config = {search_config};
   const records = cards.map(card => ({{
@@ -279,6 +280,24 @@ def _themes_page(
   const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   const fold = value => Array.from(value, letter =>
     config.tokenizer.casefold[letter] ?? letter).join("");
+  function nfkd(value) {{
+    const output = [];
+    for (const letter of value) {{
+      for (const part of config.tokenizer.nfkd[letter] ?? letter) {{
+        const level = config.tokenizer.combining[part] || 0;
+        if (!level) {{
+          output.push(part);
+          continue;
+        }}
+        let position = output.length;
+        while (position && (config.tokenizer.combining[output[position - 1]] || 0) > level) {{
+          position--;
+        }}
+        output.splice(position, 0, part);
+      }}
+    }}
+    return output.join("");
+  }}
   function rankedKey(record, query, queryWeight) {{
     const matched = query.filter(token => record.allTokens.has(token));
     if (!matched.length) return null;
@@ -315,7 +334,7 @@ def _themes_page(
     return 0;
   }}
   function queryTokens(value) {{
-    const normalized = fold(value.normalize("NFKD"));
+    const normalized = fold(nfkd(value));
     const cjk = config.tokenizer.cjk;
     const latin = config.tokenizer.latinExtended;
     const positive = config.tokenizer.positive;
@@ -342,17 +361,24 @@ def _themes_page(
     const ranked = query.length ? records.map(record => ({{
       record, key: rankedKey(record, query, queryWeight)
     }})).filter(hit => hit.key).sort((a, b) => compareKeys(a.key, b.key)) : [];
-    const ranks = new Map(ranked.map((hit, rank) => [hit.record, rank]));
+    const matchesQuery = new Set(ranked.map(hit => hit.record));
+    const rankedCards = ranked.map(hit => hit.record.card);
+    const rankedCardSet = new Set(rankedCards);
     let visible = 0;
     records.forEach(record => {{
       const matchesCategory = !selected || (selected === "__uncategorized__"
         ? record.categories.length === 0 : record.categories.includes(selected));
       const matches = matchesCategory && !invalidQuery &&
-        (!query.length || ranks.has(record));
+        (!query.length || matchesQuery.has(record));
       record.card.classList.toggle("hidden-by-filter", !matches);
-      record.card.style.order = query.length ? (ranks.get(record) ?? cards.length) : "";
       if (matches) visible += 1;
     }});
+    // Keep keyboard focus and the accessibility tree in the same rank order
+    // as the painted grid. Clearing search restores the original browse order.
+    const ordered = query.length
+      ? [...rankedCards, ...cards.filter(card => !rankedCardSet.has(card))]
+      : cards;
+    grid.append(...ordered);
     document.getElementById("theme-results").textContent = invalidQuery
       ? "Enter a search term containing letters or numbers."
       : `Showing ${{visible}} of ${{cards.length}} benchmark records`;

@@ -39,7 +39,7 @@ def _write(items, tmp_path):
     return write_themes(tmp_path, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
 
 
-def _browser_results(tmp_path, query, category="", *, invalid=False):
+def _browser_results(tmp_path, query, category="", *, invalid=False, restore=False):
     node = shutil.which("node")
     if not node:
         pytest.skip("node is not installed")
@@ -50,7 +50,7 @@ def _browser_results(tmp_path, query, category="", *, invalid=False):
             str(tmp_path / "themes" / "index.html"),
             query,
             category,
-            "invalid" if invalid else "",
+            "invalid" if invalid else "restore" if restore else "",
         ],
         check=True,
         text=True,
@@ -148,10 +148,23 @@ def test_browse_search_matches_query_service_unicode_casefold_and_latin_ranges(t
 
 def test_browse_does_not_treat_tokenless_input_as_an_empty_search(tmp_path):
     _write([_item()], tmp_path)
-    for query in ("!!!", "😀", "Ł", "\U00011db0"):
+    for query in ("!!!", "😀", "Ł", "\U00011db0", "\ua7f1"):
         assert _tokens(query) == ()
         assert _browser_results(tmp_path, query, invalid=True) == []
     assert _browser_results(tmp_path, "") == ["llm-stats:agent-bench"]
+
+
+def test_browse_restores_dom_order_after_ranked_search(tmp_path):
+    rows = [
+        _item(key="llm-stats:mmlu", slug="mmlu", name="MMLU", released="2023-01-01"),
+        _item(key="llm-stats:new", slug="new", name="New MMLU", released="2026-09-09"),
+    ]
+    _write(rows, tmp_path)
+    assert _browser_results(tmp_path, "MMLU") == ["llm-stats:mmlu", "llm-stats:new"]
+    assert _browser_results(tmp_path, "MMLU", restore=True) == [
+        "llm-stats:new",
+        "llm-stats:mmlu",
+    ]
 
 
 def test_same_key_from_different_sources_stays_separate():

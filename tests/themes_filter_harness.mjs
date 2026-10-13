@@ -23,6 +23,9 @@ const cards = [...html.matchAll(/<article class="theme-card"([^>]*)>/g)].map(([,
   return card;
 });
 assert.ok(cards.length > 0);
+const domCards = [...cards];
+const initialOrder = cards.map((card) => card.id);
+const grid = { append(...ordered) { domCards.splice(0, domCards.length, ...ordered); } };
 
 const nodes = new Map();
 for (const id of ["theme-filter", "theme-category", "theme-results", "theme-no-results"]) {
@@ -30,6 +33,7 @@ for (const id of ["theme-filter", "theme-category", "theme-results", "theme-no-r
 }
 const document = {
   getElementById: (id) => nodes.get(id),
+  querySelector: () => grid,
   querySelectorAll: () => cards,
 };
 runInNewContext(script, { document });
@@ -42,6 +46,10 @@ if (process.argv[5] === "invalid") {
   assert.match(nodes.get("theme-results").textContent, /Enter a search term/);
   assert.equal(nodes.get("theme-no-results").hidden, false);
 }
-console.log(JSON.stringify(cards.filter((card) => !card.hidden)
-  .sort((a, b) => Number(a.style.order || 0) - Number(b.style.order || 0))
+if (process.argv[5] === "restore") {
+  search.value = "";
+  search.listeners.input();
+  assert.deepEqual(domCards.map((card) => card.id), initialOrder);
+}
+console.log(JSON.stringify(domCards.filter((card) => !card.hidden)
   .map((card) => card.id)));
