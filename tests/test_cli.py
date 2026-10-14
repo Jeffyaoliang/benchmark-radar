@@ -71,7 +71,9 @@ def test_default_dashboard_build_also_publishes_the_feed(monkeypatch, tmp_path, 
     site_shell(tmp_path / "site")
     catalog_dir = tmp_path / "site" / "data"
     catalog_dir.mkdir(parents=True, exist_ok=True)
-    (catalog_dir / "benchmark-index.json").write_text(json.dumps({"benchmarks": [], "count": 0}))
+    (catalog_dir / "benchmark-index.json").write_text(
+        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
+    )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         "sys.argv",

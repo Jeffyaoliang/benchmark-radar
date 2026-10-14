@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from .catalog import CATALOG_SCHEMA_VERSION, CatalogError, validate_benchmark_index
 from .citation import citation_block, required_citations
 from .corpus import exact_artifact_key
 from .query_lexicon import BM25_B as _BM25_B
@@ -343,22 +344,15 @@ class QueryService:
     def _load_index(self) -> dict[str, Any]:
         if self._index is None:
             index = _read_object(self.paths.index, label="benchmark index")
-            if index.get("schema_version") != 1:
-                raise QueryError(
-                    f"benchmark index schema {index.get('schema_version')!r} is unsupported",
-                    code="unsupported_schema",
+            try:
+                records = validate_benchmark_index(index)
+            except CatalogError as error:
+                code = (
+                    "unsupported_schema"
+                    if index.get("schema_version") != CATALOG_SCHEMA_VERSION
+                    else "invalid_data"
                 )
-            records = index.get("benchmarks")
-            if not isinstance(records, list) or not all(isinstance(row, dict) for row in records):
-                raise QueryError(
-                    "benchmark index benchmarks must be an array of objects",
-                    code="invalid_data",
-                )
-            if index.get("count") != len(records):
-                raise QueryError(
-                    "benchmark index count does not match its records",
-                    code="invalid_data",
-                )
+                raise QueryError(str(error), code=code) from error
             for position, record in enumerate(records):
                 _validate_index_record(record, position=position)
             keys = [record["key"] for record in records]

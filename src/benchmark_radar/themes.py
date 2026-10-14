@@ -17,6 +17,7 @@ from .blog_shell import (
     extract_site_chrome,
     render_page,
 )
+from .catalog import validate_benchmark_index
 from .feed import SITE_URL
 from .query_lexicon import (
     BM25_B,
@@ -84,20 +85,15 @@ def build_theme_index(catalog: dict[str, Any]) -> dict[str, Any]:
     """Keep every source record and group by the categories already in the index.
 
     Missing dates, scores, descriptions and categories never exclude a record.
-    Duplicate source keys or malformed input fail instead of publishing a subset.
+    Duplicate source keys, or an index that breaks the shared catalog contract,
+    fail instead of publishing a subset.
     """
-    rows = catalog.get("benchmarks")
-    if not isinstance(rows, list):
-        raise ValueError("theme browse requires the complete benchmark index")
-    if catalog.get("count", len(rows)) != len(rows):
-        raise ValueError("benchmark index count does not match its records")
+    rows = validate_benchmark_index(catalog)
     records = {}
     members: dict[str, set[tuple[str, str]]] = {}
     categorized: set[tuple[str, str]] = set()
     source_counts: dict[str, int] = {}
     for item in rows:
-        if not isinstance(item, dict):
-            raise ValueError("benchmark index records must be objects")
         source, key = item.get("source"), item.get("key")
         name, slug = item.get("name"), item.get("slug")
         if not all(isinstance(value, str) and value.strip() for value in (source, key, name, slug)):
@@ -421,6 +417,27 @@ def _themes_page(
     ), len(index["all_records"])
 
 
+def load_theme_catalog(site_dir: Path, *, catalog_path: Path | None = None) -> dict[str, Any]:
+    """Read and validate the unified catalog a /themes/ build publishes.
+
+    The catalog is gitignored, so a checkout that skipped `normalize-catalog`
+    has none. Site builds call this before writing their first page: found
+    later, the missing or malformed catalog aborts the rebuild after the
+    dashboard, feed and blog are already on disk and leaves a site that
+    publishes everything except the section its nav links to.
+    """
+    path = catalog_path or site_dir / "data" / "benchmark-index.json"
+    try:
+        catalog = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise FileNotFoundError(
+            "the theme browse page is built from the unified catalog, which is "
+            f"missing at {path}; run `benchmark-radar normalize-catalog`"
+        ) from error
+    validate_benchmark_index(catalog)
+    return catalog
+
+
 def write_themes(
     site_dir: Path,
     *,
@@ -455,8 +472,7 @@ def write_themes(
         app_js = app_js_source.read_text(encoding="utf-8")
     chrome = extract_site_chrome(dashboard_html, active_path=THEMES_PATH)
     chrome_i18n = chrome_i18n_table(chrome, app_js)
-    catalog_path = catalog_path or site_dir / "data" / "benchmark-index.json"
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog = load_theme_catalog(site_dir, catalog_path=catalog_path)
     index = build_theme_index(catalog)
     page, rendered = _themes_page(index, chrome, chrome_i18n)
     output_dir = site_dir / "themes"

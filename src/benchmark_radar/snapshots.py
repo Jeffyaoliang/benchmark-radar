@@ -48,7 +48,7 @@ from .site_about import write_about
 from .site_pages import DEFAULT_SHARD_DIR, benchmark_sitemap_entries
 from .site_seo import site_lastmod, write_sitemap
 from .sources import GITHUB_RELEASE_PARSER_VERSION, github_release_title
-from .themes import write_themes
+from .themes import load_theme_catalog, write_themes
 
 SCHEMA_VERSION = 2
 SUPPORTED_SCHEMA_VERSIONS = {1, SCHEMA_VERSION}
@@ -1470,6 +1470,14 @@ def rebuild_dashboard(
     kw_bench_store_path: Path | None = None,
     benchmark_shard_dir: Path = DEFAULT_SHARD_DIR,
 ) -> dict[str, Any]:
+    if feed_output is not None:
+        # A site build also publishes /themes/, which reads the unified
+        # catalog: gitignored, so a fresh runner that skipped
+        # `normalize-catalog` has none. Validate it before the first write --
+        # found later, the rebuild dies with the dashboard, feed and blog
+        # already on disk and publishes a site whose nav links to a section
+        # that is not there.
+        load_theme_catalog(feed_output.parent)
     snapshots = load_snapshots(snapshot_dir)
     value = dashboard_data(
         snapshots,

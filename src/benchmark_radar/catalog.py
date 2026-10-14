@@ -797,3 +797,25 @@ def write_benchmark_index(
         encoding="utf-8",
     )
     return output
+
+
+def validate_benchmark_index(index: Any) -> list[dict[str, Any]]:
+    """The one contract every reader of ``benchmark-index.json`` enforces.
+
+    `write_benchmark_index` emits these fields together, so a file missing one
+    came from somewhere else: an older build, a half-finished migration, a hand
+    edit. Readers that each picked their own subset of the checks disagreed
+    about which such file was publishable -- the query service rejected a
+    schema-2 artifact while the theme page rendered it with every record
+    uncategorized, because the schema that renamed `categories` still parses.
+    """
+    if not isinstance(index, dict):
+        raise CatalogError("benchmark index must be an object")
+    if index.get("schema_version") != CATALOG_SCHEMA_VERSION:
+        raise CatalogError(f"benchmark index schema {index.get('schema_version')!r} is unsupported")
+    records = index.get("benchmarks")
+    if not isinstance(records, list) or not all(isinstance(row, dict) for row in records):
+        raise CatalogError("benchmark index benchmarks must be an array of objects")
+    if index.get("count") != len(records):
+        raise CatalogError("benchmark index count does not match its records")
+    return records

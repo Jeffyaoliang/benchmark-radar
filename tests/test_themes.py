@@ -7,7 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from benchmark_radar.query import QueryPaths, QueryService, _build_search_corpus, _match, _tokens
+from benchmark_radar.query import (
+    QueryError,
+    QueryPaths,
+    QueryService,
+    _build_search_corpus,
+    _match,
+    _tokens,
+)
 from benchmark_radar.themes import build_theme_index, write_themes
 
 SITE_DIR = Path(__file__).resolve().parents[1] / "site"
@@ -30,7 +37,7 @@ def _item(**overrides):
 
 
 def _catalog(items):
-    return {"benchmarks": items, "count": len(items)}
+    return {"schema_version": 1, "benchmarks": items, "count": len(items)}
 
 
 def _write(items, tmp_path):
@@ -179,10 +186,34 @@ def test_duplicate_source_record_fails_instead_of_silently_reducing_population()
         build_theme_index(_catalog([_item(), _item()]))
 
 
-@pytest.mark.parametrize("catalog", [{}, {"benchmarks": [], "count": 1}, _catalog([{}])])
+@pytest.mark.parametrize(
+    "catalog",
+    [
+        {},
+        {"benchmarks": [], "count": 1},
+        {"schema_version": 1, "benchmarks": [_item()]},
+        _catalog([{}]),
+    ],
+)
 def test_malformed_catalog_is_not_published(catalog):
     with pytest.raises(ValueError):
         build_theme_index(catalog)
+
+
+def test_a_schema_the_query_service_rejects_is_not_rendered_as_a_theme_page(tmp_path):
+    # Regression: /themes/ checked only `benchmarks`, so a migrated schema the
+    # query service refused still rendered -- every card silently Uncategorized.
+    migrated = _catalog([_item()]) | {"schema_version": 2}
+    del migrated["benchmarks"][0]["categories"]
+    path = tmp_path / "benchmark-index.json"
+    path.write_text(json.dumps(migrated), encoding="utf-8")
+
+    with pytest.raises(QueryError) as query_error:
+        QueryService(QueryPaths(index=path, shards=tmp_path)).search("agent", scope="catalog")
+    assert query_error.value.code == "unsupported_schema"
+    with pytest.raises(ValueError, match="schema 2 is unsupported"):
+        write_themes(tmp_path, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
+    assert not (tmp_path / "themes" / "index.html").exists()
 
 
 def test_browse_renders_beyond_the_previous_cap_and_searches_entire_catalog(tmp_path):

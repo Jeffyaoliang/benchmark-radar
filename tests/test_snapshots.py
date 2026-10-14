@@ -321,7 +321,7 @@ def test_rebuild_can_publish_the_feed_from_the_same_snapshot_history(tmp_path, s
     site_shell(tmp_path / "site")
     (tmp_path / "site" / "data").mkdir(exist_ok=True)
     (tmp_path / "site" / "data" / "benchmark-index.json").write_text(
-        json.dumps({"benchmarks": [], "count": 0})
+        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
     )
 
     rebuild_dashboard(
@@ -344,7 +344,7 @@ def test_rebuild_uses_site_catalog_when_dashboard_data_is_published_elsewhere(tm
     site_shell(site_dir)
     (site_dir / "data").mkdir(exist_ok=True)
     (site_dir / "data" / "benchmark-index.json").write_text(
-        json.dumps({"benchmarks": [], "count": 0})
+        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
     )
 
     rebuild_dashboard(
@@ -357,6 +357,32 @@ def test_rebuild_uses_site_catalog_when_dashboard_data_is_published_elsewhere(tm
     assert (site_dir / "sitemap.xml").exists()
 
 
+def test_a_site_rebuild_without_a_catalog_publishes_nothing(tmp_path, site_shell):
+    """The catalog is gitignored, so a fresh runner can lack it entirely.
+
+    Failing at ``write_themes`` used to leave the dashboard, feed and blog on
+    disk and the run reporting "Dashboard rebuild skipped": a published site
+    missing the one section its nav links to.
+    """
+    snapshot_dir = tmp_path / "snapshots"
+    write_snapshot(radar_run(27), snapshot_dir)
+    site_dir = tmp_path / "site"
+    site_shell(site_dir)
+    (site_dir / "data").mkdir(exist_ok=True)
+
+    with pytest.raises(FileNotFoundError, match="normalize-catalog"):
+        rebuild_dashboard(
+            snapshot_dir,
+            site_dir / "data" / "radar.json",
+            feed_output=site_dir / "feed.xml",
+        )
+
+    assert not (site_dir / "data" / "radar.json").exists()
+    assert not (site_dir / "feed.xml").exists()
+    assert not (site_dir / "blog" / "index.html").exists()
+    assert not (site_dir / "sitemap.xml").exists()
+
+
 def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     """The Pages build must publish the URL advertised by robots.txt."""
     snapshot_dir = tmp_path / "snapshots"
@@ -366,7 +392,7 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     site_shell(tmp_path / "site")
     (tmp_path / "site" / "data").mkdir(exist_ok=True)
     (tmp_path / "site" / "data" / "benchmark-index.json").write_text(
-        json.dumps({"benchmarks": [], "count": 0})
+        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
     )
     shard_dir = tmp_path / "shards"
     shard_dir.mkdir()
@@ -377,6 +403,8 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     (data_output.parent / "benchmark-index.json").write_text(
         json.dumps(
             {
+                "schema_version": 1,
+                "count": 0,
                 "benchmarks": [],
                 "document_registry": {
                     "entries": [{"rank": 1, "name": "Alpha", "document_count": 1}]
@@ -1606,7 +1634,7 @@ def test_rebuild_publishes_a_brief_for_every_snapshot_and_lists_them(tmp_path, s
     site_shell(site_dir)
     (site_dir / "data").mkdir(exist_ok=True)
     (site_dir / "data" / "benchmark-index.json").write_text(
-        json.dumps({"benchmarks": [], "count": 0})
+        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
     )
 
     rebuild_dashboard(
@@ -1638,7 +1666,7 @@ def test_the_site_feed_and_the_blog_feed_stay_separate(tmp_path, site_shell):
     site_shell(site_dir)
     (site_dir / "data").mkdir(exist_ok=True)
     (site_dir / "data" / "benchmark-index.json").write_text(
-        json.dumps({"benchmarks": [], "count": 0})
+        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
     )
 
     rebuild_dashboard(
