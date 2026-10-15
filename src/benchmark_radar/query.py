@@ -89,28 +89,6 @@ def _read_object(path: Path, *, label: str) -> dict[str, Any]:
     return value
 
 
-def _validate_index_record(record: dict[str, Any], *, position: int) -> None:
-    label = f"benchmark index record {position}"
-    for field in ("key", "slug", "name", "source"):
-        if not isinstance(record.get(field), str) or not record[field].strip():
-            raise QueryError(
-                f"{label} {field} must be a non-empty string",
-                code="invalid_data",
-            )
-    if not isinstance(record.get("description"), str):
-        raise QueryError(f"{label} description must be a string", code="invalid_data")
-    for field in ("categories", "languages"):
-        value = record.get(field)
-        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-            raise QueryError(
-                f"{label} {field} must be an array of strings",
-                code="invalid_data",
-            )
-    for field in ("has_paper", "has_repo", "has_dataset", "has_size"):
-        if not isinstance(record.get(field), bool):
-            raise QueryError(f"{label} {field} must be a boolean", code="invalid_data")
-
-
 def _filter_value(value: Any) -> str:
     return str(value or "").strip().casefold()
 
@@ -345,7 +323,7 @@ class QueryService:
         if self._index is None:
             index = _read_object(self.paths.index, label="benchmark index")
             try:
-                records = validate_benchmark_index(index)
+                validate_benchmark_index(index)
             except CatalogError as error:
                 code = (
                     "unsupported_schema"
@@ -353,15 +331,6 @@ class QueryService:
                     else "invalid_data"
                 )
                 raise QueryError(str(error), code=code) from error
-            for position, record in enumerate(records):
-                _validate_index_record(record, position=position)
-            keys = [record["key"] for record in records]
-            slugs = [record["slug"] for record in records]
-            if len(keys) != len(set(keys)) or len(slugs) != len(set(slugs)):
-                raise QueryError(
-                    "benchmark index keys and slugs must be unique",
-                    code="invalid_data",
-                )
             self._index = index
         return self._index
 

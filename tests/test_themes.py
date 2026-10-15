@@ -31,6 +31,11 @@ def _item(**overrides):
         "released": "2026-09-09",
         "description": "A benchmark of agent planning.",
         "categories": ["Agents"],
+        "languages": [],
+        "has_paper": False,
+        "has_repo": False,
+        "has_dataset": False,
+        "has_size": False,
     }
     item.update(overrides)
     return item
@@ -74,7 +79,7 @@ def test_catalog_categories_preserve_all_sources_and_missing_measurements():
             source="opencompass", key="oc:one", slug="oc-one", categories=["Agents", "Reasoning"]
         ),
         _item(source="artificial_analysis", key="aa:one", slug="aa-one", released=None),
-        _item(source="claire_radar", key="cr:one", slug="cr-one", categories=[], description=None),
+        _item(source="claire_radar", key="cr:one", slug="cr-one", categories=[], description=""),
     ]
     index = build_theme_index(_catalog(rows))
     assert index["records"] == 5
@@ -174,8 +179,11 @@ def test_browse_restores_dom_order_after_ranked_search(tmp_path):
     ]
 
 
-def test_same_key_from_different_sources_stays_separate():
-    rows = [_item(key="shared"), _item(source="model_reports", key="shared", slug="report-shared")]
+def test_similar_names_from_different_sources_stay_separate():
+    rows = [
+        _item(key="shared"),
+        _item(source="model_reports", key="reports:shared", slug="report-shared"),
+    ]
     index = build_theme_index(_catalog(rows))
     assert index["records"] == 2
     assert index["groups"][0]["count"] == 2
@@ -301,3 +309,72 @@ def test_generated_page_uses_query_service_order_on_the_complete_catalog(tmp_pat
     ).search(query, scope="catalog", limit=200)
     assert len(browser) == service["candidate_count"]
     assert browser[:20] == [item["key"] for item in service["results"][:20]]
+
+
+@pytest.mark.parametrize(
+    "names,keys",
+    [
+        (["😀 A", "Ａ A"], ["one", "two"]),
+        (["Same", "Same"], ["😀", "Ａ"]),
+    ],
+)
+def test_search_string_ties_use_python_code_point_order(tmp_path, names, keys):
+    rows = [
+        _item(name=name, key=key, slug=f"record-{i}", description="shared target")
+        for i, (name, key) in enumerate(zip(names, keys, strict=True))
+    ]
+    _write(rows, tmp_path)
+    path = tmp_path / "benchmark-index.json"
+    results = QueryService(QueryPaths(index=path, shards=tmp_path)).search(
+        "target", scope="catalog"
+    )
+    assert _browser_results(tmp_path, "target") == [row["key"] for row in results["results"]]
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [{}],
+        *[
+            [{key: value for key, value in _item().items() if key != field}]
+            for field in (
+                "key",
+                "slug",
+                "name",
+                "source",
+                "description",
+                "categories",
+                "languages",
+                "has_paper",
+                "has_repo",
+                "has_dataset",
+                "has_size",
+            )
+        ],
+        [_item(categories=[""])],
+        [_item(languages=[None])],
+        [_item(has_paper=1)],
+        [_item(), _item(slug="other")],
+        [_item(), _item(key="other")],
+    ],
+)
+def test_invalid_records_fail_all_readers_before_site_output(tmp_path, rows):
+    from benchmark_radar.snapshots import rebuild_dashboard
+
+    site = tmp_path / "site"
+    data = site / "data"
+    data.mkdir(parents=True)
+    path = data / "benchmark-index.json"
+    path.write_text(json.dumps(_catalog(rows)), encoding="utf-8")
+    with pytest.raises(QueryError) as error:
+        QueryService(QueryPaths(index=path, shards=tmp_path)).search("agent", scope="catalog")
+    assert error.value.code == "invalid_data"
+    with pytest.raises(ValueError):
+        write_themes(site, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
+    with pytest.raises(ValueError):
+        rebuild_dashboard(
+            tmp_path / "snapshots", data / "radar.json", feed_output=site / "feed.xml"
+        )
+    assert {item.relative_to(site).as_posix() for item in site.rglob("*") if item.is_file()} == {
+        "data/benchmark-index.json"
+    }

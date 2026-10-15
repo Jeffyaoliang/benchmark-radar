@@ -96,16 +96,8 @@ def build_theme_index(catalog: dict[str, Any]) -> dict[str, Any]:
     for item in rows:
         source, key = item.get("source"), item.get("key")
         name, slug = item.get("name"), item.get("slug")
-        if not all(isinstance(value, str) and value.strip() for value in (source, key, name, slug)):
-            raise ValueError("benchmark index record requires source, key, name and slug")
         identity = (source, key)
-        if identity in records:
-            raise ValueError(f"duplicate benchmark source record: {identity}")
-        categories = item.get("categories", [])
-        if not isinstance(categories, list) or any(
-            not isinstance(category, str) or not category.strip() for category in categories
-        ):
-            raise ValueError(f"invalid benchmark categories: {key}")
+        categories = item["categories"]
         field_tokens = search_field_tokens(item)
         records[identity] = {
             "source": source,
@@ -273,7 +265,15 @@ def _themes_page(
   );
   const contains = (haystack, needle) => needle.length <= haystack.length &&
     haystack.some((_, i) => needle.every((part, j) => haystack[i + j] === part));
-  const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  const compare = (a, b) => {{
+    if (typeof a !== "string") return a < b ? -1 : a > b ? 1 : 0;
+    const left = Array.from(a, letter => letter.codePointAt(0));
+    const right = Array.from(b, letter => letter.codePointAt(0));
+    for (let i = 0; i < Math.min(left.length, right.length); i++) {{
+      if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+    }}
+    return left.length - right.length;
+  }};
   const fold = value => Array.from(value, letter =>
     config.tokenizer.casefold[letter] ?? letter).join("");
   function nfkd(value) {{

@@ -799,6 +799,28 @@ def write_benchmark_index(
     return output
 
 
+def _validate_benchmark_index_record(record: dict[str, Any], *, position: int) -> None:
+    label = f"benchmark index record {position}"
+    for field in ("key", "slug", "name", "source"):
+        if not isinstance(record.get(field), str) or not record[field].strip():
+            raise CatalogError(
+                f"{label} {field} must be a non-empty string",
+            )
+    if not isinstance(record.get("description"), str):
+        raise CatalogError(f"{label} description must be a string")
+    for field in ("categories", "languages"):
+        value = record.get(field)
+        if not isinstance(value, list) or not all(
+            isinstance(item, str) and item.strip() for item in value
+        ):
+            raise CatalogError(
+                f"{label} {field} must be an array of strings",
+            )
+    for field in ("has_paper", "has_repo", "has_dataset", "has_size"):
+        if not isinstance(record.get(field), bool):
+            raise CatalogError(f"{label} {field} must be a boolean")
+
+
 def validate_benchmark_index(index: Any) -> list[dict[str, Any]]:
     """The one contract every reader of ``benchmark-index.json`` enforces.
 
@@ -818,4 +840,10 @@ def validate_benchmark_index(index: Any) -> list[dict[str, Any]]:
         raise CatalogError("benchmark index benchmarks must be an array of objects")
     if index.get("count") != len(records):
         raise CatalogError("benchmark index count does not match its records")
+    for position, record in enumerate(records):
+        _validate_benchmark_index_record(record, position=position)
+    keys = [record["key"] for record in records]
+    slugs = [record["slug"] for record in records]
+    if len(keys) != len(set(keys)) or len(slugs) != len(set(slugs)):
+        raise CatalogError("benchmark index keys and slugs must be unique (duplicate record)")
     return records
