@@ -119,9 +119,6 @@ async function mount() {
     grid.removeAttribute("aria-busy");
     status.textContent = "The full benchmark catalog could not be loaded. Reload this page to retry.";
     status.setAttribute("role", "alert");
-    const allCategories = new Set(records.flatMap(record => record.categories));
-    const browseCategories = [...allCategories]
-      .filter(name => !QUALITY_LABELS.has(name.trim().toLowerCase())).length;
     ledger.textContent = "Catalog unavailable; coverage could not be verified.";
     console.error("Category browser:", error);
   }

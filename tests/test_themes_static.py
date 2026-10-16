@@ -82,3 +82,17 @@ def test_menu_limit_and_quality_exclusion_do_not_hide_records_or_rare_categories
 )
 def test_invalid_catalog_is_an_error_instead_of_a_partial_population(payload):
     assert "error" in browse(payload)
+
+
+@pytest.mark.parametrize("http_status", [200, 503])
+def test_catalog_load_failure_finishes_the_error_state_without_using_unloaded_data(http_status):
+    result = browse(
+        {"schema_version": 1, "count": 1, "benchmarks": [{}]},
+        bootError=True,
+        httpStatus=http_status,
+    )
+    assert "could not be loaded" in result["status"]
+    assert result["role"] == "alert"
+    assert result["ledger"] == "Catalog unavailable; coverage could not be verified."
+    assert result["cards"] == 0
+    assert result["disabled"]
