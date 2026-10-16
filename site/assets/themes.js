@@ -76,22 +76,27 @@ async function mount() {
   const empty = document.getElementById("theme-empty");
   const ledger = document.getElementById("theme-ledger");
   try {
-    // Same URL and revalidation policy as loadBenchmarkIndex() in app.js.
-    // Revalidation can reuse the homepage's cached response body.
-    const response = await fetch("/data/benchmark-index.json", {cache: "no-cache"});
+    // Share the homepage's catalog URL and honor the host's HTTP cache policy.
+    const response = await fetch("/data/benchmark-index.json");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const records = readCatalog(await response.json());
     const cards = new Map(records.map(record => [record.key, cardFor(record)]));
     category.append(new Option(`All categories (${records.length})`, ""));
-    for (const [name, count] of commonCategories(records)) {
+    const menuCategories = commonCategories(records);
+    for (const [name, count] of menuCategories) {
       category.append(new Option(`${name} (${count})`, name));
     }
     const uncategorized = records.filter(record => !record.categories.length).length;
     if (uncategorized) category.append(new Option(`Uncategorized (${uncategorized})`, UNCATEGORIZED));
     const sources = new Set(records.map(record => record.source));
+    const allCategories = new Set(records.flatMap(record => record.categories));
+    const browseCategories = [...allCategories]
+      .filter(name => !QUALITY_LABELS.has(name.trim().toLowerCase())).length;
     ledger.textContent = `${records.length} benchmark records across ${sources.size} sources. `
       + `${uncategorized} uncategorized. No records omitted. Category counts may overlap. `
-      + "Only common categories appear in the menu; search covers every category. "
+      + `${menuCategories.length} of ${browseCategories} browsing categories shown; `
+      + `${browseCategories - menuCategories.length} additional categories remain searchable. `
+      + `${allCategories.size - browseCategories} data-quality labels excluded from the menu. `
       + "Unsupported / 不支持 are data-quality labels, so they are not menu categories.";
     function render() {
       const matches = filterCatalog(records, query.value, category.value);
@@ -114,6 +119,9 @@ async function mount() {
     grid.removeAttribute("aria-busy");
     status.textContent = "The full benchmark catalog could not be loaded. Reload this page to retry.";
     status.setAttribute("role", "alert");
+    const allCategories = new Set(records.flatMap(record => record.categories));
+    const browseCategories = [...allCategories]
+      .filter(name => !QUALITY_LABELS.has(name.trim().toLowerCase())).length;
     ledger.textContent = "Catalog unavailable; coverage could not be verified.";
     console.error("Category browser:", error);
   }
