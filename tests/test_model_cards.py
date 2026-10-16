@@ -963,6 +963,12 @@ def test_cohere_agentic_chart_retains_all_twelve_labelled_scores():
         "gpt-oss-120b": (61.6, 58.5, 42.7),
         "Magistral Medium": (50.4, 39.8, 23.4),
     }
+    expected_organizations = {
+        "Command A Reasoning": "Cohere",
+        "DeepSeek-R1-0528": "DeepSeek",
+        "gpt-oss-120b": "OpenAI",
+        "Magistral Medium": "Mistral",
+    }
     rows = [
         row
         for row in load_scores()["results"]
@@ -977,7 +983,9 @@ def test_cohere_agentic_chart_retains_all_twelve_labelled_scores():
         )
     }
     for row in rows:
-        assert row["reported_by"] == (None if row["organization"] == "Cohere" else "Cohere")
+        organization = expected_organizations[row["model"]]
+        assert row["organization"] == organization
+        assert row["reported_by"] == (None if organization == "Cohere" else "Cohere")
 
 
 def test_cohere_unknown_competitor_setups_do_not_establish_comparability():
