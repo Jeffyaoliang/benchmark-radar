@@ -110,6 +110,3 @@ graphify-out/
 # The id is meaningful only to the machine that created it, so committing one
 # would hand every clone a stale pointer to someone else's session.
 /.context/
-
-# Category browse page generated from the unified catalog.
-/site/themes/

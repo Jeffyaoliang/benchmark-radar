@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .catalog import CATALOG_SCHEMA_VERSION, CatalogError, validate_benchmark_index
 from .citation import citation_block, required_citations
 from .corpus import exact_artifact_key
 from .science_domains import science_domains_for_record
@@ -115,6 +114,28 @@ def _read_object(path: Path, *, label: str) -> dict[str, Any]:
             status=500,
         )
     return value
+
+
+def _validate_index_record(record: dict[str, Any], *, position: int) -> None:
+    label = f"benchmark index record {position}"
+    for field in ("key", "slug", "name", "source"):
+        if not isinstance(record.get(field), str) or not record[field].strip():
+            raise QueryError(
+                f"{label} {field} must be a non-empty string",
+                code="invalid_data",
+            )
+    if not isinstance(record.get("description"), str):
+        raise QueryError(f"{label} description must be a string", code="invalid_data")
+    for field in ("categories", "languages"):
+        value = record.get(field)
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise QueryError(
+                f"{label} {field} must be an array of strings",
+                code="invalid_data",
+            )
+    for field in ("has_paper", "has_repo", "has_dataset", "has_size"):
+        if not isinstance(record.get(field), bool):
+            raise QueryError(f"{label} {field} must be a boolean", code="invalid_data")
 
 
 def _tokens(value: Any) -> tuple[str, ...]:
@@ -381,15 +402,31 @@ class QueryService:
     def _load_index(self) -> dict[str, Any]:
         if self._index is None:
             index = _read_object(self.paths.index, label="benchmark index")
-            try:
-                validate_benchmark_index(index)
-            except CatalogError as error:
-                code = (
-                    "unsupported_schema"
-                    if index.get("schema_version") != CATALOG_SCHEMA_VERSION
-                    else "invalid_data"
+            if index.get("schema_version") != 1:
+                raise QueryError(
+                    f"benchmark index schema {index.get('schema_version')!r} is unsupported",
+                    code="unsupported_schema",
                 )
-                raise QueryError(str(error), code=code) from error
+            records = index.get("benchmarks")
+            if not isinstance(records, list) or not all(isinstance(row, dict) for row in records):
+                raise QueryError(
+                    "benchmark index benchmarks must be an array of objects",
+                    code="invalid_data",
+                )
+            if index.get("count") != len(records):
+                raise QueryError(
+                    "benchmark index count does not match its records",
+                    code="invalid_data",
+                )
+            for position, record in enumerate(records):
+                _validate_index_record(record, position=position)
+            keys = [record["key"] for record in records]
+            slugs = [record["slug"] for record in records]
+            if len(keys) != len(set(keys)) or len(slugs) != len(set(slugs)):
+                raise QueryError(
+                    "benchmark index keys and slugs must be unique",
+                    code="invalid_data",
+                )
             self._index = index
         return self._index
 

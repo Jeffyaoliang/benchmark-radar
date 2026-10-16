@@ -318,10 +318,6 @@ def test_rebuild_can_publish_the_feed_from_the_same_snapshot_history(tmp_path, s
     write_snapshot(radar_run(27), snapshot_dir)
     feed_output = tmp_path / "site" / "feed.xml"
     site_shell(tmp_path / "site")
-    (tmp_path / "site" / "data").mkdir(exist_ok=True)
-    (tmp_path / "site" / "data" / "benchmark-index.json").write_text(
-        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
-    )
 
     rebuild_dashboard(
         snapshot_dir,
@@ -336,54 +332,6 @@ def test_rebuild_can_publish_the_feed_from_the_same_snapshot_history(tmp_path, s
     ]
 
 
-def test_rebuild_uses_site_catalog_when_dashboard_data_is_published_elsewhere(tmp_path, site_shell):
-    snapshot_dir = tmp_path / "snapshots"
-    write_snapshot(radar_run(27), snapshot_dir)
-    site_dir = tmp_path / "site"
-    site_shell(site_dir)
-    (site_dir / "data").mkdir(exist_ok=True)
-    (site_dir / "data" / "benchmark-index.json").write_text(
-        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
-    )
-
-    rebuild_dashboard(
-        snapshot_dir,
-        tmp_path / "custom" / "radar.json",
-        feed_output=site_dir / "feed.xml",
-        include_themes=True,
-    )
-
-    assert (site_dir / "themes" / "index.html").exists()
-    assert (site_dir / "sitemap.xml").exists()
-
-
-def test_a_site_rebuild_without_a_catalog_publishes_nothing(tmp_path, site_shell):
-    """The catalog is gitignored, so a fresh runner can lack it entirely.
-
-    Failing at ``write_themes`` used to leave the dashboard, feed and blog on
-    disk and the run reporting "Dashboard rebuild skipped": a published site
-    missing the one section its nav links to.
-    """
-    snapshot_dir = tmp_path / "snapshots"
-    write_snapshot(radar_run(27), snapshot_dir)
-    site_dir = tmp_path / "site"
-    site_shell(site_dir)
-    (site_dir / "data").mkdir(exist_ok=True)
-
-    with pytest.raises(FileNotFoundError, match="normalize-catalog"):
-        rebuild_dashboard(
-            snapshot_dir,
-            site_dir / "data" / "radar.json",
-            feed_output=site_dir / "feed.xml",
-            include_themes=True,
-        )
-
-    assert not (site_dir / "data" / "radar.json").exists()
-    assert not (site_dir / "feed.xml").exists()
-    assert not (site_dir / "blog" / "index.html").exists()
-    assert not (site_dir / "sitemap.xml").exists()
-
-
 def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     """The Pages build must publish the URL advertised by robots.txt."""
     snapshot_dir = tmp_path / "snapshots"
@@ -391,10 +339,6 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     data_output = tmp_path / "site" / "data" / "radar.json"
     feed_output = tmp_path / "site" / "feed.xml"
     site_shell(tmp_path / "site")
-    (tmp_path / "site" / "data").mkdir(exist_ok=True)
-    (tmp_path / "site" / "data" / "benchmark-index.json").write_text(
-        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
-    )
     shard_dir = tmp_path / "shards"
     shard_dir.mkdir()
     for slug in ("alpha-bench", "zeta-bench"):
@@ -404,8 +348,6 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     (data_output.parent / "benchmark-index.json").write_text(
         json.dumps(
             {
-                "schema_version": 1,
-                "count": 0,
                 "benchmarks": [],
                 "document_registry": {
                     "entries": [{"rank": 1, "name": "Alpha", "document_count": 1}]
@@ -418,7 +360,6 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
         snapshot_dir,
         data_output,
         feed_output=feed_output,
-        include_themes=True,
         benchmark_shard_dir=shard_dir,
     )
 
@@ -450,13 +391,11 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
         f"{SITE_URL}/blog/archive/",
         f"{SITE_URL}/blog/2026-07-27/",
         f"{SITE_URL}/about/",
-        f"{SITE_URL}/themes/",
     ]
     lastmods = [node.text for node in root.findall("sm:url/sm:lastmod", ns)]
-    # The two shards and empty catalog theme page have no dated evidence, so
-    # their pages claim no lastmod
+    # The two shards carry no dated evidence, so their pages claim no lastmod
     # rather than borrowing today's snapshot date.
-    assert lastmods == ["2026-07-27"] * (len(urls) - 3)
+    assert lastmods == ["2026-07-27"] * (len(urls) - 2)
 
 
 def test_rescore_applies_a_new_category_to_older_snapshots(tmp_path):
@@ -1635,10 +1574,6 @@ def test_rebuild_publishes_a_brief_for_every_snapshot_and_lists_them(tmp_path, s
     write_snapshot(radar_run(27), snapshot_dir)
     site_dir = tmp_path / "site"
     site_shell(site_dir)
-    (site_dir / "data").mkdir(exist_ok=True)
-    (site_dir / "data" / "benchmark-index.json").write_text(
-        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
-    )
 
     rebuild_dashboard(
         snapshot_dir,
@@ -1667,10 +1602,6 @@ def test_the_site_feed_and_the_blog_feed_stay_separate(tmp_path, site_shell):
     write_snapshot(radar_run(27), snapshot_dir)
     site_dir = tmp_path / "site"
     site_shell(site_dir)
-    (site_dir / "data").mkdir(exist_ok=True)
-    (site_dir / "data" / "benchmark-index.json").write_text(
-        json.dumps({"schema_version": 1, "benchmarks": [], "count": 0})
-    )
 
     rebuild_dashboard(
         snapshot_dir,
@@ -1904,14 +1835,3 @@ def test_primary_revision_retains_previously_merged_digest_evidence(reverse):
     score_item(revision, taxonomy, now=revision_run.generated_at)
     assert record["total_score"] == revision.total_score
     assert record["recommended"] is True
-
-
-def test_daily_rebuild_needs_no_catalog_or_category_page(tmp_path, site_shell):
-    snapshot_dir = tmp_path / "snapshots"
-    write_snapshot(radar_run(27), snapshot_dir)
-    site = tmp_path / "site"
-    site_shell(site)
-    rebuild_dashboard(snapshot_dir, site / "data" / "radar.json", feed_output=site / "feed.xml")
-    assert (site / "data" / "radar.json").is_file()
-    assert (site / "feed.xml").is_file()
-    assert not (site / "themes").exists()

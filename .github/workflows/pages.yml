@@ -92,7 +92,6 @@ jobs:
           # The MVP uses NullExtractor, so this makes no external/model calls.
           # This rebuild also writes site/feed.xml from the same validated
           # snapshot history as radar.json (issue #37).
-          # Category browsing is a deploy output, never a prerequisite for daily collection.
           benchmark-radar classify
           # Build one complete, checksummed archive for installed CLIs. The
           # small manifest ships with Pages; a separate least-privilege job

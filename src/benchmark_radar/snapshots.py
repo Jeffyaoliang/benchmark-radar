@@ -48,7 +48,6 @@ from .site_about import write_about
 from .site_pages import DEFAULT_SHARD_DIR, benchmark_sitemap_entries
 from .site_seo import site_lastmod, write_sitemap
 from .sources import github_release_title
-from .themes import load_theme_catalog, write_themes
 
 SCHEMA_VERSION = 2
 SUPPORTED_SCHEMA_VERSIONS = {1, SCHEMA_VERSION}
@@ -1469,18 +1468,7 @@ def rebuild_dashboard(
     scores_path: Path | None = None,
     kw_bench_store_path: Path | None = None,
     benchmark_shard_dir: Path = DEFAULT_SHARD_DIR,
-    include_themes: bool = False,
 ) -> dict[str, Any]:
-    if include_themes and feed_output is not None:
-        # Only the explicit publishing build adds /themes/. Daily collection
-        # keeps its existing outputs and never requires catalog normalization.
-        # The category page reads the unified
-        # catalog: gitignored, so a fresh runner that skipped
-        # `normalize-catalog` has none. Validate it before the first write --
-        # found later, the rebuild dies with the dashboard, feed and blog
-        # already on disk and publishes a site whose nav links to a section
-        # that is not there.
-        load_theme_catalog(feed_output.parent)
     snapshots = load_snapshots(snapshot_dir)
     value = dashboard_data(
         snapshots,
@@ -1538,11 +1526,6 @@ def rebuild_dashboard(
         # brief can never describe a day the published corpus has moved past.
         blog = write_blog(snapshots, sitemap_output.parent)
         blog_entries = blog["sitemap_entries"]
-        # Benchmark browsing uses the unified catalog, not discovery snapshots.
-        # Missing catalog input fails visibly; never substitute a shortlist.
-        if include_themes:
-            themes = write_themes(sitemap_output.parent)
-            page_entries.extend(themes["sitemap_entries"])
     write_sitemap(
         snapshots,
         sitemap_output,
