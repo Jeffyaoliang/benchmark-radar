@@ -11,9 +11,6 @@ from benchmark_radar.query import (
     QueryError,
     QueryPaths,
     QueryService,
-    _build_search_corpus,
-    _match,
-    _tokens,
 )
 from benchmark_radar.themes import build_theme_index, write_themes
 
@@ -51,7 +48,7 @@ def _write(items, tmp_path):
     return write_themes(tmp_path, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
 
 
-def _browser_results(tmp_path, query, category="", *, invalid=False, restore=False):
+def _browser_results(tmp_path, category=""):
     node = shutil.which("node")
     if not node:
         pytest.skip("node is not installed")
@@ -60,9 +57,7 @@ def _browser_results(tmp_path, query, category="", *, invalid=False, restore=Fal
             node,
             str(Path(__file__).with_name("themes_filter_harness.mjs")),
             str(tmp_path / "themes" / "index.html"),
-            query,
             category,
-            "invalid" if invalid else "restore" if restore else "",
         ],
         check=True,
         text=True,
@@ -98,85 +93,24 @@ def test_source_tags_do_not_replace_catalog_categories():
     assert [group["category"] for group in index["groups"]] == ["Agents"]
 
 
-def test_browse_search_uses_shared_catalog_tokens_including_registered_aliases(tmp_path):
+def test_category_filter_keeps_all_memberships_and_resets(tmp_path):
     rows = [
-        _item(name="Humanity's Last Exam", aliases=["HLE"], description="A difficult exam."),
-        _item(key="llm-stats:other", slug="other", name="Other benchmark", categories=[]),
+        _item(categories=["Agents", "Reasoning"]),
+        _item(key="other", slug="other", categories=[]),
     ]
     _write(rows, tmp_path)
-    assert _browser_results(tmp_path, "HLE") == ["llm-stats:agent-bench"]
-    assert _browser_results(tmp_path, "HLE", "__uncategorized__") == []
-    assert _browser_results(tmp_path, "Other", "__uncategorized__") == ["llm-stats:other"]
+    assert set(_browser_results(tmp_path)) == {"llm-stats:agent-bench", "other"}
+    assert _browser_results(tmp_path, "Agents") == ["llm-stats:agent-bench"]
+    assert _browser_results(tmp_path, "Reasoning") == ["llm-stats:agent-bench"]
+    assert _browser_results(tmp_path, "__uncategorized__") == ["other"]
+    assert _browser_results(tmp_path, "absent") == []
 
 
-@pytest.mark.parametrize("query", ["MMLU", "MMLU tasks", "New MMLU", "模型评测"])
-def test_browse_search_ranking_matches_query_service(tmp_path, query):
-    rows = [
-        _item(key="llm-stats:mmlu", slug="mmlu", name="MMLU", released="2023-01-01"),
-        _item(
-            key="llm-stats:mmlu-extended",
-            slug="mmlu-extended",
-            name="New MMLU Extended",
-            released="2026-09-09",
-            description="MMLU tasks and MMLU scoring.",
-        ),
-        _item(
-            key="llm-stats:other",
-            slug="other",
-            name="Other benchmark",
-            description="多语言模型评测。",
-        ),
-    ]
-    _write(rows, tmp_path)
-    corpus = _build_search_corpus(rows)
-    query_tokens = _tokens(query)
-    expected = sorted(
-        (match[0], doc.record["key"])
-        for doc in corpus.documents
-        if (match := _match(doc, query_tokens=query_tokens, corpus=corpus)) is not None
-    )
-    assert _browser_results(tmp_path, query) == [key for _, key in expected]
-    if query == "MMLU":
-        assert _browser_results(tmp_path, query)[0] == "llm-stats:mmlu"
-
-
-def test_browse_search_matches_query_service_unicode_casefold_and_latin_ranges(tmp_path):
-    rows = [
-        _item(key="llm-stats:strasse", slug="strasse", name="Straße"),
-        _item(key="llm-stats:lodz", slug="lodz", name="Łódź"),
-        _item(key="llm-stats:orsted", slug="orsted", name="Ørsted"),
-    ]
-    _write(rows, tmp_path)
-    corpus = _build_search_corpus(rows)
-    for query in ("Straße", "STRASSE", "Łódź", "Ørsted"):
-        query_tokens = _tokens(query)
-        expected = sorted(
-            (match[0], doc.record["key"])
-            for doc in corpus.documents
-            if (match := _match(doc, query_tokens=query_tokens, corpus=corpus)) is not None
-        )
-        assert _browser_results(tmp_path, query) == [key for _, key in expected]
-
-
-def test_browse_does_not_treat_tokenless_input_as_an_empty_search(tmp_path):
+def test_search_form_uses_existing_saturation_search(tmp_path):
     _write([_item()], tmp_path)
-    for query in ("!!!", "😀", "Ł", "\U00011db0", "\ua7f1"):
-        assert _tokens(query) == ()
-        assert _browser_results(tmp_path, query, invalid=True) == []
-    assert _browser_results(tmp_path, "") == ["llm-stats:agent-bench"]
-
-
-def test_browse_restores_dom_order_after_ranked_search(tmp_path):
-    rows = [
-        _item(key="llm-stats:mmlu", slug="mmlu", name="MMLU", released="2023-01-01"),
-        _item(key="llm-stats:new", slug="new", name="New MMLU", released="2026-09-09"),
-    ]
-    _write(rows, tmp_path)
-    assert _browser_results(tmp_path, "MMLU") == ["llm-stats:mmlu", "llm-stats:new"]
-    assert _browser_results(tmp_path, "MMLU", restore=True) == [
-        "llm-stats:new",
-        "llm-stats:mmlu",
-    ]
+    page = (tmp_path / "themes" / "index.html").read_text()
+    assert 'action="/saturation/" method="get" role="search"' in page
+    assert 'name="bq" type="search"' in page
 
 
 def test_similar_names_from_different_sources_stay_separate():
@@ -224,7 +158,7 @@ def test_a_schema_the_query_service_rejects_is_not_rendered_as_a_theme_page(tmp_
     assert not (tmp_path / "themes" / "index.html").exists()
 
 
-def test_browse_renders_beyond_the_previous_cap_and_searches_entire_catalog(tmp_path):
+def test_browse_renders_beyond_the_previous_cap(tmp_path):
     rows = [
         _item(key=f"llm-stats:{n}", slug=f"llm-stats-{n}", name=f"Benchmark {n}") for n in range(85)
     ]
@@ -299,38 +233,6 @@ def test_generated_page_covers_the_fresh_unified_catalog(tmp_path):
     }
 
 
-@pytest.mark.parametrize("query", ["MMLU", "HLE", "agent coding", "模型评测"])
-def test_generated_page_uses_query_service_order_on_the_complete_catalog(tmp_path, query):
-    catalog_path = SITE_DIR / "data" / "benchmark-index.json"
-    write_themes(tmp_path, catalog_path=catalog_path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
-    browser = _browser_results(tmp_path, query)
-    service = QueryService(
-        QueryPaths(index=catalog_path, shards=catalog_path.parent / "benchmarks")
-    ).search(query, scope="catalog", limit=200)
-    assert len(browser) == service["candidate_count"]
-    assert browser[:20] == [item["key"] for item in service["results"][:20]]
-
-
-@pytest.mark.parametrize(
-    "names,keys",
-    [
-        (["😀 A", "Ａ A"], ["one", "two"]),
-        (["Same", "Same"], ["😀", "Ａ"]),
-    ],
-)
-def test_search_string_ties_use_python_code_point_order(tmp_path, names, keys):
-    rows = [
-        _item(name=name, key=key, slug=f"record-{i}", description="shared target")
-        for i, (name, key) in enumerate(zip(names, keys, strict=True))
-    ]
-    _write(rows, tmp_path)
-    path = tmp_path / "benchmark-index.json"
-    results = QueryService(QueryPaths(index=path, shards=tmp_path)).search(
-        "target", scope="catalog"
-    )
-    assert _browser_results(tmp_path, "target") == [row["key"] for row in results["results"]]
-
-
 @pytest.mark.parametrize(
     "rows",
     [
@@ -373,7 +275,10 @@ def test_invalid_records_fail_all_readers_before_site_output(tmp_path, rows):
         write_themes(site, catalog_path=path, dashboard_html=DASHBOARD_HTML, app_js=APP_JS)
     with pytest.raises(ValueError):
         rebuild_dashboard(
-            tmp_path / "snapshots", data / "radar.json", feed_output=site / "feed.xml"
+            tmp_path / "snapshots",
+            data / "radar.json",
+            feed_output=site / "feed.xml",
+            include_themes=True,
         )
     assert {item.relative_to(site).as_posix() for item in site.rglob("*") if item.is_file()} == {
         "data/benchmark-index.json"

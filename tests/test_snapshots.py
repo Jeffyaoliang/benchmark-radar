@@ -351,6 +351,7 @@ def test_rebuild_uses_site_catalog_when_dashboard_data_is_published_elsewhere(tm
         snapshot_dir,
         tmp_path / "custom" / "radar.json",
         feed_output=site_dir / "feed.xml",
+        include_themes=True,
     )
 
     assert (site_dir / "themes" / "index.html").exists()
@@ -375,6 +376,7 @@ def test_a_site_rebuild_without_a_catalog_publishes_nothing(tmp_path, site_shell
             snapshot_dir,
             site_dir / "data" / "radar.json",
             feed_output=site_dir / "feed.xml",
+            include_themes=True,
         )
 
     assert not (site_dir / "data" / "radar.json").exists()
@@ -417,6 +419,7 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
         snapshot_dir,
         data_output,
         feed_output=feed_output,
+        include_themes=True,
         benchmark_shard_dir=shard_dir,
     )
 
@@ -1901,3 +1904,14 @@ def test_primary_revision_retains_previously_merged_digest_evidence(reverse):
     score_item(revision, taxonomy, now=revision_run.generated_at)
     assert record["total_score"] == revision.total_score
     assert record["recommended"] is True
+
+
+def test_daily_rebuild_needs_no_catalog_or_category_page(tmp_path, site_shell):
+    snapshot_dir = tmp_path / "snapshots"
+    write_snapshot(radar_run(27), snapshot_dir)
+    site = tmp_path / "site"
+    site_shell(site)
+    rebuild_dashboard(snapshot_dir, site / "data" / "radar.json", feed_output=site / "feed.xml")
+    assert (site / "data" / "radar.json").is_file()
+    assert (site / "feed.xml").is_file()
+    assert not (site / "themes").exists()

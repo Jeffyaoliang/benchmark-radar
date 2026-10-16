@@ -1469,9 +1469,12 @@ def rebuild_dashboard(
     scores_path: Path | None = None,
     kw_bench_store_path: Path | None = None,
     benchmark_shard_dir: Path = DEFAULT_SHARD_DIR,
+    include_themes: bool = False,
 ) -> dict[str, Any]:
-    if feed_output is not None:
-        # A site build also publishes /themes/, which reads the unified
+    if include_themes and feed_output is not None:
+        # Only the explicit publishing build adds /themes/. Daily collection
+        # keeps its existing outputs and never requires catalog normalization.
+        # The category page reads the unified
         # catalog: gitignored, so a fresh runner that skipped
         # `normalize-catalog` has none. Validate it before the first write --
         # found later, the rebuild dies with the dashboard, feed and blog
@@ -1537,8 +1540,9 @@ def rebuild_dashboard(
         blog_entries = blog["sitemap_entries"]
         # Benchmark browsing uses the unified catalog, not discovery snapshots.
         # Missing catalog input fails visibly; never substitute a shortlist.
-        themes = write_themes(sitemap_output.parent)
-        page_entries.extend(themes["sitemap_entries"])
+        if include_themes:
+            themes = write_themes(sitemap_output.parent)
+            page_entries.extend(themes["sitemap_entries"])
     write_sitemap(
         snapshots,
         sitemap_output,

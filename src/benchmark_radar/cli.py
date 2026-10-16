@@ -560,6 +560,7 @@ def main() -> None:
             args.snapshot_dir,
             args.dashboard_output,
             feed_output=feed_output,
+            include_themes=True,
             registry_path=args.model_cards,
             scores_path=args.benchmark_scores,
             kw_bench_store_path=args.kw_bench_store,
