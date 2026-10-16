@@ -28,7 +28,6 @@ from benchmark_radar.snapshots import (
     validate_snapshot,
     write_snapshot,
 )
-from benchmark_radar.sources import GITHUB_RELEASE_PARSER_VERSION
 
 
 def radar_run(day: int = 27, *, title: str = "A New Evaluation Benchmark") -> RadarRun:
@@ -984,7 +983,8 @@ def test_migrate_backfills_bare_github_release_titles_idempotently(tmp_path):
 
     migrated = json.loads(first_pass)["evidence_items"][0]
     assert migrated["title"] == "modelscope/evalscope v1.11.0"
-    assert migrated["parser_version"] == GITHUB_RELEASE_PARSER_VERSION
+    assert migrated["parser_version"] == "github-releases/3"
+    assert migrated["metrics"] == record["metrics"]
     assert migrated["raw_payload_hash"] == original_hash
     assert dashboard["days"][0]["evidence_items"][0]["title"] == ("modelscope/evalscope v1.11.0")
     artifact = next(

@@ -20,6 +20,7 @@ the constraint that holds whether or not you open it.
 | [`docs/query-surfaces.md`](docs/query-surfaces.md) | Changing search, detail lookup, the CLI or HTTP query surface, or the consumer Skill | `QueryService` is the single source of truth. No interface-specific ranking, and no silent network fallback. |
 | [`principle.md`](principle.md) | Changing any benchmark-facing surface | Start from the full corpus across all sources. |
 | [`docs/agent-gotchas.md`](docs/agent-gotchas.md) | Verifying locally, merging, or answering a literature question | A local result counts only from a clean worktree with its own venv. |
+| [`maintainer-review.md`](maintainer-review.md) | Reviewing or merging a contributor PR | The human contributor answers the four questions, and the change takes the least resource-intensive route. |
 
 ## Glob rule: showcase and UI communication
 
@@ -65,6 +66,9 @@ Applies to `README*`, `docs/**`, `.github/ISSUE_TEMPLATE/**`, `site/**`,
 
 ## Working rules
 
+- When the contributor is not `ktwu01`, ask the four questions in
+  [`CONTRIBUTING.md`](CONTRIBUTING.md#before-you-start-a-pr) before
+  substantive work.
 - Finish the task without nudges. Stop only for a merge, a credential, or a
   destructive action.
 - If a request has two opposite readings, state your reading in one line, then
@@ -75,17 +79,8 @@ Applies to `README*`, `docs/**`, `.github/ISSUE_TEMPLATE/**`, `site/**`,
 ## Branches and pull requests
 
 - Never push to `main`. Every change goes through a pull request.
-- Start each task from the latest `main`:
-
-      git fetch origin main:main
-      git switch --no-track -c <branch> main
-      git push -u origin <branch>
-
-  The first command updates local `main` without a checkout. If it fails,
-  local `main` has diverged: stop and report it. Keep `--no-track` so a bare
-  `git push` never targets `main`.
-- To update an existing branch, run `git fetch origin main:main`, then
-  `git rebase main`. Re-read the diff before you push.
+- Start each branch from the latest `main`, and keep it on the latest `main`
+  until it merges. Re-read the diff before you push.
 - Never merge a pull request unless the user asks. When asked, use a merge
   commit. Do not squash.
 - Agents: comment `330226 <model-id>` on every pull request you open, for

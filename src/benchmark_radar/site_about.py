@@ -77,9 +77,8 @@ _ELSEWHERE: tuple[tuple[str, str, str], ...] = (
     ),
     (
         "Download the full dataset",
-        "https://github.com/ktwu01/benchmark-radar/releases/download/cli-data/"
-        "benchmark-radar-data.zip",
-        "The benchmark catalog, detail records, and daily discovery snapshots in one ZIP.",
+        "https://huggingface.co/datasets/ktwu01/benchmark-radar",
+        "The benchmark catalog, scores, and daily discovery records.",
     ),
     (
         "Build log: every day of this project, written up",

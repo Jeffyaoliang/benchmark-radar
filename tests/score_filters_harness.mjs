@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SKYLINE_START_DATE, benchmarkDate, benchmarkDateLabel, skylineModel as buildSkylineModel, skylineGeometry, skylineDateLanes, skylineScoreLanes, skylineCapPositions, skylineFrontierSteps, scorePopulation, matchesScoreCutoff } from '../site/assets/skyline.js';
+import { searchCatalog } from '../site/assets/catalog-search.js';
 const source = readFileSync('site/assets/app.js', 'utf8');
 function fn(name) {
   const start = source.indexOf(`function ${name}(`);
@@ -51,7 +52,7 @@ state.benchmarkIndex = [
 state.lscore = 70;
 const scoreNames = ['scoreRecord','matchesScoreFilter','scoreBrowseRows','saturationRows','latestMatchingModel','scoreRankingRows','benchmarkQueryIds','searchBenchmarkIndex','foldName','frontierDefaultEntry','catalogDisplayFactor'];
 state.benchmarkQuery = '';
-const scores = new Function('state', 'scorePopulation', 'matchesScoreCutoff', 'SKYLINE_START_DATE', `${scoreNames.map(fn).join('\n')}\nreturn {${scoreNames.join(',')}};`)(state, scorePopulation, matchesScoreCutoff, SKYLINE_START_DATE);
+const scores = new Function('state', 'scorePopulation', 'matchesScoreCutoff', 'SKYLINE_START_DATE', 'searchCatalog', `${scoreNames.map(fn).join('\n')}\nreturn {${scoreNames.join(',')}};`)(state, scorePopulation, matchesScoreCutoff, SKYLINE_START_DATE, searchCatalog);
 assert.deepEqual(scores.scoreBrowseRows().map(r=>r.id), ['external','curated','missing']);
 state.benchmarkIndex[0].scored_models = [{name:'GPT-5.6 Sol',date:'2026-06-01',date_precision:'document_publication'}];
 state.benchmarkIndex[1].scored_models = [{name:'GPT-5.6 Sol (high)',date:'2026-09-01',date_precision:'model_announcement'}];
@@ -93,12 +94,14 @@ const browsing = scores.saturationRows().map(row=>row.id);
 assert(!browsing.includes('old95'));
 assert(browsing.includes('unscored'));
 state.benchmarkQuery='NeedleBench';
-assert.deepEqual(scores.saturationRows().map(row=>row.id),['old95','unscored']);
+assert.deepEqual(scores.saturationRows().map(row=>row.id),['unscored','old95'],'a query lists rows in QueryService search rank');
 assert.equal(state.lscore,70,'search must not reset the shared slider');
 state.benchmarkQuery='lookup';
 assert.equal(scores.saturationRows().length,fixtureRecords.length);
 assert.equal(new Set(scores.saturationRows().map(row=>row.source)).size,4);
-state.benchmarkQuery='not in catalog';
+// No query word occurs in any record. ("not in catalog" now matches the
+// record named Catalog, because search matches whole words as QueryService does.)
+state.benchmarkQuery='zzzabsent';
 assert.deepEqual(scores.saturationRows(),[]);
 state.benchmarkQuery='';
 assert.deepEqual(scores.saturationRows().map(row=>row.id),browsing,'clearing search restores the cutoff');
@@ -512,16 +515,18 @@ assert.equal(buildSkylineModel(catalog,100,unscoredSelection).visible.length,0,
 console.log('Full-corpus coverage, source parity, unknown measurements, score slicing, Pareto, and SVG construction passed.');
 
 // Alias, domain and no-score searches apply to every source with the same ranking.
-const nameSearch = new Function('foldName', `${fn('searchBenchmarkIndex')}\nreturn searchBenchmarkIndex;`)(
-  value=>String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,''));
+// The site ranks with QueryService's algorithm (#710), which matches whole
+// words, so the alias spells HLE as its own word; the expected order is the
+// one QueryService returns for these records.
+const nameSearch = new Function('searchCatalog', `${fn('searchBenchmarkIndex')}\nreturn searchBenchmarkIndex;`)(searchCatalog);
 const searchable = [
-  {slug:'prefix',name:'AutomationBench',source:'model_reports',aliases:['HLEAutomationBench']},
+  {slug:'prefix',name:'AutomationBench',source:'model_reports',aliases:['HLE AutomationBench']},
   {slug:'exact',name:'Humanity Last Exam',source:'artificial_analysis',aliases:['HLE']},
   {slug:'domain',name:'Unscored test',source:'opencompass_hub',categories:['science']},
 ];
-assert.deepEqual(nameSearch(searchable,'HLE').map(row=>row.slug),['exact','prefix']);
+assert.deepEqual(nameSearch(searchable,'HLE').map(row=>row.slug),['prefix','exact']);
 assert.deepEqual(nameSearch(searchable,'science').map(row=>row.slug),['domain']);
-assert.deepEqual(nameSearch(searchable.map(row=>({...row,source:'another_source'})),'HLE').map(row=>row.slug),['exact','prefix']);
+assert.deepEqual(nameSearch(searchable.map(row=>({...row,source:'another_source'})),'HLE').map(row=>row.slug),['prefix','exact']);
 
 // Execute the shared slider handler against both sets of controls.
 state.benchmarkIndex = fixtureRecords;
@@ -556,7 +561,7 @@ state.benchmarkVisibleLimit=100;
 filters.setScoreFilter(10);
 assert.equal(saturationRenders,1,'the slider must not rebuild an unfiltered search');
 assert.equal(state.benchmarkVisibleLimit,100,'changing the paused filter must not reset search pagination');
-assert.deepEqual(scores.saturationRows().map(row=>row.id),['old95','unscored']);
+assert.deepEqual(scores.saturationRows().map(row=>row.id),['unscored','old95'],'a query lists rows in QueryService search rank');
 assert.equal(state.lscore,10);
 state.benchmarkQuery='';
 assert(!scores.saturationRows().some(row=>row.id==='old95'));

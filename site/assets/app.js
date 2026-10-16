@@ -1,3 +1,4 @@
+import { searchCatalog, searchCatalogMatches } from "./catalog-search.js";
 import { SKYLINE_DOMAINS, SKYLINE_START_DATE, benchmarkDateLabel, skylineModel, skylineGeometry, skylineDateLanes, skylineScoreLanes, skylineCapPositions, skylineFrontierSteps, scorePopulation, matchesScoreCutoff, scoreBrowserSummary } from "./skyline.js";
 import {
   CATEGORY_COLORS,
@@ -1221,6 +1222,8 @@ const I18N = {
     "data quality": "数据质量",
     "no scores collected": "未采集到分数",
     "{shown} of {total} matches": "共 {total} 条匹配，已显示 {shown} 条",
+    "{full} match every word · {partial} share only some": "{full} 条包含全部关键词 · {partial} 条只包含部分",
+    "No benchmark matches every word; these share only some": "没有 benchmark 包含全部关键词，以下只包含部分",
     "No benchmark matches that name": "没有匹配该名称的benchmark",
     "Benchmark search is unavailable right now": "benchmark搜索暂时不可用",
     "not recorded": "未记录",
@@ -4657,42 +4660,37 @@ function foldName(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-// Names and aliases use the same matching rules for every source.
+// The site ranks the catalog with QueryService's lexical algorithm, so a task
+// described only in a record's prose is found here as it is by the CLI (#710).
 function searchBenchmarkIndex(records, query) {
-  const needle = foldName(query);
-  if (!needle) return [];
-  const scored = [];
-  for (const record of records) {
-    const name = foldName(record.name);
-    // The crawled catalog carries no domain, so publisher and modality are the
-    // fields a "tasks, domains" query can land on here.
-    const names = [record.name, ...(record.aliases || [])].map(foldName);
-    const named = names.some((value) => value.includes(needle));
-    if (!named && !foldName(record.publisher).includes(needle) && !foldName(record.modality).includes(needle)
-      && !(record.categories || []).some((value) => foldName(value).includes(needle))) {
-      continue;
-    }
-    // Prefix beats substring, then a record that can answer more of the
-    // reader's questions beats one that cannot, then shorter names first so
-    // "MMLU" outranks "MMLU-Pro-Extended" for the query "mmlu".
-    const answers =
-      (record.publisher ? 1 : 0) +
-      (record.openness !== "unknown" ? 1 : 0) +
-      (record.has_size ? 1 : 0) +
-      (record.score_count > 0 ? 1 : 0);
-    scored.push({
-      record,
-      rank: [names.includes(needle) ? 0 : named ? (names.some((value) => value.startsWith(needle)) ? 1 : 2) : 3, -answers, name.length],
-    });
+  return searchCatalog(records, query);
+}
+
+// Slugs that contain every query word. The search also keeps candidates that
+// share only one word, as QueryService does; a status line must not call those
+// matches (QueryService reports them as partial_candidates_only).
+let fullMatchCache = { records: null, query: "", slugs: new Set() };
+function fullMatchSlugs(records, query) {
+  if (fullMatchCache.records !== records || fullMatchCache.query !== query) {
+    const slugs = new Set(searchCatalogMatches(records, query)
+      .filter((match) => !match.missing.length).map((match) => match.record.slug));
+    fullMatchCache = { records, query, slugs };
   }
-  scored.sort(
-    (a, b) =>
-      a.rank[0] - b.rank[0] ||
-      a.rank[1] - b.rank[1] ||
-      a.rank[2] - b.rank[2] ||
-      a.record.name.localeCompare(b.record.name),
-  );
-  return scored.map((item) => item.record);
+  return fullMatchCache.slugs;
+}
+
+// "12 match every word · 30 share only some", or nothing when every candidate
+// is a full match.
+function partialMatchNote(rows, query, idOf) {
+  if (!query || !rows.length) return "";
+  const full = fullMatchSlugs(state.benchmarkIndex || [], query);
+  const fullCount = rows.filter((row) => full.has(idOf(row))).length;
+  if (fullCount === rows.length) return "";
+  return fullCount
+    ? t("{full} match every word · {partial} share only some", {
+      full: fullCount.toLocaleString(), partial: (rows.length - fullCount).toLocaleString(),
+    })
+    : t("No benchmark matches every word; these share only some");
 }
 
 // Openness is a three-state answer and `unknown` is the common one. It renders
@@ -4791,7 +4789,11 @@ function saturationRows() {
   // Search is a lookup across the whole catalog. It temporarily bypasses the
   // browsing cutoff without changing the shared slider value.
   const rows = scoreBrowseRows(matches || state.benchmarkModel ? 100 : state.lscore);
-  const named = matches ? rows.filter((row) => matches.has(row.id)) : rows;
+  // A query lists results in search rank. The search keeps weak candidates that
+  // share one query word (#710), so browse order would put an unrelated scored
+  // benchmark above the description match the reader was looking for.
+  const rank = matches ? new Map([...matches].map((id, index) => [id, index])) : null;
+  const named = rank ? rows.filter((row) => rank.has(row.id)).sort((a, b) => rank.get(a.id) - rank.get(b.id)) : rows;
   if (!state.benchmarkModel) return named;
   const needle = foldName(state.benchmarkModel);
   if (!needle) return [];
@@ -4929,6 +4931,7 @@ function renderBenchmarkSearch() {
   status.textContent = [t("{shown} of {total} matches")
     .replace("{shown}", shown.length.toLocaleString())
     .replace("{total}", rows.length.toLocaleString()),
+    partialMatchNote(rows, state.benchmarkQuery, (row) => row.id),
     state.benchmarkQuery || state.benchmarkModel ? t("Searching all benchmarks (score cutoff paused)") : "", coverage].filter(Boolean).join(" · ");
   if (!rows.length) {
     container.append(element("p", { className: "empty-state", text: loading
@@ -9006,7 +9009,11 @@ function openContact(updateUrl = true) {
       element("a", {
         className: "primary-link",
         text: t("Download"),
-        attrs: { href: "/data/radar.json" },
+        attrs: {
+          href: "https://huggingface.co/datasets/ktwu01/benchmark-radar",
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
       }),
       element("a", {
         className: "secondary-link",

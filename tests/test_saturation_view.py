@@ -208,12 +208,27 @@ def test_the_picker_and_the_search_both_cover_both_layers():
 
 
 def test_catalog_search_matches_aliases_without_source_preference():
+    # The site delegates to the QueryService port (#710). Aliases are name
+    # evidence, and no source is preferred: the sort key carries no source term,
+    # so a record's origin only matters as low-weight searchable text.
     script = source("site/assets/app.js")
     search = script.split("function searchBenchmarkIndex(records, query)", 1)[1].split("\n}", 1)[0]
-    assert "record.aliases || []" in search
-    assert "names.includes(needle) ? 0" in search
-    assert "record.source" not in search
+    assert "searchCatalog(records, query)" in search
     assert "includeUnscored" not in search
+    module = source("site/assets/catalog-search.js")
+    assert "record.aliases && record.aliases.length" in module
+    sort_key = module.split("function sortKey(", 1)[1].split("\n}", 1)[0]
+    assert "record.source" not in sort_key
+
+
+def test_a_query_lists_saturation_rows_in_search_rank():
+    # Search keeps weak candidates that share one query word (#710). Filtering
+    # in browse order put scored but unrelated benchmarks above R2HandoverSim
+    # for "robot grasp planning", so a query must keep the search rank.
+    script = source("site/assets/app.js")
+    rows = script.split("function saturationRows()", 1)[1].split("\n}", 1)[0]
+    assert "[...matches].map((id, index) => [id, index])" in rows
+    assert "rank.get(a.id) - rank.get(b.id)" in rows
 
 
 def test_missing_catalog_fails_without_a_preferred_source_fallback():
@@ -311,11 +326,11 @@ def test_the_search_reach_line_counts_only_what_it_can_return():
 
 
 def test_search_matches_the_fields_the_placeholder_promises():
-    script = source("site/assets/app.js")
-    search = script.split("function searchBenchmarkIndex(records, query)", 1)[1].split("\n}", 1)[0]
-    assert "record.categories || []" in search
-    assert "foldName(record.publisher).includes(needle)" in search
-    assert "foldName(record.modality).includes(needle)" in search
+    # Descriptions are searched too, which is what #710 was missing.
+    module = source("site/assets/catalog-search.js")
+    fields = module.split("const FIELD_ORDER = [", 1)[1].split("]", 1)[0]
+    for field in ("name", "description", "categories", "publisher", "modality"):
+        assert f'"{field}"' in fields
 
 
 def test_a_link_to_an_unscored_benchmark_uses_the_full_catalog():

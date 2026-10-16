@@ -47,7 +47,7 @@ from .science_domains import science_domains_for_record
 from .site_about import write_about
 from .site_pages import DEFAULT_SHARD_DIR, benchmark_sitemap_entries
 from .site_seo import site_lastmod, write_sitemap
-from .sources import GITHUB_RELEASE_PARSER_VERSION, github_release_title
+from .sources import github_release_title
 from .themes import load_theme_catalog, write_themes
 
 SCHEMA_VERSION = 2
@@ -1728,6 +1728,8 @@ def _backfill_github_release_titles(snapshot: dict[str, Any]) -> int:
         if corrected == current:
             continue
         record["title"] = corrected
-        record["parser_version"] = GITHUB_RELEASE_PARSER_VERSION
+        # This migration only reparses titles. It does not reinterpret legacy
+        # counters under the /4 missing-metric contract.
+        record["parser_version"] = "github-releases/3"
         changed += 1
     return changed

@@ -874,8 +874,8 @@ def test_issue_298_the_sidebar_row_leads_with_the_benchmark_name():
     assert 'className: "benchmark-result-name"' in row
     assert "record.domain" not in row
     assert "record.released" not in row
-    matcher = script.split("function searchBenchmarkIndex(", 1)[1].split("\nfunction ", 1)[0]
-    assert "record.categories" in matcher
+    fields = source("site/assets/catalog-search.js").split("const FIELD_ORDER = [", 1)[1]
+    assert '"categories"' in fields.split("]", 1)[0]
 
 
 def test_issue_288_the_charts_draw_a_running_best_not_an_invented_cost_axis():
