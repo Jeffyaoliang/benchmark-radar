@@ -60,7 +60,27 @@ _TITLE_FACETS = ("paper", "repo", "dataset")
 _RELATED_LIMIT = 8
 # Tags that describe a record's status rather than what it tests. Two pages that
 # are both "Unsupported" in OpenCompass share nothing a reader came looking for.
-_NON_TOPICAL_CATEGORIES = frozenset({"Unsupported", "不支持", "Open-Source", "开源收录"})
+_NON_TOPICAL_CATEGORIES = frozenset(
+    {
+        "Unsupported",
+        "不支持",
+        "Open-Source",
+        "开源收录",
+        "Official",
+        "官方自建",
+        "Co-Built",
+        "合作共建",
+        "Supported",
+        "支持",
+    }
+)
+# Repository URLs that host multiple distinct benchmark projects. Sharing a
+# container monorepo does not indicate that two benchmarks are related.
+_CONTAINER_MONOREPOS = frozenset(
+    {
+        "https://github.com/google-research/google-research",
+    }
+)
 _DOCUMENT_LIMIT = 12
 
 _DIR_DESCRIPTION = (
@@ -504,13 +524,16 @@ def _related_section(slug: str, record: dict[str, Any], context: CatalogContext)
             shared_artifacts[other] += 1
             names[other] = name
     overlap: dict[str, float] = defaultdict(float)
-    for category in {str(item) for item in record.get("categories") or []}:
+    has_category_overlap: dict[str, bool] = {}
+    categories = sorted({str(item) for item in record.get("categories") or []})
+    for category in categories:
         if category in _NON_TOPICAL_CATEGORIES:
             continue
         members = context.by_category.get(category, ())
         for name, other in members:
             overlap[other] += 1.0 / len(members)
             names[other] = name
+            has_category_overlap[other] = True
     names.pop(slug, None)
     if not names:
         return ""
@@ -526,8 +549,13 @@ def _related_section(slug: str, record: dict[str, Any], context: CatalogContext)
         f'<li><a href="{_canonical(other)}">{_esc(names[other])}</a></li>'
         for other in ranked[:_RELATED_LIMIT]
     )
-    words = _category_words(record)
-    heading = f"Related {words} benchmarks" if words else "Related benchmarks"
+    # Use a neutral heading when matches are artifact-only or mixed
+    top_has_category = has_category_overlap.get(ranked[0], False) if ranked else False
+    if top_has_category:
+        words = _category_words(record)
+        heading = f"Related {words} benchmarks" if words else "Related benchmarks"
+    else:
+        heading = "Related benchmarks"
     return f'<section><h2>{_esc(heading)}</h2><ul class="links">{items}</ul></section>'
 
 
@@ -754,6 +782,8 @@ def _catalog_context(loaded: list[tuple[str, dict[str, Any]]]) -> CatalogContext
         for category in dict.fromkeys(str(item) for item in record.get("categories") or []):
             by_category[category].append((name, slug))
         for _, _, url in _artifacts(record):
+            if url in _CONTAINER_MONOREPOS:
+                continue
             by_artifact[url].append((name, slug))
     return CatalogContext(
         shared_names=frozenset(name for name, count in counts.items() if count > 1),
