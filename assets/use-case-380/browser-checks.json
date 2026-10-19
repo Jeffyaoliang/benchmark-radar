@@ -1,0 +1,38 @@
+[
+  {
+    "width": 320,
+    "before": {
+      "blocked": true,
+      "hit": "masthead"
+    },
+    "position": "static",
+    "records": 3228,
+    "agents": 197,
+    "controlsClickable": true,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "before": {
+      "blocked": true,
+      "hit": "masthead"
+    },
+    "position": "static",
+    "records": 3228,
+    "agents": 197,
+    "controlsClickable": true,
+    "pageErrors": []
+  },
+  {
+    "width": 1440,
+    "before": {
+      "blocked": true,
+      "hit": "masthead"
+    },
+    "position": "static",
+    "records": 3228,
+    "agents": 197,
+    "controlsClickable": true,
+    "pageErrors": []
+  }
+]

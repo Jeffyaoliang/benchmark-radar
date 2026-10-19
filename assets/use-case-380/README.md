@@ -52,6 +52,25 @@ Site rebuilds include `/themes/` as a standalone sitemap entry only when
 `llms.txt` index links to the same canonical URL. The rebuild regression covers
 both publication and the absence of a route when the static page is missing.
 
+### Review verification (2026-10-19)
+
+All six required CI commands passed in order from a fresh detached worktree at `ab61a93`, with its own Python 3.12 venv, recursive submodules, Node 22 and Bash 5: `ruff check .`, `ruff format --check .`, `normalize-catalog`, `classify`, `build-data-release`, `pytest -q`. **1973 passed in 144.70s (0:02:24)**.
+
+At code commit `ab61a93`, including main `fdf202c`, Chromium checks reproduced
+the original masthead collision at 320, 390 and 1440 px using the previous CSS.
+With the fix, the controls scroll normally and can be clicked after returning
+from a 700 px scroll. Search, category selection and reset work; all 3,228
+record IDs are preserved, with no page errors or horizontal overflow.
+
+- [Phone controls](themes-controls-390.png), 390 × 844.
+- [Desktop controls](themes-controls-1440.png), 1440 × 900.
+- [Browser check results](browser-checks.json), including the 320 px check.
+
+The sitemap rebuild regression fails against the old snapshot builder and
+passes after registering the static page. Both the published-page case and a
+build without that page are covered. The actual rebuilt sitemap lists
+`https://benchmark-radar.org/themes/` exactly once.
+
 ## Screenshots and checks
 
 These captures use code `cdcc924e`, including main `5d86e015`:
