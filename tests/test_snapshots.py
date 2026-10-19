@@ -332,13 +332,18 @@ def test_rebuild_can_publish_the_feed_from_the_same_snapshot_history(tmp_path, s
     ]
 
 
-def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
+@pytest.mark.parametrize("include_themes", [False, True])
+def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell, include_themes):
     """The Pages build must publish the URL advertised by robots.txt."""
     snapshot_dir = tmp_path / "snapshots"
     write_snapshot(radar_run(27), snapshot_dir)
     data_output = tmp_path / "site" / "data" / "radar.json"
     feed_output = tmp_path / "site" / "feed.xml"
     site_shell(tmp_path / "site")
+    if include_themes:
+        themes = tmp_path / "site" / "themes" / "index.html"
+        themes.parent.mkdir()
+        themes.write_bytes(Path("site/themes/index.html").read_bytes())
     shard_dir = tmp_path / "shards"
     shard_dir.mkdir()
     for slug in ("alpha-bench", "zeta-bench"):
@@ -391,6 +396,7 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
         f"{SITE_URL}/blog/archive/",
         f"{SITE_URL}/blog/2026-07-27/",
         f"{SITE_URL}/about/",
+        *([f"{SITE_URL}/themes/"] if include_themes else []),
     ]
     lastmods = [node.text for node in root.findall("sm:url/sm:lastmod", ns)]
     # The two shards carry no dated evidence, so their pages claim no lastmod

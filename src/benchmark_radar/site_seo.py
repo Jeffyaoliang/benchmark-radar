@@ -38,6 +38,9 @@ INDEXABLE_VIEWS: tuple[tuple[str, str], ...] = (
     ("Scoring rubric", "/rubric/"),
 )
 
+# Hand-written public pages are indexed only when present in the publish tree.
+INDEXABLE_STATIC_PAGES = ("/themes/",)
+
 BENCHMARK_DIRECTORY_PATH = "/benchmarks/"
 
 ET.register_namespace("sm", SITEMAP_NAMESPACE)

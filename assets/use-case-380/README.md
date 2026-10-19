@@ -17,8 +17,9 @@ python -m http.server 8942 --bind 127.0.0.1 --directory site
 
 Open `http://127.0.0.1:8942/themes/`. Normalization provides the shared catalog
 and linked benchmark detail pages; it does not generate the category browser.
-The daily workflow, snapshot writer, rebuild and classification code are unchanged
-from main. No new workflow step, dependency or snapshot field is added.
+The daily workflow and collection pipeline stay unchanged. Site rebuilds list
+`/themes/` in the sitemap when its static HTML is present, and `llms.txt` links
+to the browser. No new workflow step, dependency or snapshot field is added.
 
 ## Coverage and controls
 
@@ -38,6 +39,18 @@ and then applies the category selection. Full and partial lexical matches are
 labelled separately. Clearing both controls restores every record. Catalog load
 or validation failure shows an error and no plausible subset; without JavaScript,
 the page offers the full catalog download instead.
+
+## Review fixes
+
+The category controls scroll with the page instead of sticking beneath the
+site's independently sticky masthead. This avoids overlapping headers at both
+phone and desktop widths without another header-height observer or breakpoint
+formula. Scroll back to the controls to change the search or category.
+
+Site rebuilds include `/themes/` as a standalone sitemap entry only when
+`themes/index.html` exists in the publish directory. The agent-facing
+`llms.txt` index links to the same canonical URL. The rebuild regression covers
+both publication and the absence of a route when the static page is missing.
 
 ## Screenshots and checks
 
@@ -68,11 +81,11 @@ Measured from this build, with gzip mtime=0 (raw / gzipped bytes):
 | --- | ---: | ---: |
 | New static HTML | 11,446 | 3,786 |
 | New category browser script | 6,088 | 2,231 |
-| New category styles | 2,143 | 795 |
+| New category styles | 2,107 | 773 |
 | Existing shared search module | 9,867 | 3,577 |
 | Existing shared catalog | 9,567,593 | 1,383,426 |
 
-New page resources total 6,812 gzipped bytes. A cold visit still needs the shared
+New page resources total 6,790 gzipped bytes. A cold visit still needs the shared
 catalog and existing styles/scripts; this is not a claim that the whole visit
 costs 6.8 KB. Default HTTP caching is used. A controlled gzip/cache-header server
 confirmed the catalog came from browser cache after visiting Saturation. The

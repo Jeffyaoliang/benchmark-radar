@@ -9,6 +9,7 @@ from benchmark_radar.feed import SITE_URL
 from benchmark_radar.site_about import ABOUT_PATH, ALIAS_PATHS
 from benchmark_radar.site_seo import (
     BENCHMARK_DIRECTORY_PATH,
+    INDEXABLE_STATIC_PAGES,
     INDEXABLE_VIEWS,
     sitemap_tree,
     write_sitemap,
@@ -226,6 +227,7 @@ def test_llms_txt_lists_every_page_the_sitemap_publishes():
         BLOG_PATH,
         BLOG_ARCHIVE_PATH,
         ABOUT_PATH,
+        *INDEXABLE_STATIC_PAGES,
     ]
 
     for path in published:
