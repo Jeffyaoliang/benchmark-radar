@@ -162,7 +162,11 @@ def _source_label(record: dict[str, Any]) -> str | None:
 
 def _category_words(record: dict[str, Any]) -> str:
     """Category slugs as words, because `coding_agent` is not a search term."""
-    categories = [str(item).replace("_", " ").strip() for item in (record.get("categories") or [])]
+    categories = [
+        str(item).replace("_", " ").strip()
+        for item in (record.get("categories") or [])
+        if str(item) not in _NON_TOPICAL_CATEGORIES
+    ]
     return ", ".join(item for item in categories if item)
 
 
