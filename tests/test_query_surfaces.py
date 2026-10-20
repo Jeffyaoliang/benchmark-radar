@@ -692,8 +692,9 @@ def test_cli_labels_partial_candidates_without_hiding_them(tmp_path: Path, capsy
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "2 of 2 partial lexical candidates" in output
-    assert "none matched every query token" in output
+    assert "No benchmark matched every query token" in output
+    assert "partial candidates are not answers" in output
+    assert "Showing 2 of 2 partial lexical candidates" in output
     assert "Agent Workbench" in output
 
 
