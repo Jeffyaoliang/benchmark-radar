@@ -156,7 +156,7 @@ const names = [
 ];
 const models = new Function(
   ...Object.keys(env),
-  `${source.match(/const MODEL_PAGE_COLUMNS = .*;/)[0]}\n${fn("element")}\n${fn("replaceChildren")}\n${fn("debounce")}\n${block}\nreturn {${names.join(",")}};`,
+  `${source.match(/const MODEL_PAGE_COLUMNS = .*;/)[0]}\n${fn("safeHttpUrl")}\n${fn("element")}\n${fn("replaceChildren")}\n${fn("debounce")}\n${block}\nreturn {${names.join(",")}};`,
 )(...Object.values(env));
 const { state } = env;
 
@@ -516,4 +516,83 @@ const fallbackCell = byId("models-list").querySelector('button.models-cell[data-
 fallbackCell.click();
 await tick();
 assert.match(byId("models-panel").textContent, /67%/);
+// The panel links only http(s) sources, draws lower-is-better bars so the
+// best score is longest, and names split checkpoints in the chart.
+reset(payload);
+models.renderModels();
+shards.set("llm-stats-b4", { scores_by_source: { llm_stats: {
+  series: { direction: "lower_is_better", score_summary: { display_multiplier: 1 } },
+  rows: [
+    { model_name: "Acme-4", organization: "Acme", value: 9.76, source_url: "javascript:alert(1)", source_title: "bad" },
+    { model_name: "Best", organization: "Other", value: 5.81, source_url: "https://example.org/r", source_title: "good" },
+    { model_name: "Twin", organization: "Other", model_id: "twin-0513", value: 7 },
+    { model_name: "Twin", organization: "Other", model_id: "twin-0806", value: 8 },
+  ],
+} } });
+byId("models-list").querySelector('button.models-cell[data-model="acme-4"]').click();
+await tick();
+const panelLinks = byId("models-panel").querySelectorAll("a").map((link) => link.getAttribute("href"));
+assert(!panelLinks.some((href) => String(href).startsWith("javascript:")));
+const bars = byId("models-panel").querySelector("ol.models-panel-chart").querySelectorAll("li");
+const shareOf = (label) => Number(bars.find((bar) => bar.textContent.startsWith(label)).querySelector("span.models-panel-bar").getAttribute("style").split(":")[1]);
+assert.equal(shareOf("Best"), 1);
+assert(shareOf("Acme-4") < shareOf("Best"));
+assert.match(byId("models-panel").textContent, /Lower is better: the longest bar is the lowest score\./);
+const chartText = byId("models-panel").querySelector("ol.models-panel-chart").textContent;
+assert.match(chartText, /Twin \(twin-0513\)/);
+assert.match(chartText, /Twin \(twin-0806\)/);
+// Every lower-is-better bar stays visible, ordered best to worst.
+assert(shareOf("Acme-4") > 0 && shareOf("Twin (twin-0513)") > shareOf("Twin (twin-0806)"));
+// Lower-is-better bars are the best score's ratio to each value, so the gap
+// is drawn as large as the data has it: 5.81 vs 9.76 is 100% vs 60%.
+assert.equal(shareOf("Acme-4"), Number((5.81 / 9.76).toFixed(3)));
+const lowerBars = async (rows) => {
+  shards.set("llm-stats-b4", { scores_by_source: { llm_stats: {
+    series: { direction: "lower_is_better", score_summary: { display_multiplier: 1 } }, rows,
+  } } });
+  byId("models-list").querySelector('button.models-cell[data-model="acme-4"]').click();
+  await tick();
+  const items = byId("models-panel").querySelector("ol.models-panel-chart").querySelectorAll("li");
+  return (label) => Number(items.find((bar) => bar.textContent.startsWith(label)).querySelector("span.models-panel-bar").getAttribute("style").split(":")[1]);
+};
+// Near-equal scores draw near-equal bars, not 100% vs 10%.
+const nearEqual = await lowerBars([
+  { model_name: "Acme-4", organization: "Acme", value: 5.82 },
+  { model_name: "Best", organization: "Other", value: 5.81 },
+]);
+assert(nearEqual("Best") - nearEqual("Acme-4") < 0.01);
+// A winning 0 has no ratio; the other bars stay visible rather than vanish.
+const zeroBest = await lowerBars([
+  { model_name: "Acme-4", organization: "Acme", value: 9.76 },
+  { model_name: "Best", organization: "Other", value: 0 },
+]);
+assert.equal(zeroBest("Best"), 1);
+assert(zeroBest("Acme-4") > 0);
+// The note on direction comes after the chart.
+const panelChildren = byId("models-panel").querySelector("div.models-panel-body").children;
+assert(panelChildren.findIndex((child) => child.tagName === "OL") < panelChildren.findIndex((child) => /Lower is better/.test(child.textContent || "")));
+
+// A label split across the corpus is named by ID even on a record where only
+// one of its checkpoints reports.
+reset(splitPayload);
+state.modelsQuery = "acme-9";
+models.renderModels();
+shards.set("llm-stats-b6", { scores_by_source: { llm_stats: {
+  series: { direction: "higher_is_better", score_summary: { display_multiplier: 1, unit: "percent" } },
+  rows: [{ model_name: "Acme-9", organization: "Acme", model_id: "acme-9-0806", value: 85.7, source: "llm_stats" }],
+} } });
+byId("models-list").querySelector('button.models-cell[data-model="acme-9@new"]').click();
+await tick();
+assert.match(byId("models-panel").querySelector("ol.models-panel-chart").textContent, /Acme-9 \(acme-9-0806\)/);
+// The split is the source's: the same label from another source keeps its
+// plain name, however that source keys its rows.
+shards.set("llm-stats-b6", { scores_by_source: { model_reports: {
+  series: { direction: "higher_is_better", score_summary: { display_multiplier: 1, unit: "percent" } },
+  rows: [{ model_name: "Acme-9", organization: "Acme", model_id: "[\"Acme\",\"Acme-9\"]", value: 80, source: "model_reports" }],
+} } });
+byId("models-list").querySelector('button.models-cell[data-model="acme-9@new"]').click();
+await tick();
+assert.doesNotMatch(byId("models-panel").querySelector("ol.models-panel-chart").textContent, /\(\[/);
+state.modelsQuery = "";
+
 console.log("Models matrix, shared-benchmark average rules and the three #862 defects passed.");

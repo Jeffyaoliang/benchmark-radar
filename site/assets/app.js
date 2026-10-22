@@ -486,6 +486,7 @@ const I18N = {
     "Previous": "上一页",
     "Next": "下一页",
     "Same setting only: {setting}": "只比较相同设置：{setting}",
+    "Lower is better: the longest bar is the lowest score.": "越低越好：最长的条是最低的分数。",
     "Only benchmarks all shown models share": "只看这些模型共有的 benchmark",
     "{from}–{to} of {n} models, newest first; a model's configurations stay together": "{n} 个模型中的第 {from}–{to} 个，从新到旧；同一模型的各配置排在一起",
     "{from}–{to} of {n} models, most benchmarks first": "{n} 个模型中的第 {from}–{to} 个，按有成绩的 benchmark 数从多到少",
@@ -6455,7 +6456,7 @@ function modelMatrixTable(columns, data, recordsByKey) {
 // The chart ranks only runs in the same comparable group as the selected
 // model's best score: runs under another protocol or scaffold on the same
 // record are not one ordered comparison. Every row of the model is listed.
-function modelPanelRows(shard, model, scored, direction) {
+function modelPanelRows(shard, model, scored, direction, splitLabels = new Set()) {
   const rows = Object.values(shard?.scores_by_source || {}).flatMap((payload) => payload.rows || []);
   const better = (a, b) => (direction === "lower_is_better" ? a.value < b.value : a.value > b.value);
   const mine = rows.filter((row) => (row.model_name || "").toLowerCase() === model.name.toLowerCase()
@@ -6480,7 +6481,13 @@ function modelPanelRows(shard, model, scored, direction) {
   // The selected column's own entry: its checkpoint when it has one.
   const own = (row) => (row.model_name || "").toLowerCase() === model.name.toLowerCase()
     && (!model.sourceModelId || row.model_id === model.sourceModelId);
-  return { mine, best: [...best.values()], lead, own };
+  // How a chart entry is named: the source's checkpoint ID is added when it
+  // files several under one label, so 88.7 and 85.7 say whose they are.
+  // A label split anywhere in the corpus (splitLabels) is named by ID even on
+  // a record where only one of its checkpoints reports.
+  const split = (row) => ids.get(label(row))?.size > 1 || splitLabels.has(`${row.source}\u0000${label(row)}`);
+  const name = (row) => (split(row) && row.model_id ? `${row.model_name} (${row.model_id})` : row.model_name);
+  return { mine, best: [...best.values()], lead, own, name };
 }
 
 function closeModelPanel({ restoreFocus = true } = {}) {
@@ -6510,7 +6517,7 @@ function openModelPanel(model, record, data) {
         element("h2", { text: record.name }),
         element("p", { className: "models-col-facts" }, [
           element("span", { className: "models-source", text: scoreSourceLabel(record.source) }),
-          document.createTextNode(` ${model.name} · ${modelLabLabel(model.organization)}`),
+          document.createTextNode(` ${model.name}${model.sourceModelId ? ` (${model.sourceModelId})` : ""} · ${modelLabLabel(model.organization)}`),
         ]),
       ]),
       element("button", { className: "clear-button", text: t("Close"), attrs: { type: "button", id: "models-panel-close" } }),
@@ -6531,11 +6538,32 @@ function openModelPanel(model, record, data) {
     // right even when model-scores.json did not load.
     const scale = modelSeriesScale(shard.scores_by_source?.[record.source]?.series);
     const { multiplier } = scale;
-    const { mine, best, lead, own } = modelPanelRows(shard, model, data.scored, scale.direction);
+    // Splits are per source, as model_scores.build_model_scores decides them:
+    // a split column's cells all come from the source that split the label.
+    const splitLabels = new Set(data.models.filter((entry) => entry.sourceModelId).map((entry) => {
+      const source = data.recordsByKey.get([...entry.cells.keys()][0])?.source;
+      return `${source}\u0000${entry.organization.toLowerCase()}\u0000${entry.name.toLowerCase()}`;
+    }));
+    const { mine, best, lead, own, name } = modelPanelRows(shard, model, data.scored, scale.direction, splitLabels);
     const display = (row) => modelValueText(typeof row.value === "number" ? row.value * multiplier : null, scale);
     const top = best.sort((a, b) => (scale.direction === "lower_is_better" ? a.value - b.value : b.value - a.value)).slice(0, 10);
     if (!top.some(own) && lead) top.push(lead);
+    // Longer is better either way. Higher-is-better bars are the value on its
+    // scale. Lower-is-better bars are the best score's ratio to each value, so
+    // the winning 5.81 is full, a 9.76 is 60%, and near-equal scores draw
+    // near-equal bars rather than an inflated gap. A best score at or below 0
+    // has no meaningful ratio; only then do bars run from the worst shown
+    // score (shortest, still visible) to the best, so a winning 0 does not
+    // erase the rest.
+    const lower = scale.direction === "lower_is_better";
     const extent = Math.max(scale.percent ? 100 / multiplier : 0, ...top.map((row) => Math.abs(row.value)), 1e-9);
+    const lowest = Math.min(...top.map((row) => row.value));
+    const highest = Math.max(...top.map((row) => row.value));
+    const lowerShare = (row) => {
+      if (lowest > 0) return lowest / row.value;
+      return highest === lowest ? 1 : 0.1 + 0.9 * ((highest - row.value) / (highest - lowest));
+    };
+    const share = (row) => (lower ? lowerShare(row) : Math.abs(row.value) / extent);
     replaceChildren(body, [
       element("h3", { text: t("Scores for this model") }),
       element("ul", { className: "models-panel-scores" }, mine.map((row) => element("li", {}, [
@@ -6547,9 +6575,10 @@ function openModelPanel(model, record, data) {
             : t("Date unknown"),
           row.measured_by && row.measured_by !== model.organization ? t("measured by {who}", { who: row.measured_by }) : null,
         ].filter(Boolean).join(" · ") }),
-        row.source_url ? element("a", {
+        // Crawled URLs are not scheme-checked upstream; only http(s) becomes a link.
+        safeHttpUrl(row.source_url) ? element("a", {
           text: row.source_title || scoreSourceLabel(row.source),
-          attrs: { href: row.source_url, target: "_blank", rel: "noopener noreferrer" },
+          attrs: { href: safeHttpUrl(row.source_url), target: "_blank", rel: "noopener noreferrer" },
         }) : null,
       ]))),
       element("p", { className: "models-col-facts", text: scale.percent
@@ -6558,10 +6587,12 @@ function openModelPanel(model, record, data) {
       element("h3", { text: t("Top models on this record") }),
       lead && modelRowSetting(lead) ? element("p", { className: "models-col-facts", text: t("Same setting only: {setting}", { setting: modelRowSetting(lead) }) }) : null,
       element("ol", { className: "models-panel-chart" }, top.map((row) => element("li", { className: own(row) ? "is-selected" : "" }, [
-        element("span", { className: "models-panel-model", text: row.model_name }),
-        element("span", { className: "models-panel-bar", attrs: { style: `--share:${Math.max(0, Math.min(1, Math.abs(row.value) / extent)).toFixed(3)}` } }),
+        element("span", { className: "models-panel-model", text: name(row) }),
+        element("span", { className: "models-panel-bar", attrs: { style: `--share:${Math.max(0, Math.min(1, share(row))).toFixed(3)}` } }),
         element("span", { className: "models-panel-value", text: display(row) }),
       ]))),
+      // Below the figure, as principle.md places a chart's notes.
+      lower ? element("p", { className: "models-col-facts", text: t("Lower is better: the longest bar is the lowest score.") }) : null,
       element("a", { text: t("Open the benchmark page"), attrs: { href: `/benchmarks/${record.slug}/` } }),
     ]);
   });

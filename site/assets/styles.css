@@ -6247,6 +6247,9 @@ dialog {
 
 .models-matrix {
   width: 100%;
+  /* As wide as its six columns need, not the site-wide 1100px table minimum,
+     so a phone scrolls only as far as there are models. */
+  min-width: 0;
   border-collapse: collapse;
   font-family: var(--body);
   font-size: 0.85rem;
