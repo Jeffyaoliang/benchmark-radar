@@ -39,6 +39,12 @@ ROW_GAP = 16
 BOTTOM_PAD = 3
 LOGO_SCALE = {"alibaba.svg": 0.6}  # logos that look oversized at the common height
 PNG_MAX_W = {"kuaishou.png": 1200, "sjtu.png": 120}
+# Many wordmarks are dark (Amazon, Qwen, Zhihu, StepFun, Xtracta), so the strip
+# carries its own light backing: on GitHub's dark theme it would otherwise sit
+# on a near-black canvas and those names would all but disappear.
+BACKING = "#ffffff"
+BACKING_PAD = 12
+BACKING_RADIUS = 10
 
 
 def load_svg(path):
@@ -119,16 +125,20 @@ def main():
         idx += len(filenames)
         inner, w = build_row(items, y)
         rows.append((inner, w))
+        content_h = y  # bottom of the last row placed
         y += ROW_H + ROW_GAP
-    height = y - ROW_GAP
-    width = max(w for _, w in rows)
+    content_w = max(w for _, w in rows)
+    width = round(content_w) + 2 * BACKING_PAD
+    height = content_h + 2 * BACKING_PAD
 
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-        f'width="{width:.0f}" height="{height}" viewBox="0 0 {width:.0f} {height}">',
+        f'width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        f'<rect width="{width}" height="{height}" rx="{BACKING_RADIUS}" fill="{BACKING}"/>',
     ]
     for inner, w in rows:
-        lines.append(f'<g transform="translate({(width - w) / 2:.1f},0)">{inner}</g>')
+        x = BACKING_PAD + (round(content_w) - w) / 2
+        lines.append(f'<g transform="translate({x:.1f},{BACKING_PAD})">{inner}</g>')
     lines.append("</svg>")
     out = "\n".join(lines)
     try:
@@ -137,7 +147,7 @@ def main():
         print(out, file=sys.stderr)
         raise
     OUT.write_text(out, encoding="utf-8")
-    print(f"wrote {OUT} ({width:.0f}x{height}, {len(out) / 1024:.0f} KB)")
+    print(f"wrote {OUT} ({width}x{height}, {len(out) / 1024:.0f} KB)")
 
 
 if __name__ == "__main__":
