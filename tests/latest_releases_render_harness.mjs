@@ -5,6 +5,7 @@
 // open across a redraw. The Python test compares the rows and the note with
 // the seeds app_seeds.py writes, so the two can never disagree silently.
 import { readFileSync } from "node:fs";
+import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -522,5 +523,16 @@ state.view = "leaderboard";
 R.writeUrl("push");
 routes.saturationAdoptionAddress = address();
 out.routes = routes;
+
+// The 404 recovery enters Models through the root and must canonicalize with
+// replaceState, retaining every Models filter rather than rendering Today.
+install("/?view=models&lab=OpenAI&mq=GPT%205&msort=newest&msrc=llm_stats&mshared=1&mpage=3");
+R.readUrl();
+assert.equal(state.view, "models");
+R.writeUrl("replace");
+assert.equal(address(), "/models/?lab=OpenAI&mq=GPT+5&msort=newest&msrc=llm_stats&mshared=1&mpage=3");
+install("/trends/?view=models");
+R.readUrl();
+assert.equal(state.view, "trends");
 
 console.log(JSON.stringify(out));
