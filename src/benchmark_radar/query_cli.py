@@ -167,7 +167,8 @@ def _print_search(payload: dict[str, Any]) -> None:
         return
     if payload["search_status"] == "partial_candidates_only":
         print(
-            "No benchmark matched every query token; partial candidates are not answers "
+            "No record in the searched scope matched every query token; "
+            "partial candidates are not answers "
             f"(scope={payload['scope']})."
         )
         print(
