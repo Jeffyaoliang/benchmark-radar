@@ -1,5 +1,6 @@
 """The open-item cap closes only authors who are over it and not exempt."""
 
+import json
 import os
 import stat
 import subprocess
@@ -10,7 +11,18 @@ import pytest
 SCRIPT = Path(".github/scripts/enforce-open-item-cap.sh").resolve()
 
 
-def run_cap(tmp_path, *, author, issues, prs, kind="pr", exempt="ktwu01 junjiezhou1122"):
+def run_cap(
+    tmp_path,
+    *,
+    author,
+    issues,
+    prs,
+    kind="pr",
+    exempt="ktwu01 junjiezhou1122",
+    activity=None,
+    activity_down=False,
+    activity_endpoint="comments",
+):
     # A fake `gh` answers the two GraphQL counts and records any close command.
     log = tmp_path / "calls.log"
     fake = tmp_path / "gh"
@@ -18,7 +30,12 @@ def run_cap(tmp_path, *, author, issues, prs, kind="pr", exempt="ktwu01 junjiezh
         "#!/usr/bin/env bash\n"
         'echo "$*" >> "$CALLS"\n'
         'if [[ "$1" == api ]]; then\n'
-        '  case "$*" in *pullRequests*) echo "$PRS";; *) echo "$ISSUES";; esac\n'
+        '  case "$*" in\n'
+        '  *"/comments"*|*"/reviews"*)\n'
+        '    if [[ "$ACTIVITY_DOWN" == 1 ]]; then exit 1; fi\n'
+        '    if [[ "$*" == *"/$ACTIVITY_ENDPOINT"* ]]; then echo "$ACTIVITY"; else echo "[[]]"; fi;;\n'
+        '  *"pulls/900"*) echo "$CURRENT_PR";;\n'
+        '  *pullRequests*) echo "$PRS";; *) echo "$ISSUES";; esac\n'
         "fi\n"
     )
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
@@ -34,6 +51,10 @@ def run_cap(tmp_path, *, author, issues, prs, kind="pr", exempt="ktwu01 junjiezh
         "KIND": kind,
         "CAP": "10",
         "EXEMPT": exempt,
+        "ACTIVITY": json.dumps(activity or [[]]),
+        "ACTIVITY_DOWN": str(int(activity_down)),
+        "ACTIVITY_ENDPOINT": activity_endpoint,
+        "CURRENT_PR": json.dumps({"state": "open", "user": {"login": author}}),
     }
     result = subprocess.run([str(SCRIPT)], env=env, capture_output=True, text=True)
     calls = log.read_text().splitlines() if log.exists() else []

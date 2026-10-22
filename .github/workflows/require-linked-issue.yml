@@ -1,13 +1,13 @@
 name: Require linked issue
 
-# Closes a pull request whose description links no existing issue, including
-# when an edit removes the link. Only bot-authored PRs are exempt.
+# Check intake only. Edits must not close contributions already being revised.
+# PRs with maintainer engagement and bot-authored PRs are exempt.
 # pull_request_target is safe here because the job never checks out or runs
 # code from the pull request: it reads the current description through the
 # GitHub API.
 on:
   pull_request_target:
-    types: [opened, reopened, edited]
+    types: [opened, reopened]
 
 permissions:
   issues: read

@@ -39,6 +39,16 @@ if ((total <= CAP)); then
   exit 0
 fi
 
+if [[ "$KIND" == "pr" ]]; then
+  # Fail safely if discussion cannot be checked; bot and author activity do not exempt a PR.
+  if bash "$(dirname "${BASH_SOURCE[0]}")/pr-has-maintainer-engagement.sh"; then
+    exit 0
+  else
+    status=$?
+    [[ "$status" == 1 ]] || exit "$status"
+  fi
+fi
+
 message="Thanks for the contribution. To keep review manageable, one author can have at most $CAP open issues and pull requests combined (you have $total, including this one). Please let some of the earlier ones be merged or closed, then re-open or re-submit this one. A closed item can always be reopened once there is room.
 
 为了让评审跟得上，同一位作者同时最多保留 $CAP 个未关闭的 issue 和 PR（合计，你现在有 $total 个，包含本条）。请等之前的被合并或关闭后，再重新打开或提交本条。有空位后可随时 reopen。"
