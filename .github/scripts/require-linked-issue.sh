@@ -17,6 +17,14 @@ fi
 state="$(jq -er '.state' <<<"$current_pr")"
 [[ "$state" == "open" ]] || exit 0
 BODY="$(jq -r '.body // ""' <<<"$current_pr")"
+# Fail safely if discussion cannot be checked; bot and author activity do not exempt a PR.
+if bash "$(dirname "${BASH_SOURCE[0]}")/pr-has-maintainer-engagement.sh"; then
+  exit 0
+else
+  status=$?
+  [[ "$status" == 1 ]] || exit "$status"
+fi
+
 err="$(mktemp)"
 
 # `Closes #N`, `Related to #N`, `owner/repo#N`, or an issue URL. The keyword must
