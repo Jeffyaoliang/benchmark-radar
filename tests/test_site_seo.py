@@ -24,9 +24,10 @@ def test_sitemap_covers_every_indexable_view():
     assert urls == [
         f"{SITE_URL}/",
         f"{SITE_URL}/library/",
-        f"{SITE_URL}/leaderboard/",
-        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/models/",
         f"{SITE_URL}/trends/",
+        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/leaderboard/",
         f"{SITE_URL}/explore/",
         f"{SITE_URL}/cli/",
         f"{SITE_URL}/cite/",

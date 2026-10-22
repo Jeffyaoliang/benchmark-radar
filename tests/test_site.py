@@ -2942,6 +2942,7 @@ def test_heading_outline_and_scale_stay_quiet():
     assert {name for name, _, _ in sections} == {
         "today",
         "library",
+        "models",
         "leaderboard",
         "saturation",
         "map",

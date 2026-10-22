@@ -22,11 +22,11 @@ Closes #<issue number>
 
 ## Before and after / 改前改后
 
-<!-- Any change a reader can see (site, report, README, CLI output): paste a
-     before and an after screenshot at the same viewport. Say in one line why
-     the after is easier to read. No screenshots, no review.
-     读者能看到的改动（网站、报告、README、CLI 输出）必须贴同一视口的改前改后截图，
-     并用一句话说明为什么改后更好读。没有截图不审。 -->
+<!-- Any change a reader can see: paste a before and an after screenshot at the
+     same viewport (for CLI output, paste the before and after text). Say in one
+     line why the after is easier to read. No before and after, no review.
+     读者能看到的改动必须贴同一视口的改前改后截图（CLI 输出贴改前改后的文本），
+     并用一句话说明为什么改后更好读。没有改前改后不审。 -->
 
 ## Four questions (human contributors only) / 四个问题（仅限人类贡献者）
 

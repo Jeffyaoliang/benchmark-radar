@@ -461,8 +461,15 @@ def main() -> None:
         directions = assign_library_directions(
             all_records, library_document, identity.equivalent_groups, load_direction_reviews()
         )
+        from .library_signals import assign_library_signals, load_library_signals
+
+        signals = assign_library_signals(all_records, load_library_signals())
         index = build_benchmark_index(
-            resolved_records, series_by_key, all_observations, directions_by_key=directions
+            resolved_records,
+            series_by_key,
+            all_observations,
+            directions_by_key=directions,
+            signals_by_key=signals,
         )
         index_path = write_benchmark_index(
             index,
@@ -591,6 +598,15 @@ def main() -> None:
         print(
             f"models: {registry_report['model_count']} "
             f"from {len(registry_report['source_counts'])} sources -> {DEFAULT_REGISTRY_OUTPUT}"
+        )
+        # The Models matrix: each registry model's best reported score per
+        # record, from the same shards.
+        from .model_scores import DEFAULT_SCORES_OUTPUT, write_model_scores
+
+        scores_report = write_model_scores(DEFAULT_SHARD_DIR, DEFAULT_SCORES_OUTPUT)
+        print(
+            f"model scores: {scores_report['models']} models on "
+            f"{scores_report['benchmarks']} records -> {DEFAULT_SCORES_OUTPUT}"
         )
 
         report = dashboard["kw_bench"]["coverage"]

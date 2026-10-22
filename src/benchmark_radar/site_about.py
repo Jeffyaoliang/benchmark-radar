@@ -113,6 +113,7 @@ _ELSEWHERE: tuple[tuple[str, str, str], ...] = (
 _INSIDE: tuple[tuple[str, str], ...] = (
     ("/benchmarks/", "Browse every benchmark in the catalog, one page each"),
     ("/library/", "Browse benchmarks by research direction and save the ones you follow"),
+    ("/models/", "Compare AI models' reported benchmark scores side by side, by lab"),
     ("/leaderboard/", "Compare reported scores across the benchmark frontier"),
     ("/saturation/", "Watch scores on a benchmark climb toward saturation"),
     ("/blog/", "Read the daily brief: what appeared today and what it means"),

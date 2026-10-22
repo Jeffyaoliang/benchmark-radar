@@ -1,33 +1,32 @@
 #!/usr/bin/env bash
-# Close a new pull request that does not link an existing issue.
+# Close a pull request that does not link an existing issue.
 #
 # A PR with no issue is a change nobody asked for: it has no stated requirement
-# to review against, and a claim on an issue can lapse while its PR still looks
-# like finished work. The body is read from the event payload through an
-# environment variable and is never interpolated into a command.
+# to review against. Only a confirmed "not found" counts as a missing issue; any
+# other API failure exits nonzero and leaves the PR open, so a GitHub outage
+# never closes valid work. Read the current PR so a delayed edited event cannot
+# close a PR whose issue link has already been restored.
 set -euo pipefail
 
-: "${REPO:?}" "${AUTHOR:?}" "${NUMBER:?}"
-BODY="${BODY:-}"
-EXEMPT="${EXEMPT:-}"
+: "${REPO:?}" "${NUMBER:?}"
+# Event snapshots may be stale by the time this run starts.
+if ! current_pr="$(gh api "repos/$REPO/pulls/$NUMBER")"; then
+  echo "could not read the current PR; leaving the pull request open" >&2
+  exit 1
+fi
+state="$(jq -er '.state' <<<"$current_pr")"
+[[ "$state" == "open" ]] || exit 0
+BODY="$(jq -r '.body // ""' <<<"$current_pr")"
+err="$(mktemp)"
 
-author_lc="${AUTHOR,,}"
-[[ "$author_lc" =~ ^[a-z0-9-]+(\[bot\])?$ ]] || { echo "unexpected login: $AUTHOR" >&2; exit 1; }
-
-for name in $EXEMPT; do
-  if [[ "${name,,}" == "$author_lc" ]]; then
-    echo "$AUTHOR is exempt from the linked-issue rule"
-    exit 0
-  fi
-done
-
-# `Closes #N`, `Related to #N`, `owner/repo#N`, or an issue URL.
+# `Closes #N`, `Related to #N`, `owner/repo#N`, or an issue URL. The keyword must
+# start a word, so "disclosed #5" is not a link.
 keywords='(close[sd]?|fix(e[sd])?|resolve[sd]?|relate[sd]? to|refs?|part of)'
 refs="$(
   {
-    grep -oiE "${keywords}:? +([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)?#[0-9]+" <<<"$BODY" || true
+    grep -oiE "(^|[^A-Za-z0-9_])${keywords}:? +([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)?#[0-9]+" <<<"$BODY" || true
     grep -oiE "github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/issues/[0-9]+" <<<"$BODY" || true
-  } | sed -E 's|^.*github\.com/([^/]+/[^/]+)/issues/([0-9]+)$|\1#\2|; s|^[A-Za-z ]+:? +||'
+  } | sed -E 's|^[^A-Za-z]+||; s|^.*github\.com/([^/]+/[^/]+)/issues/([0-9]+)$|\1#\2|; s|^[A-Za-z ]+:? +||'
 )"
 
 for ref in $refs; do
@@ -36,10 +35,17 @@ for ref in $refs; do
   [[ -z "$repo" ]] && repo="$REPO"
   [[ "${repo,,}" == "${REPO,,}" ]] || continue
   # The issues API also returns pull requests, so tell them apart.
-  kind="$(gh api "repos/$REPO/issues/$number" --jq 'if .pull_request then "pr" else "issue" end' 2>/dev/null || true)"
-  if [[ "$kind" == "issue" ]]; then
-    echo "linked issue #$number found"
-    exit 0
+  if kind="$(gh api "repos/$REPO/issues/$number" --jq 'if .pull_request then "pr" else "issue" end' 2>"$err")"; then
+    if [[ "$kind" == "issue" ]]; then
+      echo "linked issue #$number found"
+      exit 0
+    fi
+  elif grep -q "HTTP 404" "$err"; then
+    echo "#$number does not exist"
+  else
+    echo "could not look up #$number; leaving the pull request open" >&2
+    cat "$err" >&2
+    exit 1
   fi
 done
 

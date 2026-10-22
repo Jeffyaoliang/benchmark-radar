@@ -263,6 +263,9 @@ th {
   background: #fffbeb;
 }
 
+/* One slim line (#420): the badge read as a second header that pushed every
+   page's content down, the "bangs over the face" problem the merge set out to
+   fix. The badge and the upvote link stay; only their height shrinks. */
 .hf-upvote-banner-inner {
   display: flex;
   width: min(1680px, calc(100% - 48px));
@@ -270,11 +273,11 @@ th {
   align-items: center;
   justify-content: center;
   margin-inline: auto;
-  padding-block: 0.25rem;
+  padding-block: 0;
 }
 
 .hf-paper-award {
-  width: 200px;
+  width: 128px;
   min-width: 0;
   max-width: 100%;
   border-radius: 8px;
@@ -556,6 +559,8 @@ main {
 
 /* Primary page titles stay close to the shared masthead so switching sections
    does not make the heading jump down the page. */
+#library-view,
+#models-view,
 #leaderboard-view,
 #saturation-view,
 #trends-view {
@@ -6051,8 +6056,11 @@ dialog {
 }
 
 .library-direction-count {
+  flex: none;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .library-list {
@@ -6129,12 +6137,710 @@ dialog {
     grid-template-columns: 1fr;
   }
 
+  /* On a phone the directions (and Models' labs) become one scrolling row of
+     chips, so the first screen reaches the list instead of 37 stacked rows. */
   .library-directions {
     position: static;
-    max-height: 14rem;
+    flex-direction: row;
+    gap: 0.35rem;
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .library-direction-group {
+    display: contents;
+  }
+
+  .library-direction-heading {
+    display: none;
+  }
+
+  .library-direction {
+    flex: none;
+    width: auto;
+    border: 1px solid var(--line);
+    white-space: nowrap;
   }
 
   .library-status {
     margin-left: 0;
   }
+}
+
+/* Models (#420): .com's model x benchmark matrix, its side panel, and each
+   lab's own model documents. */
+.models-note {
+  flex: 1 1 20rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.models-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.models-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.models-control input,
+.models-control select {
+  min-width: 10rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+/* The lab list is the sidebar on wide screens; under 720px it becomes this menu. */
+.models-lab-menu {
+  display: none;
+}
+
+.models-shared-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.models-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.models-paging button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.models-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+}
+
+.models-matrix-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.models-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--body);
+  font-size: 0.85rem;
+}
+
+.models-matrix th {
+  font-family: var(--body);
+  letter-spacing: normal;
+}
+
+.models-matrix th,
+.models-matrix td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.models-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-width: 8.5rem;
+  background: var(--panel);
+  font-weight: 400;
+}
+
+.models-matrix tbody th {
+  min-width: 11rem;
+  font-weight: 400;
+}
+
+/* The benchmark column stays in view while the models scroll sideways. */
+.models-matrix thead th:first-child,
+.models-matrix tbody th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--panel);
+}
+
+.models-average th[scope="row"] {
+  background: var(--canvas);
+}
+
+.models-col-name {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.models-col-config {
+  display: block;
+  color: var(--blue-deep);
+  font-size: 0.8rem;
+}
+
+.models-col-facts {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.models-average th,
+.models-average td {
+  background: var(--canvas);
+}
+
+.models-group th {
+  padding-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.models-group .models-col-facts {
+  display: inline;
+}
+
+.models-record-name {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.models-record-name:hover {
+  text-decoration: underline;
+}
+
+.models-source {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.models-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.models-cell:hover,
+.models-cell[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: rgb(37 94 168 / 8%);
+}
+
+.models-cell-unscaled > span:first-child {
+  color: var(--muted);
+}
+
+.models-cell-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.models-cell-missing {
+  color: var(--edge);
+}
+
+.models-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Above the sticky site header, so its heading and Close stay visible. */
+  z-index: 60;
+  width: min(30rem, 100vw);
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  border-left: 1px solid var(--edge);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.models-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.models-panel-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.models-panel h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.models-panel-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.models-panel-scores li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+}
+
+.models-panel-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.models-panel-chart li {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 4.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.models-panel-chart li.is-selected {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+.models-panel-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-panel-bar {
+  height: 0.7rem;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--sea) calc(var(--share) * 100%), var(--canvas) 0);
+}
+
+.is-selected .models-panel-bar {
+  background: linear-gradient(to right, var(--blue) calc(var(--share) * 100%), var(--canvas) 0);
+}
+
+.models-panel-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.model-document,
+.model-summary {
+  padding: 0.6rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.model-document-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.model-document-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.model-document-facts {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.model-summary-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.model-benchmarks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.4rem 0 0;
+}
+
+.model-benchmark {
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.model-benchmark:hover {
+  border-color: var(--blue);
+}
+
+.model-benchmark-new {
+  border-color: var(--blue);
+  background: rgb(37 94 168 / 10%);
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+.model-benchmark-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.models-unscored {
+  margin: 0;
+  padding: 0.6rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  /* The matrix first: the lab list folds into the menu above it. */
+  /* Only once the page has loaded: until then the seeded lab links are the
+     way to switch labs. */
+  #models-view[data-hydrated] .library-directions {
+    display: none;
+  }
+
+  #models-view[data-hydrated] .models-lab-menu {
+    display: flex;
+  }
+
+  /* One row of menus under the search, then the page row, so the matrix
+     starts on the first screen; the menus' own labels name them. */
+  #models-view .models-note {
+    display: none;
+  }
+
+  .models-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem 0.4rem;
+  }
+
+  .models-control:first-child,
+  .models-shared-toggle,
+  .models-paging {
+    grid-column: 1 / -1;
+  }
+
+  .models-control > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .models-control,
+  .models-control input,
+  .models-control select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .models-control input,
+  .models-control select {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  .models-paging {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    margin-left: 0;
+    font-size: 0.75rem;
+  }
+
+  .models-paging button {
+    white-space: nowrap;
+  }
+
+  .models-matrix tbody th,
+  .models-matrix thead th {
+    min-width: 7.5rem;
+  }
+
+  .models-panel {
+    top: auto;
+    max-height: 75vh;
+    width: 100vw;
+    border-top: 1px solid var(--edge);
+    border-left: 0;
+  }
+}
+
+/* Trends: new benchmarks by research direction (#420). */
+.direction-trends {
+  margin-bottom: 1.25rem;
+}
+
+.direction-trends-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.direction-trends-frame {
+  overflow-x: auto;
+}
+
+.direction-trends-table {
+  width: 100%;
+  /* Not the site-wide 1100px table minimum: this table fits a phone. */
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.direction-trends-table th,
+.direction-trends-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-family: var(--body);
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
+.direction-trends-table thead th {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.direction-trends-table a {
+  color: var(--ink);
+  font-family: var(--body);
+  letter-spacing: normal;
+}
+
+.direction-trends-table .direction-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.direction-spark {
+  width: 96px;
+  height: 20px;
+  fill: var(--blue);
+}
+
+/* benchmark-radar.com's layout: the table beside a focus panel for one
+   direction. */
+.direction-trends-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.direction-trends-table .direction-group th {
+  padding-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.direction-group-count {
+  font-weight: normal;
+}
+
+.direction-trends-table tr.is-focused th,
+.direction-trends-table tr.is-focused td {
+  background: rgb(37 94 168 / 8%);
+}
+
+.direction-trends-table tr.is-focused a {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+/* Not sticky: the site header is, and a sticky panel would slide under it. */
+.direction-focus {
+  padding: 1rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.direction-focus-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.direction-focus-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.direction-focus h3 {
+  margin: 0.1rem 0 0;
+  font-size: 1.1rem;
+}
+
+.direction-focus h4 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.88rem;
+}
+
+.direction-focus-close {
+  display: none;
+}
+
+.direction-focus-facts,
+.direction-focus figcaption {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.direction-focus-figure {
+  margin: 0.75rem 0 0;
+}
+
+.direction-focus-chart {
+  width: 100%;
+  height: auto;
+  fill: var(--blue);
+}
+
+.direction-focus-chart text {
+  fill: var(--muted);
+  font-family: var(--body);
+  font-size: 8px;
+}
+
+.direction-focus-records {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.direction-focus-records li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.direction-focus-records span {
+  flex: none;
+  color: var(--muted);
+}
+
+.direction-focus-library {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+/* On a phone the counts and bars fit beside the names: names wrap, and the
+   previous-period count (the change column carries the comparison) is left
+   for wider screens. */
+@media (max-width: 720px) {
+  .direction-trends-table {
+    font-size: 0.8rem;
+  }
+
+  .direction-trends-table th,
+  .direction-trends-table td {
+    padding: 0.3rem 0.25rem;
+  }
+
+  /* Undated stays: without it a direction whose records have no release
+     date would read as zero. */
+  .direction-trends-table tr > :nth-child(3) {
+    display: none;
+  }
+
+  .direction-spark {
+    width: 64px;
+  }
+
+  /* The table takes the screen; a direction's focus opens as a sheet. */
+  .direction-trends-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .direction-focus {
+    display: none;
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    max-height: 75vh;
+    overflow-y: auto;
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: var(--shadow);
+  }
+
+  .direction-focus.is-open {
+    display: block;
+  }
+
+  .direction-focus-close {
+    display: inline-block;
+  }
+}
+
+.library-signal {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }

@@ -332,9 +332,10 @@ def test_sitemap_includes_benchmark_pages_when_entries_are_passed(tmp_path):
     assert urls == [
         f"{SITE_URL}/",
         f"{SITE_URL}/library/",
-        f"{SITE_URL}/leaderboard/",
-        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/models/",
         f"{SITE_URL}/trends/",
+        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/leaderboard/",
         f"{SITE_URL}/explore/",
         f"{SITE_URL}/cli/",
         f"{SITE_URL}/cite/",
@@ -349,8 +350,8 @@ def test_sitemap_includes_benchmark_pages_when_entries_are_passed(tmp_path):
             "sm:url/sm:lastmod", {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         )
     ]
-    # Ten site-wide dates, then the benchmark's own; the undated page gets none.
-    assert lastmods == ["2026-08-21"] * 10 + ["2025-05-22"]
+    # Eleven site-wide dates, then the benchmark's own; the undated page gets none.
+    assert lastmods == ["2026-08-21"] * 11 + ["2025-05-22"]
 
 
 def test_benchmark_lastmod_comes_from_the_pages_own_evidence(tmp_path):
@@ -473,6 +474,50 @@ def test_related_benchmarks_link_siblings_in_the_same_category(tmp_path):
     # A page never lists itself as its own neighbour: the only self-reference
     # left is the canonical URL in the head.
     assert alpha.count(f'href="{SITE_URL}/benchmarks/alpha-bench/"') == 1
+
+
+def _related_targets(page: str) -> list[str]:
+    section = page.split("<h2>Related", 1)[1].split("</ul>", 1)[0]
+    return [chunk.split("/", 1)[0] for chunk in section.split(f"{SITE_URL}/benchmarks/")[1:]]
+
+
+def test_related_links_spread_across_a_category_instead_of_its_alphabetical_head(tmp_path):
+    """Issue #673: name order sent every page's links to the same eight pages."""
+    shards = [
+        _shard(f"bench-{index:02d}", f"Bench {index:02d}", categories=["coding_agent"])
+        for index in range(20)
+    ]
+    output = _generated_pages(tmp_path, *shards)
+    linked = {
+        target
+        for shard in shards
+        for target in _related_targets(_page_text(output, shard["record"]["slug"]))
+    }
+    # Name order reached 9 of 20 pages; equal candidates must now spread.
+    assert len(linked) >= 15
+
+
+def test_a_shared_artifact_outranks_alphabetically_earlier_category_siblings(tmp_path):
+    siblings = [
+        _shard(f"a-bench-{index}", f"A Bench {index}", categories=["coding_agent"])
+        for index in range(10)
+    ]
+    alpha = _shard("alpha-tasks", "Alpha Tasks", categories=["coding_agent"])
+    zeta = _shard("zeta-bench", "Zeta Bench", categories=["coding_agent"])
+    shared = [{"kind": "paper", "url": "https://arxiv.org/abs/2601.00001"}]
+    alpha["record"]["artifacts"] = shared
+    zeta["record"]["artifacts"] = shared
+    output = _generated_pages(tmp_path, *siblings, alpha, zeta)
+    assert _related_targets(_page_text(output, "alpha-tasks"))[0] == "zeta-bench"
+
+
+def test_status_tags_do_not_relate_benchmarks(tmp_path):
+    output = _generated_pages(
+        tmp_path,
+        _shard("alpha-bench", "Alpha Bench", categories=["Unsupported", "不支持"]),
+        _shard("beta-bench", "Beta Bench", categories=["Unsupported", "不支持"]),
+    )
+    assert "beta-bench" not in _page_text(output, "alpha-bench")
 
 
 def test_citing_documents_are_listed_with_their_sources(tmp_path):

@@ -679,6 +679,7 @@ def build_benchmark_index(
     series_by_key: dict[str, dict[str, Any]] | None = None,
     observations: list[dict[str, Any]] | None = None,
     directions_by_key: dict[str, dict[str, Any]] | None = None,
+    signals_by_key: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """The small search payload: one entry per source record, never per merge.
 
@@ -689,6 +690,7 @@ def build_benchmark_index(
     """
     series_by_key = series_by_key or {}
     directions_by_key = directions_by_key or {}
+    signals_by_key = signals_by_key or {}
     models_by_key: dict[str, dict[str, dict[str, Any]]] = {}
     for observation in observations or []:
         name = observation.get("model_name")
@@ -780,6 +782,10 @@ def build_benchmark_index(
                 # kept apart from the source `categories` that search ranks on
                 # and labelled with its basis and join (library_directions.py).
                 "library_direction": directions_by_key.get(record["key"]),
+                # Dated observations of the record's repository and paper from
+                # benchmark-radar.com, labelled with their date and join
+                # (library_signals.py); never a score or a ranking.
+                "attention_signals": signals_by_key.get(record["key"]),
             }
         )
     index.sort(key=lambda item: (item["name"].lower(), item["key"]))

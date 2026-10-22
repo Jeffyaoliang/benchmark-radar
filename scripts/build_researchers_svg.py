@@ -2,8 +2,9 @@
 """Regenerate assets/researchers.svg from the official logos in assets/researchers-logos/.
 
 Each file in assets/researchers-logos/ is the official institution logo as
-downloaded from Wikimedia Commons / Wikipedia. Run this script after adding,
-removing, or replacing a logo there:
+downloaded from Wikimedia Commons / Wikipedia, or supplied by the organization
+where Commons has none (xtracta.svg: Xtracta's official full-colour RGB logo,
+unmodified). Run this script after adding, removing, or replacing a logo there:
 
     python scripts/build_researchers_svg.py
 
@@ -25,7 +26,7 @@ OUT = REPO_ROOT / "assets" / "researchers.svg"
 
 ROWS = [
     ["google.svg", "amazon.svg", "aws.svg", "ibm.svg", "bytedance.svg"],
-    ["cmu.svg", "harvard.svg", "mit.svg", "nus.svg", "auckland.svg"],
+    ["cmu.svg", "harvard.svg", "mit.svg", "nus.svg", "auckland.svg", "xtracta.svg"],
     ["alibaba.svg", "tencent.svg", "hunyuan.svg", "qwen.svg"],
     ["stepfun.png", "kuaishou.png", "zhihu.svg", "tsinghua.svg", "sjtu.png"],
 ]

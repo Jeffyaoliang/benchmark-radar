@@ -1,12 +1,13 @@
 name: Require linked issue
 
-# Closes a new pull request whose description links no existing issue.
-# Maintainers and bots are exempt. pull_request_target is safe here because the
-# job never checks out or runs code from the pull request: it only reads the
-# description from the event and calls the GitHub API.
+# Closes a pull request whose description links no existing issue, including
+# when an edit removes the link. Only bot-authored PRs are exempt.
+# pull_request_target is safe here because the job never checks out or runs
+# code from the pull request: it reads the current description through the
+# GitHub API.
 on:
   pull_request_target:
-    types: [opened, reopened]
+    types: [opened, reopened, edited]
 
 permissions:
   issues: read
@@ -14,7 +15,8 @@ permissions:
 
 jobs:
   linked-issue:
-    if: github.event.sender.type != 'Bot'
+    # The PR author, not the sender: a human reopening a Dependabot PR is the sender.
+    if: github.event.pull_request.user.type != 'Bot' && github.event.pull_request.state == 'open'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -25,9 +27,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
           NUMBER: ${{ github.event.pull_request.number }}
-          BODY: ${{ github.event.pull_request.body }}
-          # Repo maintainers and the core team, space separated.
-          EXEMPT: "ktwu01 junjiezhou1122 14H034160212 Claire1217"
         run: .github/scripts/require-linked-issue.sh
