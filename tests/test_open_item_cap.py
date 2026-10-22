@@ -33,7 +33,8 @@ def run_cap(
         '  case "$*" in\n'
         '  *"/comments"*|*"/reviews"*)\n'
         '    if [[ "$ACTIVITY_DOWN" == 1 ]]; then exit 1; fi\n'
-        '    if [[ "$*" == *"/$ACTIVITY_ENDPOINT"* ]]; then echo "$ACTIVITY"; else echo "[[]]"; fi;;\n'
+        '    if [[ "$*" == *"/$ACTIVITY_ENDPOINT"* ]]; then echo "$ACTIVITY";\n'
+        '    else echo "[[]]"; fi;;\n'
         '  *"pulls/900"*) echo "$CURRENT_PR";;\n'
         '  *pullRequests*) echo "$PRS";; *) echo "$ISSUES";; esac\n'
         "fi\n"

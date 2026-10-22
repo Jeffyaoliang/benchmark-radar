@@ -1,7 +1,6 @@
 """Maintainer engagement protects reviewed PRs in both automatic intake gates."""
 
 import pytest
-
 from test_open_item_cap import run_cap
 from test_require_linked_issue import run_gate
 
@@ -16,7 +15,9 @@ def gate(request, tmp_path):
     return run
 
 
-@pytest.mark.parametrize("endpoint", ["comments", "reviews"])
+@pytest.mark.parametrize(
+    "endpoint", ["issues/900/comments", "pulls/900/reviews", "pulls/900/comments"]
+)
 @pytest.mark.parametrize("association", ["OWNER", "MEMBER", "COLLABORATOR"])
 def test_maintainer_activity_on_later_page_prevents_closure(gate, association, endpoint):
     result, closes = gate(
