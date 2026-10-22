@@ -1653,7 +1653,9 @@ function readUrl() {
   const params = backgroundLocation?.searchParams || currentParams;
   const requestedView = params.get("view");
   // Legacy Explorer permalinks resolve to the filterable Today list.
-  const legacyView = ["trends", "map", "leaderboard", "saturation"].includes(requestedView)
+  // Models also enters here when the Pages 404 handler recovers a missing
+  // generated route through the root document (issue #922).
+  const legacyView = ["trends", "map", "leaderboard", "saturation", "models"].includes(requestedView)
     ? requestedView
     : "";
   // The path is the view, and that is what keeps Back and Forward honest: the
