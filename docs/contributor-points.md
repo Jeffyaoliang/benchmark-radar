@@ -16,6 +16,7 @@ This public ledger is rebuilt from GitHub once per day. Do not edit the totals b
 |---|---:|:---:|
 | @JunkaiWang-TheoPhy | 20 | yes |
 | @junjiezhou1122 | 19 | yes |
+| @14H034160212 | 12 | yes |
 | @JiayuuWang | 12 | yes |
 | @app/dependabot | 6 | no |
 | @hzx-coder0 | 5 | no |
@@ -23,13 +24,6 @@ This public ledger is rebuilt from GitHub once per day. Do not edit the totals b
 | @bigdu332 | 2 | no |
 | @Lareina1024 | 2 | no |
 | @yzliu03 | 1 | no |
-
-## Active claims
-
-| Issue | Contributor | Deadline | Points |
-|---|---|---|---:|
-| [#432](https://github.com/ktwu01/benchmark-radar/issues/432) | @a-green-hand-jack | 2026-10-21T11:57:42+00:00 | 2 |
-| [#420](https://github.com/ktwu01/benchmark-radar/issues/420) | @14H034160212 | 2026-10-22T02:16:25+00:00 | 12 |
 
 ## Earned points
 
@@ -39,6 +33,7 @@ This public ledger is rebuilt from GitHub once per day. Do not edit the totals b
 | [Issue #487](https://github.com/ktwu01/benchmark-radar/issues/487) | @bigdu332 | 2 |
 | [Issue #467](https://github.com/ktwu01/benchmark-radar/issues/467) | @JunkaiWang-TheoPhy | 6 |
 | [Issue #457](https://github.com/ktwu01/benchmark-radar/issues/457) | @JunkaiWang-TheoPhy | 12 |
+| [Issue #420](https://github.com/ktwu01/benchmark-radar/issues/420) | @14H034160212 | 12 |
 | [Issue #411](https://github.com/ktwu01/benchmark-radar/issues/411) | @a-green-hand-jack | 3 |
 | [Issue #408](https://github.com/ktwu01/benchmark-radar/issues/408) | @JunkaiWang-TheoPhy | 2 |
 | [PR #472](https://github.com/ktwu01/benchmark-radar/pull/472) | @JiayuuWang | 3 |
