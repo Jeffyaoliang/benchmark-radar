@@ -17,10 +17,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from benchmark_radar.catalog import artifact_identifier
-
-# Link fields that point at the benchmark's own paper, code or data.
-ARTIFACT_LINKS = ("report", "paper", "pdf", "hfPaper", "code", "data")
+from benchmark_radar.library_directions import library_record_anchors
 
 
 def export_categories(
@@ -49,19 +46,9 @@ def export_categories(
         unknown = sorted(set(categories) - category_ids)
         if unknown:
             raise ValueError(f"{record['id']}: categories outside taxonomy-v5: {unknown}")
-        # The record's own links, plus the paper or page each catalog source
-        # it was collected from points at.
-        urls = [str((record.get("links") or {}).get(field) or "") for field in ARTIFACT_LINKS]
-        for source in record.get("catalogSources") or []:
-            urls.extend(str(source.get(field) or "") for field in ("paperUrl", "url"))
-        artifacts = sorted({identifier for url in urls if (identifier := artifact_identifier(url))})
-        llm_stats = sorted(
-            {
-                str(source["sourceId"])
-                for source in record.get("catalogSources") or []
-                if source.get("catalog") == "llm-stats" and source.get("sourceId")
-            }
-        )
+        anchors = library_record_anchors(record)
+        artifacts = anchors["artifacts"]
+        llm_stats = anchors["llm_stats_ids"]
         exported[record["id"]] = {
             "primary": primary,
             "categories": categories,

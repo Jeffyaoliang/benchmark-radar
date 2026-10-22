@@ -68,6 +68,7 @@ graphify-out/
 # commit recorded inside) and the hand-reviewed gap fill beside it. Both are
 # inputs the catalog reads, not outputs it writes.
 !/data/catalog/claire_library_categories.json
+!/data/catalog/claire_library_signals.json
 !/data/catalog/library_direction_reviews.yml
 # Cited benchmark dates are reviewed source facts, not normalization outputs.
 !/data/catalog/benchmark_dates.yml

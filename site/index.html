@@ -548,10 +548,14 @@
           <select id="library-sort" class="library-sort" aria-label="Sort" data-i18n-aria="Sort">
             <option value="latest" data-i18n="Newest">Newest</option>
             <option value="documented" data-i18n="Most documented">Most documented</option>
+            <option value="stars" data-i18n="Most GitHub stars">Most GitHub stars</option>
+            <option value="stars30" data-i18n="Most stars gained (30 days)">Most stars gained (30 days)</option>
             <option value="name" data-i18n="A–Z">A–Z</option>
             <option value="relevance" data-i18n="Relevance (search)" hidden>Relevance (search)</option>
           </select>
           <button id="library-saved" class="library-saved-toggle" type="button" aria-pressed="false" data-i18n="Saved">Saved</button>
+          <button id="library-following" class="library-saved-toggle" type="button" aria-pressed="false" data-i18n="My directions">My directions</button>
+          <button id="library-follow" class="library-saved-toggle" type="button" aria-pressed="false" hidden>Follow this direction</button>
           <p id="library-status" class="library-status" aria-live="polite"></p>
         </div>
         <div class="library-layout">
@@ -1018,6 +1022,7 @@
                     <th scope="col" class="direction-number" data-i18n="Previous period">Previous period</th>
                     <th scope="col" class="direction-number" data-i18n="Change">Change</th>
                     <th scope="col" class="direction-number" data-i18n="Undated">Undated</th>
+                    <th scope="col" class="direction-number" data-i18n="Stars gained, 30 days">Stars gained, 30 days</th>
                     <th scope="col" data-i18n="16-week trend">16-week trend</th>
                   </tr>
                 </thead>

@@ -10,7 +10,7 @@ function fn(name) {
 }
 const constants = source.match(/const DIRECTION_TREND_WEEKS = .*;\nconst DISCOVERY_SOURCE = .*;/)[0];
 const focusConstants = source.match(/const DIRECTION_RANKED = .*;\nconst DIRECTION_FOCUS_RECORDS = .*;/)[0];
-const { directionTrendRows, discoveryAnchor, directionDisplay, directionFocusId, directionFocusRecords } = new Function(`${constants}\n${focusConstants}\n${fn("dayNumber")}\n${fn("discoveryAnchor")}\n${fn("directionTrendRows")}\n${fn("directionDisplay")}\n${fn("directionFocusId")}\n${fn("directionFocusRecords")}\nreturn { directionTrendRows, discoveryAnchor, directionDisplay, directionFocusId, directionFocusRecords };`)();
+const { directionTrendRows, discoveryAnchor, directionDisplay, directionFocusId, directionFocusRecords } = new Function(`${constants}\n${focusConstants}\n${fn("dayNumber")}\n${fn("discoveryAnchor")}\n${fn("signalIdentity")}\n${fn("directionTrendRows")}\n${fn("directionDisplay")}\n${fn("directionFocusId")}\n${fn("directionFocusRecords")}\nreturn { directionTrendRows, discoveryAnchor, directionDisplay, directionFocusId, directionFocusRecords };`)();
 const { records, taxonomy, anchor, windows } = JSON.parse(readFileSync(0, "utf8"));
 const models = windows.map((days) => directionTrendRows(records, taxonomy, anchor, days));
 // The display order and focus for each window and group choice, and each

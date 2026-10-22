@@ -6839,3 +6839,8 @@ dialog {
     display: inline-block;
   }
 }
+
+.library-signal {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}

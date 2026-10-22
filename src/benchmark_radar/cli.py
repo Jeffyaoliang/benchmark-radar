@@ -461,8 +461,15 @@ def main() -> None:
         directions = assign_library_directions(
             all_records, library_document, identity.equivalent_groups, load_direction_reviews()
         )
+        from .library_signals import assign_library_signals, load_library_signals
+
+        signals = assign_library_signals(all_records, load_library_signals())
         index = build_benchmark_index(
-            resolved_records, series_by_key, all_observations, directions_by_key=directions
+            resolved_records,
+            series_by_key,
+            all_observations,
+            directions_by_key=directions,
+            signals_by_key=signals,
         )
         index_path = write_benchmark_index(
             index,

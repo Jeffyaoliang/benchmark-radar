@@ -25,6 +25,7 @@ remain in the corpus; the Library lists them as not yet classified.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -101,41 +102,62 @@ def _agreed(record_ids: set[str], assignments: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def assign_library_directions(
-    records: list[dict[str, Any]],
-    document: dict[str, Any] | None,
-    equivalent_groups: list[dict[str, Any]] | None = None,
-    reviews: dict[str, Any] | None = None,
-) -> dict[str, dict[str, Any]]:
-    """Map catalog record keys to their research direction, by exact identity only."""
-    if not document:
-        return {}
-    assignments: dict[str, Any] = document["records"]
+# Link fields that point at a .com record's own paper, code or data.
+LIBRARY_ARTIFACT_LINKS = ("report", "paper", "pdf", "hfPaper", "code", "data")
+
+
+def library_record_anchors(record: dict[str, Any]) -> dict[str, list[str]]:
+    """A benchmark-radar.com Library record's exact identity anchors.
+
+    The record's own links, plus the paper or page each catalog source it was
+    collected from points at, as exact artifact identifiers; and the LLM Stats
+    source ids it names. Every join from .com data to the catalog uses these.
+    """
+    urls = [str((record.get("links") or {}).get(field) or "") for field in LIBRARY_ARTIFACT_LINKS]
+    for source in record.get("catalogSources") or []:
+        urls.extend(str(source.get(field) or "") for field in ("paperUrl", "url"))
+    return {
+        "artifacts": sorted(
+            {identifier for url in urls if (identifier := artifact_identifier(url))}
+        ),
+        "llm_stats_ids": sorted(
+            {
+                str(source["sourceId"])
+                for source in record.get("catalogSources") or []
+                if source.get("catalog") == "llm-stats" and source.get("sourceId")
+            }
+        ),
+    }
+
+
+def candidate_stages(
+    records: list[dict[str, Any]], anchors: dict[str, dict[str, Any]]
+) -> Iterator[tuple[dict[str, Any], list[tuple[str, set[str]]]]]:
+    """For each catalog record, its .com candidates by exact identity, in order.
+
+    Stages, strongest first: the Claire Radar record id; the LLM Stats source id
+    a .com record names; exact artifact identifiers. A caller takes the first
+    stage it can accept. A name is never a join key.
+    """
     by_llm_stats: dict[str, set[str]] = {}
     by_artifact: dict[str, set[str]] = {}
-    for record_id, assignment in assignments.items():
-        for source_id in assignment["llm_stats_ids"]:
+    for record_id, anchor in anchors.items():
+        for source_id in anchor.get("llm_stats_ids") or []:
             by_llm_stats.setdefault(source_id, set()).add(record_id)
-        for artifact in assignment["artifacts"]:
+        for artifact in anchor.get("artifacts") or []:
             by_artifact.setdefault(artifact, set()).add(record_id)
-
-    directions: dict[str, dict[str, Any]] = {}
     for record in records:
-        key = record["key"]
+        stages: list[tuple[str, set[str]]] = []
         claire_id = ((record.get("source_metadata") or {}).get("claire_radar") or {}).get("id")
-        if record.get("source") == "claire_radar" and claire_id in assignments:
-            directions[key] = _direction(assignments[claire_id], claire_id, "claire_record_id")
-            continue
+        if record.get("source") == "claire_radar" and claire_id in anchors:
+            stages.append(("claire_record_id", {claire_id}))
         if record.get("source") == "llm_stats":
-            candidates = by_llm_stats.get(key.split(":", 1)[1], set())
-            chosen = _agreed(candidates, assignments) if candidates else None
-            if chosen:
-                directions[key] = _direction(chosen, chosen["id"], "llm_stats_id")
-                continue
+            hits = by_llm_stats.get(record["key"].split(":", 1)[1], set())
+            if hits:
+                stages.append(("llm_stats_id", set(hits)))
         matched: set[str] = set()
-        anchors: list[str] = []
+        identifiers: list[str] = []
         for artifact in record.get("artifacts") or []:
-            # Curated records carry only a URL; derive the same exact identifier.
             # Canonicalize like the export does: a source can keep repository
             # casing in its stored id (OpenCompass gh:OSU-NLP-Group/...), and the
             # exported anchors are artifact_identifier's lowercase form.
@@ -146,10 +168,33 @@ def assign_library_directions(
             hits = by_artifact.get(identifier or "")
             if hits:
                 matched |= hits
-                anchors.append(identifier)
-        chosen = _agreed(matched, assignments) if matched else None
-        if chosen:
-            directions[key] = _direction(chosen, chosen["id"], f"artifact:{min(anchors)}")
+                identifiers.append(identifier)
+        if matched:
+            stages.append((f"artifact:{min(identifiers)}", matched))
+        yield record, stages
+
+
+def assign_library_directions(
+    records: list[dict[str, Any]],
+    document: dict[str, Any] | None,
+    equivalent_groups: list[dict[str, Any]] | None = None,
+    reviews: dict[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Map catalog record keys to their research direction, by exact identity only."""
+    if not document:
+        return {}
+    assignments: dict[str, Any] = document["records"]
+    directions: dict[str, dict[str, Any]] = {}
+    for record, stages in candidate_stages(records, assignments):
+        for join, candidates in stages:
+            if join == "claire_record_id":
+                [claire_id] = candidates
+                directions[record["key"]] = _direction(assignments[claire_id], claire_id, join)
+                break
+            chosen = _agreed(candidates, assignments)
+            if chosen:
+                directions[record["key"]] = _direction(chosen, chosen["id"], join)
+                break
 
     # A reviewed equivalent group says its members are one benchmark, so a
     # member without a direction may show the one its siblings agree on.
@@ -231,6 +276,13 @@ def discovery_anchor(records: list[dict[str, Any]]) -> str | None:
     return max(dates) if dates else None
 
 
+def signal_identity(signals: dict[str, Any]) -> str:
+    """What one stars observation is: its repository, else its .com record.
+
+    Mirrors signalIdentity in app.js."""
+    return signals.get("repository") or f"record:{signals.get('source_record')}"
+
+
 def direction_trend_rows(
     records: list[dict[str, Any]],
     taxonomy: dict[str, Any],
@@ -273,6 +325,14 @@ def direction_trend_rows(
             "previous": 0 if comparable else None,
             "weekly": [0 if ok else None for ok in week_covered],
             "undated": 0,
+            # .com's "attention growth": GitHub stars gained in the 30 days to
+            # the observation date, summed over the direction's observed
+            # repositories, each once (a repository reached through two
+            # sources, or shared by two benchmarks, is one observation), with
+            # how many repositories that is.
+            "stars_30d": 0,
+            "stars_tracked": 0,
+            "_observed": set(),
         }
 
     rows = {
@@ -283,6 +343,16 @@ def direction_trend_rows(
     for record in records:
         direction = record.get("library_direction") or {}
         categories = direction.get("categories") or ["unclassified"]
+        signals = record.get("attention_signals") or {}
+        gain = signals.get("github_stars_30d")
+        if gain is not None:
+            identity = signal_identity(signals)
+            for category_id in categories:
+                row = rows.get(category_id)
+                if row is not None and identity not in row["_observed"]:
+                    row["_observed"].add(identity)
+                    row["stars_30d"] += gain
+                    row["stars_tracked"] += 1
         released = record.get("released")
         if not released:
             # Counted, not dropped: a reader must be able to tell "no new
@@ -314,7 +384,10 @@ def direction_trend_rows(
         "window_days": window_days,
         "discovery_since": since,
         "comparable": comparable,
-        "rows": [*ordered, rows["unclassified"]],
+        "rows": [
+            {key: value for key, value in row.items() if key != "_observed"}
+            for row in [*ordered, rows["unclassified"]]
+        ],
     }
 
 
