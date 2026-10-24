@@ -3371,7 +3371,9 @@ def test_card_titles_read_as_names_and_decode_escaped_text():
         + ";\nconsole.log(JSON.stringify({titles: cases.map(displayTitle), "
         + "owners: cases.map((c) => slugParts(c)?.owner ?? null), "
         + "summary: plainSummary("
-        + "'&lt;p&gt;&lt;strong&gt;A &amp;amp; B&lt;/strong&gt;&lt;/p&gt;')}));"
+        + "'&lt;p&gt;&lt;strong&gt;A &amp;amp; B&lt;/strong&gt;&lt;/p&gt;'), "
+        + "comparison: plainSummary("
+        + "'accuracy rose (p&lt;0.001) while recall held (p&gt;=0.084).')}));"
     )
     result = json.loads(
         subprocess.run(
@@ -3397,3 +3399,6 @@ def test_card_titles_read_as_names_and_decode_escaped_text():
         "embeddings-benchmark",
     ]
     assert result["summary"] == "A & B"
+    # Comparisons decode to angle brackets but are not tags (2026-10-24 Bashkir
+    # benchmark summary): the results between them must survive.
+    assert result["comparison"] == "accuracy rose (p<0.001) while recall held (p>=0.084)."

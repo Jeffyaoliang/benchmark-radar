@@ -2338,9 +2338,15 @@ function decodeEntities(text) {
 
 // DataCite descriptions can be escaped HTML, sometimes escaped twice
 // ("&lt;p&gt;&lt;strong&gt;..."). The card shows their text.
+// Only named HTML tags are removed: decoding also turns "p&lt;0.001 ...
+// p&gt;=0.084" into angle brackets, and a generic <...> pattern would delete
+// the reported results between them.
+const SUMMARY_TAG =
+  /<\/?(?:a|b|blockquote|br|code|div|em|h[1-6]|hr|i|img|li|ol|p|pre|span|strong|sub|sup|table|tbody|td|th|thead|tr|u|ul)\b[^<>]*\/?>/gi;
+
 function plainSummary(text) {
   const decoded = decodeEntities(decodeEntities(text));
-  return decoded.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return decoded.replace(SUMMARY_TAG, " ").replace(/\s+/g, " ").trim();
 }
 
 function slugParts(item) {

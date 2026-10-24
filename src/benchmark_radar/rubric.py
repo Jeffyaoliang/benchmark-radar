@@ -114,21 +114,6 @@ LOW_VALUE_SIGNALS: tuple[dict[str, Any], ...] = (
         "action": "suppress",
     },
     {
-        # Supplementary files deposited for a paper ("Supplementary Tables S1-S9
-        # and Figure S1, with details of the dataset split...") match the
-        # benchmark terms of the paper they support but are not a benchmark.
-        # Anchored at the start of the title: the haystack is title then
-        # summary, and a real benchmark's summary may mention its own
-        # supplementary material.
-        "label": "paper supplement",
-        "pattern": (
-            r"^(?:supplementary|supporting)[\s_-]+"
-            r"(?:materials?|files?|data|information|tables?|figures?|code)\b"
-        ),
-        "deduction": 30.0,
-        "action": "suppress",
-    },
-    {
         "label": "sponsor-bait resource listing",
         "pattern": (
             r"\bsponsor\b.{0,40}\bobtain\b.{0,20}\b(?:full|complete)\b.{0,20}\b(?:data|dataset)\b"
