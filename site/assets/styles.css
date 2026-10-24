@@ -1206,6 +1206,59 @@ a.briefing-chip-sources:focus-visible {
   margin-top: 1.5rem;
 }
 
+/* An opened card adds a few short facts under its own header. Compact rows
+   keep them next to the header they explain instead of spreading five
+   numbers across a page of empty cells. */
+.record-card .record-detail {
+  padding: 0.25rem 0 1rem;
+}
+
+.record-card .record-detail .detail-summary {
+  margin: 0 0 0.6rem;
+}
+
+.record-card .detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.25rem;
+  margin: 0 0 0.6rem;
+  border: 0;
+}
+
+.record-card .detail-grid div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+}
+
+.record-card .detail-grid dt {
+  font-size: 0.75rem;
+}
+
+.record-card .detail-grid dd {
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.record-card .detail-grid .value-zero dd {
+  font-weight: 400;
+}
+
+.record-card .record-detail > h3 {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.8rem;
+}
+
+.record-card .rationale-list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
 .record-detail .detail-summary {
   white-space: pre-line;
 }
@@ -1305,9 +1358,10 @@ a.briefing-chip-sources:focus-visible {
   color: var(--line);
 }
 
+/* A source name is a label, not information to find (design.md, "Bold
+   values, never labels"). */
 .record-meta .meta-source {
   color: var(--ink);
-  font-weight: 600;
 }
 
 .record-meta .meta-event {
@@ -6846,4 +6900,127 @@ dialog {
 .library-signal {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+/* Evidence cards on Today (issue #908, after benchmark-radar.com): a date
+   rail, then the name, what it is, who made it, and its links. */
+.radar-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 150px;
+  gap: 1rem;
+  padding: 1.1rem 0 1.1rem 0.75rem;
+}
+
+.radar-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-top: 0.2rem;
+  font-family: var(--utility);
+  font-size: 0.72rem;
+}
+
+.radar-source {
+  color: var(--blue-deep);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.radar-source:hover {
+  text-decoration: underline;
+}
+
+.radar-event {
+  color: var(--muted);
+}
+
+.radar-date {
+  margin-top: -0.25rem;
+  color: var(--ink);
+}
+
+/* GitHub stars above 100 and above 1,000 (see evidenceCard). */
+.radar-card.stars-100 {
+  border-left: 3px solid #e2c56b;
+  background: #fdf8e9;
+}
+
+.radar-card.stars-1000 {
+  border-left: 3px solid #c99a17;
+  background: #f8ebc2;
+}
+
+.radar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.radar-chips span {
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--line) 45%, transparent);
+  color: var(--ink);
+  font-family: var(--utility);
+  font-size: 0.68rem;
+}
+
+.radar-card .radar-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.radar-subtitle {
+  margin: 0.15rem 0 0.35rem;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.radar-card .record-facts {
+  margin: 0.35rem 0;
+}
+
+.radar-summary {
+  display: -webkit-box;
+  margin: 0 0 0.4rem;
+  overflow: hidden;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The links are the card's next step: what a reader opens. */
+.radar-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.98rem;
+}
+
+.radar-links a {
+  color: var(--blue-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.radar-links a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .radar-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .radar-rail {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
 }

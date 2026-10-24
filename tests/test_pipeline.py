@@ -546,6 +546,34 @@ def test_sponsor_bait_resource_listing_is_suppressed():
     assert "sponsor-bait resource listing" in spam.suppression_reasons
 
 
+def test_paper_supplements_are_suppressed_by_title_only():
+    taxonomy = {"benchmark": ["benchmark"], "dataset": ["dataset"]}
+    now = datetime(2026, 7, 27, 1, tzinfo=UTC)
+    supplement = score_item(
+        item(
+            source="DataCite",
+            title=(
+                "Supplementary Tables S1-S9 and Figure S1, with details of the dataset split, "
+                "model configuration, training settings, evaluation metrics"
+            ),
+            summary="Benchmark dataset tables.",
+        ),
+        taxonomy,
+        now,
+    )
+    benchmark = score_item(
+        item(
+            title="TableBench: a benchmark dataset",
+            summary="See the supplementary material for the full dataset card.",
+        ),
+        taxonomy,
+        now,
+    )
+
+    assert "paper supplement" in supplement.suppression_reasons
+    assert "paper supplement" not in benchmark.suppression_reasons
+
+
 def test_structural_signals_demote_thin_provenance_without_semantic_guessing():
     taxonomy = {"benchmark": ["benchmark"], "evaluation": ["evaluation"]}
     thin = score_item(

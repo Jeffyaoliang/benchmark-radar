@@ -74,6 +74,36 @@ active indicator, and Back and Forward should restore meaningful states.
 Show a concise answer first, then offer the evidence and method behind it.
 Expansion should be clear and reversible.
 
+## Bold values, never labels
+
+Bold tells the reader where the information is. A label (a key such as
+`Stars`, `By`, `Published`, or a source name such as `GitHub` or `Hugging
+Face`) tells them how to read a value, so it never takes bold. Bold a value
+only when it carries information: a name, or a count above zero. A zero or an
+unreported value stays in regular weight, so a glance finds what is there.
+
+Good:
+
+- `By` **utahnlp**, `Stars` **12**, `Forks` 0
+- `GitHub · Released 11h ago · Benchmark`
+
+Bad:
+
+- **By:** utahnlp, **Stars:** 0, **Forks:** 0
+- **GitHub** · Released 11h ago, which makes the source the loudest word on
+  the card
+
+Titles and section headings keep their own weight; this rule covers the
+label-and-value lines inside cards, tables and detail views.
+
+Links a reader opens next (`Paper ↗`, `Code ↗`, `Data ↗`) are actions, not
+labels: they take bold and a slightly larger size. Show each destination once
+per card.
+
+A card may be tinted by a count its source published, such as gold above 100
+and above 1,000 GitHub stars. The tint reports the count; it never stands for
+a quality judgement.
+
 ## Keep page titles close and quiet
 
 [Issue #581](https://github.com/ktwu01/benchmark-radar/issues/581) sets the
@@ -218,6 +248,7 @@ Before merging a user-facing change, check:
 - Are Radar, Catalog, adoption, and scores still distinguishable by label,
   while every one of them still appears in counts, charts, and search?
 - Does any user-facing string say "external"? Name the source instead.
+- Is bold on values that carry information, and never on labels or sources?
 - Do the figure and the list beside it cover the same rows and agree on totals?
 - Do the first response and hydrated page agree?
 - Does it work at 320px with long content, keyboard navigation, direct URLs,
