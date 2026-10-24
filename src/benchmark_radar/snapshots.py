@@ -884,6 +884,12 @@ def merge_snapshots(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[
         merged.pop("questions", None)
     if selection or existing_selection:
         merged["selection"] = selection
+    # The share block (issue #671) is written after the snapshot by
+    # `benchmark-radar share`, so a pass never carries one. Keep the earlier
+    # pass's block: its resolved creators are reused when the share step runs
+    # again, and cards already posted that day stay as posted.
+    if "share" not in incoming and existing.get("share"):
+        merged["share"] = existing["share"]
     # `discovery_state` is cumulative by construction: the later pass loads
     # the earlier snapshot and carries the ledger forward.
     # `ingest_health` and `producer_health` are per-pass and are taken from the

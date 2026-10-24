@@ -7,13 +7,20 @@ from pathlib import Path
 from PIL import Image
 
 from benchmark_radar import cli
-from benchmark_radar.daily_top import budgeted_fetchers, resolve_creators, select_top_items
+from benchmark_radar.daily_top import (
+    briefing_items,
+    budgeted_fetchers,
+    build_share_block,
+    resolve_creators,
+    select_top_items,
+    write_share_block,
+)
 from benchmark_radar.http import RequestError
 from benchmark_radar.social import render_social_section
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-import generate_daily_share_image as share  # noqa: E402
+import render_share_images as share  # noqa: E402
 
 
 def _item(title, score, **extra):
@@ -38,10 +45,10 @@ def _days(*items, earlier=()):
     ]
 
 
-def test_selection_ranks_by_radar_score_and_stops_at_four():
+def test_selection_ranks_by_radar_score_and_stops_at_three():
     items = [_item(f"Bench {n}", n) for n in range(10)]
     selected = select_top_items(_days(*items), "2026-10-23")
-    assert [item["title"] for item in selected] == ["Bench 9", "Bench 8", "Bench 7", "Bench 6"]
+    assert [item["title"] for item in selected] == ["Bench 9", "Bench 8", "Bench 7"]
 
 
 def test_selection_keeps_only_new_benchmarks():
@@ -112,6 +119,17 @@ def test_huggingface_org_handle_becomes_the_institution():
         "authors": [],
         "affiliations": ["NLP at University of Utah"],
     }
+
+
+def test_owner_comes_from_source_id_in_a_raw_snapshot():
+    # Raw snapshots leave `organizations` empty for Hugging Face items.
+    fetch = _fetcher(
+        {"https://huggingface.co/api/organizations/utahnlp/overview": {"fullname": "Utah NLP"}}
+    )
+    item = _item(
+        "k", 1, source="Hugging Face", organizations=[], authors=[], source_id="utahnlp/knows"
+    )
+    assert resolve_creators(item, fetch=fetch)["affiliations"] == ["Utah NLP"]
 
 
 def test_huggingface_user_gets_a_name_and_no_affiliation():
@@ -205,25 +223,151 @@ def test_reversed_duplicate_author_names_merge():
     }
 
 
-def test_build_writes_a_portrait_image_per_day_and_latest(tmp_path):
-    radar = tmp_path / "radar.json"
-    radar.write_text(
-        json.dumps(
-            {
-                "days": _days(
-                    _item("Fresh Bench", 60, summary="&lt;p&gt;Tests agents.&lt;/p&gt;"),
-                    earlier=[_item("Old Bench", 50)],
-                )
-            }
-        ),
-        encoding="utf-8",
+def _briefed_day(*items, bullets, generator="openai-responses"):
+    days = _days(*items)
+    days[-1]["briefing"] = {
+        "generator": generator,
+        "bullets": bullets,
+        "citations": [
+            {"id": f"E{index:03d}", "url": item["url"], "title": item["title"]}
+            for index, item in enumerate(items, start=1)
+        ],
+    }
+    return days
+
+
+def test_briefing_bullets_choose_the_cards_in_briefing_order():
+    # The LLM briefing ranks the day; the radar score does not override it.
+    low, high = _item("Low Score", 10), _item("High Score", 90)
+    days = _briefed_day(
+        high,
+        low,
+        bullets=[
+            "Low Score tests reading. Why it matters: x. Evidence: E002. High confidence.",
+            "High Score tests math. Why it matters: y. Evidence: E001, E002. High confidence.",
+        ],
     )
-    no_html = lambda url, **_: ""  # noqa: E731
-    written = share.build(radar, tmp_path / "out", fetchers=(_fetcher({}), no_html))
-    assert [path.name for path in written] == ["2026-10-22.png", "2026-10-23.png", "latest.png"]
-    assert written[-1].read_bytes() == written[-2].read_bytes()
-    with Image.open(written[-1]) as image:
+    picked = briefing_items(days[-1])
+    assert [(item["title"], blurb) for item, blurb in picked] == [
+        ("Low Score", "Low Score tests reading."),
+        ("High Score", "High Score tests math."),
+    ]
+
+
+def test_a_day_without_a_model_briefing_falls_back_to_the_radar_score():
+    days = _briefed_day(
+        _item("A", 30),
+        _item("B", 90),
+        bullets=["Deterministic finding. Evidence: E001."],
+        generator="deterministic-fallback",
+    )
+    block = build_share_block(days, "2026-10-23", fetch=_fetcher({}), fetch_text=lambda u, **_: "")
+    assert block["basis"] == "radar_score"
+    assert [card["title"] for card in block["cards"]] == ["B", "A"]
+
+
+def test_top_three_are_the_first_three_cards():
+    items = [_item(f"Bench {n}", n) for n in range(5)]
+    bullets = [f"Bench {n} tests x. Evidence: E{n + 1:03d}." for n in range(5)]
+    block = build_share_block(
+        _briefed_day(*items, bullets=bullets),
+        "2026-10-23",
+        fetch=_fetcher({}),
+        fetch_text=lambda u, **_: "",
+    )
+    assert block["basis"] == "briefing"
+    assert len(block["cards"]) == 5
+    assert block["top"] == [card["url"] for card in block["cards"][:3]]
+
+
+def test_a_later_pass_keeps_posted_cards_and_only_appends_new_ones():
+    # card-01.png may already be posted; a reordered briefing must not make it
+    # a different benchmark, and its creators are not looked up again.
+    first, second = _item("First", 1), _item("Second", 2)
+    days = _briefed_day(
+        first,
+        second,
+        bullets=["Second tests y. Evidence: E002.", "First tests x. Evidence: E001."],
+    )
+    previous = {
+        "basis": "briefing",
+        "cards": [{"url": first["url"], "title": "First", "authors": ["Ada"], "affiliations": []}],
+    }
+    fetch = _fetcher({})
+    block = build_share_block(
+        days, "2026-10-23", previous=previous, fetch=fetch, fetch_text=lambda u, **_: ""
+    )
+    assert [card["title"] for card in block["cards"]] == ["First", "Second"]
+    assert block["cards"][0]["authors"] == ["Ada"]
+    assert block["top"] == [first["url"], second["url"]]
+
+
+def test_share_block_is_written_into_the_snapshot_and_survives_a_merge(tmp_path, monkeypatch):
+    from benchmark_radar.snapshots import merge_snapshots
+
+    path = tmp_path / "2026-10-23.json"
+    path.write_text(json.dumps({"date": "2026-10-23"}), encoding="utf-8")
+    days = _briefed_day(_item("k", 1), bullets=["k tests x. Evidence: E001."])
+    monkeypatch.setattr("benchmark_radar.daily_top.load_snapshots", lambda _dir: days)
+    monkeypatch.setattr("benchmark_radar.daily_top.validate_snapshot", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "benchmark_radar.daily_top.budgeted_fetchers",
+        lambda: (_fetcher({}), lambda u, **_: ""),
+    )
+    block = write_share_block(tmp_path, "2026-10-23")
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert stored["share"] == block
+    existing = {**stored, "evidence_items": [], "since": "2026-10-22T00:00:00+00:00"}
+    incoming = {
+        "evidence_items": [],
+        "since": "2026-10-22T00:00:00+00:00",
+        "generated_at": "2026-10-23T12:00:00+00:00",
+    }
+    existing["generated_at"] = "2026-10-23T09:00:00+00:00"
+    assert merge_snapshots(existing, incoming)["share"] == block
+
+
+def _snapshot_with_cards(count):
+    cards = [
+        {
+            "title": f"Bench {n}: " + "a long benchmark title " * 4,
+            "url": f"u{n}",
+            "source": "arXiv",
+            "published_at": "2026-10-23T00:00:00Z",
+            "categories": ["benchmark", "data_quality"],
+            "blurb": "&lt;p&gt;Tests agents.&lt;/p&gt;",
+            "authors": ["Vivien Jiaqian Zhu 朱佳谦", "B", "C", "D"],
+            "affiliations": ["Carnegie Mellon University"],
+        }
+        for n in range(count)
+    ]
+    return {"date": "2026-10-23", "share": {"date": "2026-10-23", "cards": cards}}
+
+
+def test_render_writes_the_top_three_and_one_card_per_benchmark(tmp_path):
+    written = share.render_day(_snapshot_with_cards(5), tmp_path)
+    assert [path.name for path in written] == [
+        "top3.png",
+        "card-01.png",
+        "card-02.png",
+        "card-03.png",
+        "card-04.png",
+        "card-05.png",
+    ]
+    with Image.open(written[0]) as image:
         assert image.size == (1080, 1350)
+    with Image.open(written[1]) as image:
+        assert image.size == (1200, 630)
+
+
+def test_render_is_deterministic(tmp_path):
+    first = share.render_day(_snapshot_with_cards(2), tmp_path / "a")
+    second = share.render_day(_snapshot_with_cards(2), tmp_path / "b")
+    assert [p.read_bytes() for p in first] == [p.read_bytes() for p in second]
+
+
+def test_a_snapshot_without_cards_renders_nothing(tmp_path):
+    assert share.render_day({"date": "2026-10-23"}, tmp_path) == []
 
 
 def test_no_wrapped_line_is_wider_than_the_text_area():
@@ -242,16 +386,18 @@ def test_cjk_the_image_font_cannot_draw_is_dropped_unless_nothing_remains():
     assert share._plain("朱佳谦") == "朱佳谦"
 
 
-def test_social_checklist_embeds_the_days_image():
-    section = render_social_section(
-        "insight", "repo", [], [{"name": "X"}], share_image_date="2026-10-23"
+def test_social_checklist_embeds_the_days_images():
+    block = _snapshot_with_cards(2)["share"]
+    section = render_social_section("insight", "repo", [], [{"name": "X"}], share=block)
+    base = (
+        "https://raw.githubusercontent.com/ktwu01/benchmark-radar-cards/refs/heads/daily/2026-10-23"
     )
-    assert "https://benchmark-radar.org/share/top4/2026-10-23.png" in section
-    assert "latest.png" not in section
+    assert f"![Top benchmarks on 2026-10-23]({base}/top3.png)" in section
+    assert f"{base}/card-02.png" in section
 
 
 def test_spent_lookup_budget_fails_fast_without_calling_the_api(monkeypatch):
-    # A rate-limited API must not hold the Pages build past its time limit.
+    # A rate-limited API must not hold the daily run for minutes.
     calls = []
     monkeypatch.setattr(
         "benchmark_radar.daily_top.get_json", lambda url, **kw: calls.append(kw) or {}
@@ -266,16 +412,18 @@ def test_spent_lookup_budget_fails_fast_without_calling_the_api(monkeypatch):
     assert len(calls) == 1
 
 
-def _run_social(monkeypatch, tmp_path, history):
+def _run_social(monkeypatch, tmp_path, snapshot, *extra):
     items = tmp_path / "items.json"
     items.write_text(
         json.dumps({"generated_at": "2026-10-23T09:39:52Z", "evidence_items": []}),
         encoding="utf-8",
     )
+    snapshots = tmp_path / "snapshots"
+    snapshots.mkdir()
+    (snapshots / "2026-10-23.json").write_text(json.dumps(snapshot), encoding="utf-8")
     channels = tmp_path / "social.yml"
     channels.write_text("social:\n  channels:\n    - name: X\n", encoding="utf-8")
     output = tmp_path / "social.md"
-    monkeypatch.setattr(cli, "load_snapshots", lambda _path: history)
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -283,22 +431,29 @@ def _run_social(monkeypatch, tmp_path, history):
             "social",
             "--items",
             str(items),
+            "--snapshot-dir",
+            str(snapshots),
             "--channels",
             str(channels),
             "--social-output",
             str(output),
+            *extra,
         ],
     )
     cli.main()
     return output.read_text(encoding="utf-8")
 
 
-def test_social_command_embeds_the_image_the_pages_build_writes(monkeypatch, tmp_path):
-    body = _run_social(monkeypatch, tmp_path, _days(_item("Fresh Bench", 60)))
-    assert "share/top4/2026-10-23.png" in body
+def test_social_command_embeds_the_images_recorded_in_the_snapshot(monkeypatch, tmp_path):
+    body = _run_social(monkeypatch, tmp_path, _snapshot_with_cards(1))
+    assert "daily/2026-10-23/top3.png" in body
 
 
-def test_social_command_embeds_nothing_on_a_day_without_new_benchmarks(monkeypatch, tmp_path):
-    # The Pages build writes no image that day; a link would 404.
-    history = _days(_item("Seen Bench", 60), earlier=[_item("Seen Bench", 50)])
-    assert "share/top4" not in _run_social(monkeypatch, tmp_path, history)
+def test_social_command_embeds_nothing_without_recorded_cards(monkeypatch, tmp_path):
+    # No cards means the publish job pushes no images; a link would 404.
+    assert "benchmark-radar-cards" not in _run_social(monkeypatch, tmp_path, {"date": "x"})
+
+
+def test_social_command_omits_images_that_were_not_published(monkeypatch, tmp_path):
+    body = _run_social(monkeypatch, tmp_path, _snapshot_with_cards(1), "--skip-share-images")
+    assert "benchmark-radar-cards" not in body
