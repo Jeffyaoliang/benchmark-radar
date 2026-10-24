@@ -3402,3 +3402,29 @@ def test_card_titles_read_as_names_and_decode_escaped_text():
     # Comparisons decode to angle brackets but are not tags (2026-10-24 Bashkir
     # benchmark summary): the results between them must survive.
     assert result["comparison"] == "accuracy rose (p<0.001) while recall held (p>=0.084)."
+
+
+def test_card_rail_pairs_each_event_with_its_own_date():
+    # A paper published 8 Oct and discovered 24 Oct reads "Discovered 24 Oct".
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index('// "Released 24 Oct", "Updated 24 Oct"')
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const t = (v) => v; const getLang = () => 'en';"
+        "const titleCase = (v) => v.charAt(0).toUpperCase() + v.slice(1);"
+        + helpers
+        + "const base = {published_at: '2026-10-08T00:00:00Z', "
+        + "discovered_at: '2026-10-24T00:00:00Z', updated_at: '2026-10-20T00:00:00Z'};"
+        + "console.log(JSON.stringify(['discovered', 'updated', 'released'].map("
+        + "(event_kind) => railEvent({...base, source: 'arXiv', event_kind}))));"
+    )
+    rails = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [rail["verb"] for rail in rails] == ["Discovered", "Updated", "Released"]
+    assert [rail["date"].split()[0] for rail in rails] == ["24", "20", "8"]

@@ -10917,7 +10917,15 @@ function splitBenchmarkTitle(title) {
 function railEvent(item) {
   const kind = String(item.event_kind || "");
   const verb = kind === "updated" ? t("Updated") : kind === "released" ? t("Released") : titleCase(kind);
-  const date = railDate(kind === "updated" ? item.updated_at || item.published_at : item.published_at || item.discovered_at);
+  // Each word is paired with the date of that event: a paper published on
+  // 8 Oct and found on 24 Oct was discovered on 24 Oct.
+  const when =
+    kind === "updated"
+      ? item.updated_at || item.published_at
+      : kind === "discovered"
+        ? item.discovered_at || item.published_at
+        : item.published_at || item.discovered_at;
+  const date = railDate(when);
   // "GitHub Release ↗" already says it was released.
   const named = kind && String(item.source || "").toLowerCase().includes(kind.replace(/d$/, ""));
   return { verb: named ? "" : verb, date };
