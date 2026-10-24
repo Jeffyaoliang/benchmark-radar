@@ -3428,3 +3428,33 @@ def test_card_rail_pairs_each_event_with_its_own_date():
     )
     assert [rail["verb"] for rail in rails] == ["Discovered", "Updated", "Released"]
     assert [rail["date"].split()[0] for rail in rails] == ["24", "20", "8"]
+
+
+def test_card_links_skip_only_what_the_rail_already_opens():
+    # "GitHub Release ↗" already opens the repository's site, so its repo link
+    # is not repeated; a Hugging Face Papers card keeps its direct arXiv link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const ARTIFACT_LINK_KINDS")
+    helpers = script[start : script.index('// "AgentPhishing: A Benchmark')]
+    program = (
+        "const t = (v) => v;"
+        "const element = (tag, props = {}, children = []) => ({ tag, props, children });"
+        "const safeHttpUrl = (v) => String(v);"
+        + helpers
+        + "const kinds = (item) => (artifactLinks(item)?.children || []).map((a) => a.props.text);"
+        + "console.log(JSON.stringify([kinds({source: 'GitHub Release', "
+        + "url: 'https://github.com/embeddings-benchmark/mteb/releases/tag/2.26.20', "
+        + "artifact_urls: ['https://github.com/embeddings-benchmark/mteb']}), "
+        + "kinds({source: 'Hugging Face Papers', url: 'https://huggingface.co/papers/2610.1', "
+        + "artifact_urls: ['https://arxiv.org/abs/2610.1', 'https://github.com/a/b']})]));"
+    )
+    release, paper = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert release == []
+    assert paper == ["Paper ↗", "Code ↗"]

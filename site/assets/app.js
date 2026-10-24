@@ -10866,8 +10866,10 @@ const ARTIFACT_LINK_KINDS = [
   [/huggingface\.co\/datasets\/|kaggle\.com\/|zenodo\.org\/|figshare\.com\/|doi\.org\/10\.(5281|6084)\//i, "Data"],
 ];
 
-// The rail's source link already opens this kind of page; the links row does
-// not repeat it ("GitHub ↗" above, "Code ↗" below, same repository).
+// The rail's source link already opens this kind of page on its own site; the
+// links row does not repeat it ("GitHub Release ↗" above, the same repository's
+// "Code ↗" below). A same-kind link on another site is a new destination and
+// stays: a Hugging Face Papers card keeps its direct arXiv "Paper ↗".
 const SOURCE_LINK_KIND = {
   arXiv: "Paper",
   "Hugging Face Papers": "Paper",
@@ -10881,16 +10883,26 @@ const SOURCE_LINK_KIND = {
   DataCite: "Data",
 };
 
+function linkHost(href) {
+  try {
+    return new URL(href).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
 function artifactLinks(item) {
-  const seen = new Set([safeHttpUrl(item.url)]);
-  const kinds = new Set([SOURCE_LINK_KIND[item.source]].filter(Boolean));
+  const primary = safeHttpUrl(item.url);
+  const seen = new Set([primary]);
+  const kinds = new Set();
   const links = [];
   for (const url of item.artifact_urls || []) {
     const href = safeHttpUrl(url);
     if (!href || seen.has(href)) continue;
     seen.add(href);
     const kind = ARTIFACT_LINK_KINDS.find(([pattern]) => pattern.test(href))?.[1] || "Link";
-    if (kinds.has(kind)) continue;
+    const railCovers = kind === SOURCE_LINK_KIND[item.source] && linkHost(href) === linkHost(primary);
+    if (railCovers || kinds.has(kind)) continue;
     kinds.add(kind);
     links.push(
       element("a", {
