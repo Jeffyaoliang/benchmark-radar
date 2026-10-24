@@ -7024,3 +7024,17 @@ dialog {
     gap: 0.75rem;
   }
 }
+
+/* Touch targets (design.md, "Controls and theme"): the source and card links
+   are 44px tall to a finger, while negative margins keep the row compact. */
+.radar-source,
+.radar-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -12px;
+}
+
+.radar-links {
+  margin-top: 0.4rem;
+}

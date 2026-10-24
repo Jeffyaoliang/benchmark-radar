@@ -2394,6 +2394,9 @@ function recordFactEntries(item) {
   // The third field marks a value that earns bold (design.md, "Bold values,
   // never labels"): a name, or a count above zero.
   if (organizations) facts.push([t(ownerOnly ? "By" : "Organizations"), organizations, true]);
+  // The title no longer shows the owner, so a record whose connector left
+  // `organizations` empty still names it once.
+  else if (owner) facts.push([t("By"), owner, true]);
   if (authors) facts.push([t("Authors"), authors, true]);
   const metrics = item.metrics || {};
   let metricCount = 0;

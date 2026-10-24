@@ -1186,6 +1186,10 @@ def test_evidence_cards_show_fetched_source_metadata_without_inventing_zeroes():
         ["Authors", "Alice, Bob +1", True],
         ["Stars", "0", False],
     ]
+    assert facts["slug_owner"] == [
+        ["By", "NVIDIA-NeMo", True],
+        ["Activity counters", "Not reported by this source", False],
+    ]
     assert facts["unreported"] == [
         ["Authors", "Deyao Hong", True],
         ["Activity counters", "Not reported by this source", False],
