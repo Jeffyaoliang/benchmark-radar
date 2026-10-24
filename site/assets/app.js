@@ -2370,7 +2370,8 @@ function displayTitle(item) {
       if (/[A-Z]/.test(word)) return word;
       if (index > 0 && TITLE_SMALL_WORDS.has(word)) return word;
       if (summaryCasing.has(word)) return summaryCasing.get(word);
-      if (/^[b-df-hj-np-tv-z]{2,4}$/.test(word)) return word.toUpperCase();
+      // "y" counts as a vowel, so "gym" stays a word while "rl" and "llm" read as acronyms.
+      if (/^[b-df-hj-np-tv-xz]{2,4}$/.test(word)) return word.toUpperCase();
       return word.charAt(0).toUpperCase() + word.slice(1);
     })
     .join(" ");

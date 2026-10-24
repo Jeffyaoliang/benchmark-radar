@@ -3363,6 +3363,8 @@ def test_card_titles_read_as_names_and_decode_escaped_text():
         {"title": "Agnuxo1/AIMS-PAIEC-2026", "summary": ""},
         {"title": "Schema &amp; Citation Dataset (Volume 183)", "summary": ""},
         {"title": "embeddings-benchmark/mteb 2.26.20", "summary": "MTEB release"},
+        {"title": "yojul/bluesky-gym-leaderboard-results", "summary": ""},
+        {"title": "kizmiz/llm-nlp-eval", "summary": ""},
     ]
     program = (
         helpers
@@ -3388,6 +3390,8 @@ def test_card_titles_read_as_names_and_decode_escaped_text():
         "AIMS PAIEC 2026",
         "Schema & Citation Dataset (Volume 183)",
         "MTEB 2.26.20",
+        "Bluesky Gym Leaderboard Results",
+        "LLM NLP Eval",
     ]
     assert result["owners"] == [
         "kizmiz",
@@ -3397,6 +3401,8 @@ def test_card_titles_read_as_names_and_decode_escaped_text():
         "Agnuxo1",
         None,
         "embeddings-benchmark",
+        "yojul",
+        "kizmiz",
     ]
     assert result["summary"] == "A & B"
     # Comparisons decode to angle brackets but are not tags (2026-10-24 Bashkir
