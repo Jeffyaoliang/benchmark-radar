@@ -276,7 +276,9 @@ def _prefix_counts(document: _SearchDocument, term: str) -> dict[str, int]:
     counts: dict[str, int] = {}
     for field, field_counts in document.field_counts.items():
         total = sum(
-            count for token, count in field_counts.items() if token != term and token.startswith(term)
+            count
+            for token, count in field_counts.items()
+            if token != term and token.startswith(term)
         )
         if total:
             counts[field] = total
@@ -312,7 +314,10 @@ def _bm25f_score(
         weighted_frequency = 0.0
         for field in _FIELD_ORDER:
             frequency = document.field_counts[field][term]
-            if prefix_counts and term == query_tokens[-1]:
+            # A word that exists in the corpus keeps its whole-word scores, so
+            # finishing "agent" does not reorder results; an unknown fragment such
+            # as "saf" has no whole-word score, so its prefix hits supply it.
+            if prefix_counts and term == query_tokens[-1] and not corpus.document_frequency[term]:
                 frequency += prefix_counts.get(field, 0)
             if not frequency:
                 continue

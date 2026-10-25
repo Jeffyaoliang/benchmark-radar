@@ -171,7 +171,11 @@ function bm25fScore(document, queryTokens, corpus, prefixHits) {
     let weightedFrequency = 0.0;
     for (const field of FIELD_ORDER) {
       let frequency = document.fieldCounts[field].get(term) || 0;
-      if (term === queryTokens[queryTokens.length - 1]) frequency += prefixHits[field] || 0;
+      // A word that exists in the corpus keeps its whole-word scores; only an
+      // unknown fragment such as "saf" takes its score from prefix hits.
+      if (term === queryTokens[queryTokens.length - 1] && !corpus.documentFrequency.get(term)) {
+        frequency += prefixHits[field] || 0;
+      }
       if (!frequency) continue;
       // Length normalization keeps ASCII terms on their original token
       // population so Unicode support does not reorder English hits.

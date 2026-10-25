@@ -129,7 +129,9 @@ SYNTHETIC = [
     record("i", "Grasp", description="", categories=[]),
     record("k", "Humanity's Last Exam", description="Expert questions.", categories=["Knowledge"]),
     record("l", "SafetyBench", description="", categories=[]),
-    record("m", "Chat Arena", description="Votes from human raters on model safety.", categories=[]),
+    record(
+        "m", "Chat Arena", description="Votes from human raters on model safety.", categories=[]
+    ),
     record("j", "Planning Grasp Robot", description="", categories=["Robotics"]),
 ]
 
