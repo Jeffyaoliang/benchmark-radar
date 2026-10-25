@@ -267,6 +267,12 @@ def _provenance(snapshot: dict[str, Any], row: dict[str, Any], round2_path: Path
     }
 
 
+# The hub writes this pair on every benchmark it does not host for online
+# evaluation. It marks a product status, not a topic. Copying it into
+# categories told readers the benchmark evaluates "Unsupported".
+_ONLINE_EVAL_STATUS_TAGS = frozenset({"不支持", "unsupported"})
+
+
 def _categories(row: dict[str, str]) -> list[str]:
     """Source-authored tags and dimensions, deduplicated but not inferred."""
     categories: list[str] = []
@@ -275,7 +281,7 @@ def _categories(row: dict[str, str]) -> list[str]:
         for raw in row.get(field, "").split("|"):
             value = raw.strip()
             folded = value.casefold()
-            if value and folded not in seen:
+            if value and folded not in seen and folded not in _ONLINE_EVAL_STATUS_TAGS:
                 seen.add(folded)
                 categories.append(value)
     return categories
