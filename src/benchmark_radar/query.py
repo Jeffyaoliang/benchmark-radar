@@ -262,6 +262,17 @@ def _contains_tokens(haystack: tuple[str, ...], needle: tuple[str, ...]) -> bool
     )
 
 
+def _unique_query_tokens(query: str) -> tuple[str, ...]:
+    """Unique query words in first-seen order, except that the word the user typed
+    last stays last, since it is the one treated as still being typed."""
+    tokens = _tokens(query)
+    unique = dict.fromkeys(tokens)
+    if tokens:
+        unique.pop(tokens[-1])
+        unique[tokens[-1]] = None
+    return tuple(unique)
+
+
 def _prefix_term(query_tokens: tuple[str, ...]) -> str | None:
     """The word still being typed. The search box searches as you type, so the
     last query word also matches the words that start with it. Only ASCII words
@@ -621,7 +632,7 @@ class QueryService:
         sources: frozenset[str] | None = None,
     ) -> dict[str, Any]:
         query = " ".join(str(query).split())
-        query_tokens = tuple(dict.fromkeys(_tokens(query)))
+        query_tokens = _unique_query_tokens(query)
         if not query_tokens:
             raise QueryError(
                 "query must contain at least one letter or number",

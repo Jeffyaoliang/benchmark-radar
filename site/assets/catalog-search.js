@@ -247,7 +247,14 @@ const corpusCache = new WeakMap();
 // query words it lacks, so a surface can tell a full match from a partial
 // candidate instead of calling both a match.
 export function searchCatalogMatches(records, query) {
-  const queryTokens = [...new Set(searchTokens(String(query || "").split(/\s+/).filter(Boolean).join(" ")))];
+  const tokens = searchTokens(String(query || "").split(/\s+/).filter(Boolean).join(" "));
+  // The word typed last stays last, since it is the one treated as a prefix.
+  const queryTokens = [...new Set(tokens)];
+  if (tokens.length) {
+    const last = tokens[tokens.length - 1];
+    queryTokens.splice(queryTokens.indexOf(last), 1);
+    queryTokens.push(last);
+  }
   if (!queryTokens.length) return [];
   let corpus = corpusCache.get(records);
   if (!corpus) {

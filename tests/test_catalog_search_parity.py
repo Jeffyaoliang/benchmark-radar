@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from benchmark_radar.query import _build_search_corpus, _match, _tokens
+from benchmark_radar.query import _build_search_corpus, _match, _unique_query_tokens
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "tests" / "catalog_search_harness.mjs"
@@ -44,7 +44,7 @@ def site_ranking(records: list[dict], queries: list[str]) -> dict[str, list[str]
 def service_ranking(records: list[dict], query: str) -> dict[str, list[str]]:
     """QueryService.search without filters or a result limit: ranked keys, and
     the keys with no missing query token (full rather than partial matches)."""
-    query_tokens = tuple(dict.fromkeys(_tokens(" ".join(query.split()))))
+    query_tokens = _unique_query_tokens(" ".join(query.split()))
     if not query_tokens:
         return {"keys": [], "full": []}
     corpus = _build_search_corpus(records)
@@ -156,6 +156,7 @@ QUERIES = [
     "human",
     "robot gra",
     "x",
+    "gra robot gra",
 ]
 
 
@@ -189,6 +190,14 @@ def test_a_partly_typed_word_matches_words_that_start_with_it():
     assert ranked["human"]["keys"][0] == "k"
     assert "j" in ranked["robot gra"]["keys"]
     assert ranked["x"]["keys"] == []
+
+
+def test_a_repeated_last_word_is_still_the_word_being_typed():
+    # "gra robot gra" dedupes to two words; the prefix must stay on "gra", the
+    # word the user typed last, so Grasp (which only "gra" reaches) still matches.
+    assert _unique_query_tokens("gra robot gra") == ("robot", "gra")
+    ranked = site_ranking(SYNTHETIC, ["gra robot gra"])["gra robot gra"]
+    assert "i" in ranked["keys"]
 
 
 ISSUE_883_QUERIES = ["saf", "safe", "safety", "human", "hu"]
