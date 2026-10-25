@@ -22,11 +22,7 @@
   }
 
   function loadClarity() {
-    if (window.clarity) {
-      window.clarity("start");
-      window.clarity("consentv2", { ad_Storage: "denied", analytics_Storage: "granted" });
-      return;
-    }
+    if (window.clarity) return;
     (function (c, l, a, r, i, t, y) {
       c[a] =
         c[a] ||
@@ -61,6 +57,9 @@
         document.cookie = `${name}=; Max-Age=0; Path=/; Domain=${domains.slice(i).join(".")}`;
       }
     }
+    // Clarity can restart asynchronously in cookieless mode after denial.
+    // Discard that runtime and any pending tag before it can record again.
+    if (window.clarity) window.location.reload();
   }
 
   function choose(value) {

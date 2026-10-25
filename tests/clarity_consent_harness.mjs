@@ -12,6 +12,7 @@ function page({ storage = new Map(), blocked = false, cookies = new Map(), reset
   const scripts = [];
   const calls = [];
   let recording = false;
+  let reloads = 0;
   const localStorage = {
     getItem(k) { if (blocked) throw Error("blocked"); return storage.get(k) ?? null; },
     setItem(k, v) { if (blocked) throw Error("blocked"); storage.set(k, v); },
@@ -38,7 +39,7 @@ function page({ storage = new Map(), blocked = false, cookies = new Map(), reset
     },
   };
   const window = {
-    localStorage, location: { hostname: "radar.example.com", reload() { recording = false; } },
+    localStorage, location: { hostname: "radar.example.com", reload() { recording = false; reloads += 1; } },
     addEventListener(type, fn) { listeners[type] = fn; },
   };
   runInNewContext(source, { window, document, Event: class { constructor(type) { this.type = type; } } });
@@ -55,6 +56,7 @@ function page({ storage = new Map(), blocked = false, cookies = new Map(), reset
   return {
     window, scripts, calls, nodes, cookies, loadSdk,
     get recording() { return recording; },
+    get reloads() { return reloads; },
     choose(value) {
       if (!nodes.has("analytics-consent")) this.reopen();
       nodes.get("analytics-consent").click({ target: { closest: () => ({ dataset: { consent: value } }) } });
@@ -81,7 +83,8 @@ test("fresh and declined visits never request the tag", () => {
 });
 
 test("accept loads one tag and grants analytics only; withdrawal stops; reaccept restarts", () => {
-  const tab = page();
+  const storage = new Map();
+  const tab = page({ storage });
   tab.choose("granted");
   assert.equal(tab.scripts.length, 1);
   assert.match(tab.scripts[0].src, /^https:\/\/www\.clarity\.ms\/tag\//);
@@ -93,9 +96,13 @@ test("accept loads one tag and grants analytics only; withdrawal stops; reaccept
   tab.choose("denied");
   assert.equal(tab.recording, false);
   assert.ok(tab.calls.some(([command, value]) => command === "consent" && value === false));
-  tab.choose("granted");
-  assert.equal(tab.recording, true);
-  assert.equal(tab.scripts.length, 1);
+  assert.equal(tab.reloads, 1);
+  const restored = page({ storage });
+  assert.equal(restored.scripts.length, 0);
+  restored.choose("granted");
+  restored.loadSdk();
+  assert.equal(restored.recording, true);
+  assert.equal(restored.scripts.length, 1);
 });
 
 test("stored opt-in starts without another prompt", () => {
@@ -125,12 +132,14 @@ test("withdrawal stops even when storage is blocked", () => {
   assert.equal(tab.recording, false);
 });
 
-test("withdrawal before the SDK arrives remains stopped when it arrives", () => {
+test("withdrawal before the SDK arrives discards the pending runtime", () => {
   const tab = page();
   tab.choose("granted");
   tab.choose("denied");
-  tab.loadSdk();
-  assert.equal(tab.recording, false);
+  assert.equal(tab.reloads, 1);
+  // A navigation discards the pending script, so the next document never loads it.
+  const restored = page({ storage: new Map([[key, "denied"]]) });
+  assert.equal(restored.scripts.length, 0);
 });
 
 test("withdrawal and storage clearing stop other tabs", () => {
@@ -144,13 +153,16 @@ test("withdrawal and storage clearing stop other tabs", () => {
   assert.equal(first.recording, false);
   assert.equal(other.recording, false);
   assert.ok(!other.nodes.has("analytics-consent"));
-  first.choose("granted");
-  other.sync();
-  assert.equal(other.recording, true);
+  assert.equal(other.reloads, 1);
+  storage.set(key, "granted");
+  const restored = page({ storage });
+  restored.loadSdk();
   storage.clear();
-  other.sync(null);
-  assert.equal(other.recording, false);
-  assert.ok(other.nodes.has("analytics-consent"));
+  restored.sync(null);
+  assert.equal(restored.recording, false);
+  assert.equal(restored.reloads, 1);
+  const cleared = page({ storage });
+  assert.ok(cleared.nodes.has("analytics-consent"));
 });
 
 test("unrelated storage events do not alter consent", () => {
