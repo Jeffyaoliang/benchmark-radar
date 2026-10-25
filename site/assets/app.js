@@ -279,6 +279,8 @@ function initialLang() {
 // to a string for storage is forbidden project-wide).
 const staticI18nMarkup = new Map();
 
+document.addEventListener("analytics-consent-shown", () => applyStaticI18n());
+
 function applyStaticI18n() {
   if (typeof document === "undefined") return;
   const table = I18N[getLang()] || {};
@@ -607,6 +609,11 @@ const I18N = {
     Data: "数据",
     Contact: "联系",
     "Privacy notice": "隐私声明",
+    "Change analytics choice": "更改分析设置",
+    Accept: "接受",
+    Decline: "拒绝",
+    "analytics-consent-text":
+      '可以用 Microsoft Clarity 记录你这次访问的会话回放和热力图吗？这些数据帮我们改进导航。你接受之前不会记录任何内容。 <a href="https://privacy.microsoft.com/privacystatement">Microsoft 隐私声明</a>',
     "Open the repository and star it": "打开仓库并给个 Star",
     Star: "Star",
     "Dashboard views": "仪表盘视图",
