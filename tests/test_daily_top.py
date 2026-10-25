@@ -399,6 +399,13 @@ def test_social_checklist_embeds_the_days_images():
         assert f"]({base}/card-0{index}.png)]({base}/card-0{index}.png)" in section
 
 
+def test_checklist_title_cut_never_splits_an_escape():
+    block = _snapshot_with_cards(1)["share"]
+    block["cards"][0]["title"] = "a" * 59 + "|tail"
+    section = render_social_section("insight", "repo", [], [{"name": "X"}], share=block)
+    assert "[1. " not in section and "\\]" not in section.split("1. ")[1].split("\n")[0]
+
+
 def test_spent_lookup_budget_fails_fast_without_calling_the_api(monkeypatch):
     # A rate-limited API must not hold the daily run for minutes.
     calls = []
