@@ -70619,5 +70619,142 @@
     "taxonomy_version": "sha256:5ee3bd8146ce",
     "watchlisted": 0
   },
+  "share": {
+    "basis": "briefing",
+    "cards": [
+      {
+        "affiliations": [
+          "ChartAct Benchmark"
+        ],
+        "authors": [],
+        "blurb": "The new ChartAct benchmark tests dynamic chart understanding through real browser interactions rather than static screenshots.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "dataset",
+          "agentic"
+        ],
+        "published_at": "2026-10-24T14:48:44+00:00",
+        "source": "Hugging Face",
+        "title": "chartact-benchmark/ChartAct",
+        "url": "https://huggingface.co/datasets/chartact-benchmark/ChartAct"
+      },
+      {
+        "affiliations": [],
+        "authors": [
+          "Vahit Feryad"
+        ],
+        "blurb": "The new LongHaul-Bench evaluates a self-improving language-model agent across roughly 1,000 sequential industrial-diagnosis episodes while constraining its stored experience.",
+        "categories": [
+          "benchmark",
+          "agentic"
+        ],
+        "published_at": "2026-10-24T19:36:32+00:00",
+        "source": "DataCite",
+        "title": "LongHaul-Bench: A Reproducible Benchmark for Long-Horizon Reliability of Self-Improving LLM Agents Under Industrial Edge Constraints",
+        "url": "https://doi.org/10.5281/zenodo.23624799"
+      },
+      {
+        "affiliations": [
+          "Film Independent"
+        ],
+        "authors": [
+          "Gaurav Chaulagain",
+          "Medhavee Upadhyaya"
+        ],
+        "blurb": "A new permission-withdrawal evaluation treats tool-agent authorization as a sequence-level property.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "agentic"
+        ],
+        "published_at": "2026-10-23T00:00:00+00:00",
+        "source": "Crossref",
+        "title": "Permission Withdrawal in Tool-Using Language Model Agents: Runtime Enforcement and Recovery",
+        "url": "https://doi.org/10.54536/ajdsai.v2i2.8776"
+      },
+      {
+        "affiliations": [],
+        "authors": [
+          "Raphael Vallat",
+          "Remington Mallett",
+          "Moritz Gerster",
+          "S.J. Guillot",
+          "Bhargav Kowshik",
+          "Chin-Hui Chen",
+          "Daria Agafonova",
+          "Darigov Research",
+          "Eric Larson",
+          "Matias Andina",
+          "Nabil Alibou",
+          "Regina Hertfelder Reynolds",
+          "Sen-wen DENG",
+          "bartromb",
+          "paulroujansky"
+        ],
+        "blurb": "The YASA sleep-analysis package updated its evaluation module to support repeated measurements, such as several nights from one participant.",
+        "categories": [
+          "evaluation"
+        ],
+        "published_at": "2026-10-25T00:00:00+00:00",
+        "source": "Zenodo",
+        "title": "raphaelvallat/yasa: v0.8.1",
+        "url": "https://zenodo.org/records/23637992"
+      },
+      {
+        "affiliations": [],
+        "authors": [
+          "Esra Suzen"
+        ],
+        "blurb": "The captured feed contains recurring evidence that data separation choices can materially change reported performance.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "dataset"
+        ],
+        "published_at": "2026-10-23T00:00:00+00:00",
+        "source": "Semantic Scholar",
+        "title": "Correction-stage information leakage and target-input asymmetry can distort comparisons of fNIRS short-separation channel correction strategies.",
+        "url": "https://www.semanticscholar.org/paper/7608f6afc392ba5f39d29af3f023c20ea95a20c7"
+      },
+      {
+        "affiliations": [
+          "University of Washington",
+          "Cancer Research Foundation",
+          "Microsoft (United States)",
+          "University of Michigan"
+        ],
+        "authors": [
+          "Yu-Meng Ma",
+          "Jacob O. Wobbrock",
+          "Joe Devon",
+          "A. Gustafson",
+          "Michael Fairchild",
+          "Jennifer Mankoff",
+          "Venkatesh Potluri",
+          "Yumeng Ma",
+          "Jacob Otto Wobbrock",
+          "Aaron Gustafson",
+          "Jennifer C. Mankoff"
+        ],
+        "blurb": "The new Prompt Accessibility Controlled Evaluation testbed isolates accessibility effects in language-model-generated HyperText Markup Language form components.",
+        "categories": [
+          "benchmark",
+          "evaluation"
+        ],
+        "published_at": "2026-10-25T00:00:00+00:00",
+        "source": "Semantic Scholar",
+        "title": "Prompt and Circumstance: Evaluating Accessibility in LLM-Generated HTML Form Components",
+        "url": "https://www.semanticscholar.org/paper/c236771bce56f6ca7f426410a7bd5a44de8ed8b7"
+      }
+    ],
+    "date": "2026-10-25",
+    "schema_version": 1,
+    "top": [
+      "https://huggingface.co/datasets/chartact-benchmark/ChartAct",
+      "https://doi.org/10.5281/zenodo.23624799",
+      "https://doi.org/10.54536/ajdsai.v2i2.8776"
+    ]
+  },
   "since": "2026-10-23T09:29:30.816131+00:00"
 }
