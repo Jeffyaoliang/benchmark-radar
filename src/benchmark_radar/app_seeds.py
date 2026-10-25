@@ -317,8 +317,9 @@ def _latest_release_row(entry: dict[str, Any], top: float) -> str:
 # Mirrors the title in site/assets/app.js; the seed must match what the
 # renderer draws (tests/test_latest_releases_view.py).
 _CONFIDENCE_TITLE = (
-    "How much of the score is backed by observed data. High: most of the score comes from "
-    "at least two signals that were found. Low: little was found. Not a quality rating."
+    "How much of the score is backed by observed data. High: at least two signals were found "
+    "and they cover 75% or more of the score. Low: fewer than two signals were found, or they "
+    "cover less than 40% of the score. Not a quality rating."
 )
 
 
