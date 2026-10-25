@@ -1979,7 +1979,7 @@ def test_rendered_briefing_splits_each_bullet_into_head_body_and_meta():
     assert "High confidence" in subtext(meta)
     assert "3 sources" in subtext(meta)
     multi_source_chip = next(
-        node for node in meta["children"] if "briefing-chip-sources" in node["className"].split()
+        node for node in _flatten(meta) if "briefing-chip-sources" in node["className"].split()
     )
     # Issue #919: the count is a disclosure summary, and the details element
     # lists one link per cited source so each of the N sources is reachable.
