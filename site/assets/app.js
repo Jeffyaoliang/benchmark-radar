@@ -1291,6 +1291,11 @@ const I18N = {
     "{value} · unverified": "{value} · 未经核验",
     "source ↗": "来源 ↗",
     "Coverage {coverage}": "覆盖率 {coverage}",
+    "latest.legend":
+      "数字是关注度得分（满分 100）。下方的标签是另一回事：得分背后有多少数据支撑。“高”表示三类信号都找到了，“低”表示大部分缺失。它不代表基准本身的好坏。",
+    "{level} data": "数据支撑：{level}",
+    "How much of the score is backed by data. High: all three signals were found. Low: most were missing. Not a quality rating.":
+      "得分背后有多少数据支撑。高：三类信号都找到了。低：大部分缺失。不是质量评级。",
     unranked: "未排名",
     high: "高",
     medium: "中",
@@ -10095,7 +10100,12 @@ function latestReleaseRow(entry, maxScore, open = new Set()) {
       confidence
         ? element("span", {
             className: `pill pill-confidence pill-confidence-${confidence}`,
-            text: t(confidence),
+            text: t("{level} data", { level: t(confidence) }),
+            attrs: {
+              title: t(
+                "How much of the score is backed by data. High: all three signals were found. Low: most were missing. Not a quality rating.",
+              ),
+            },
           })
         : null,
     ]),
