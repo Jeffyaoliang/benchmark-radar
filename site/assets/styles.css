@@ -1081,6 +1081,16 @@ a.briefing-chip-sources:focus-visible {
   letter-spacing: 0.06em;
 }
 
+a.answer-source-count,
+.briefing-sources summary.answer-source-count {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.answer-meta .briefing-sources-list {
+  position: static;
+}
+
 .answer-plain {
   color: var(--muted);
 }
