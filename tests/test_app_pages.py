@@ -393,6 +393,22 @@ def test_pages_carry_breadcrumb_and_webpage_schema(tmp_path):
     ]
 
 
+def test_every_generated_route_ships_a_dataset_without_a_website_parent(tmp_path):
+    report = _write(tmp_path, _dashboard())
+    for path in report["paths"]:
+        page = (tmp_path / path.strip("/") / "index.html").read_text(encoding="utf-8")
+        blocks = [
+            json.loads(block)
+            for block in re.findall(
+                r'<script type="application/ld\+json">(.*?)</script>', page, re.DOTALL
+            )
+        ]
+        dataset = next(block for block in blocks if block.get("@type") == "Dataset")
+        assert "isPartOf" not in dataset, path
+        assert dataset["includedInDataCatalog"]["@type"] == "DataCatalog"
+        assert any(block.get("@type") == "WebSite" for block in blocks), path
+
+
 def test_utility_schema_names_the_clean_route(tmp_path):
     _write(tmp_path, _dashboard())
     for utility, label in (("cli", "CLI"), ("cite", "Publications"), ("rubric", "Scoring rubric")):
