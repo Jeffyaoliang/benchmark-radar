@@ -352,7 +352,8 @@ def test_the_static_leaderboard_page_seeds_the_default_window():
     ) in rows
     assert "latest-release-bar-limited" in rows
     assert "<span>87</span>" in rows and "<span>no score</span>" in rows
-    assert 'class="pill pill-confidence pill-confidence-high">high</span>' in rows
+    assert 'class="pill pill-confidence pill-confidence-high" title="' in rows
+    assert ">high data</span>" in rows
     assert 'class="latest-release-date">released Sep 1, 2026</small>' in rows
     assert rows.count('<div class="latest-release-body">') == 2
     assert rows.count("<dt>GitHub stars</dt><dd><span>not observed</span>") == 2

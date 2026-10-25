@@ -257,8 +257,8 @@ def _latest_release_row(entry: dict[str, Any], top: float) -> str:
     bar_class = "leaderboard-top-bar-fill" + ("" if ranked else " latest-release-bar-limited")
     score_text = esc(_js_number(score)) if score is not None else "no score"
     pill = (
-        f'<span class="pill pill-confidence pill-confidence-{esc(confidence)}">'
-        f"{esc(confidence)}</span>"
+        f'<span class="pill pill-confidence pill-confidence-{esc(confidence)}" '
+        f'title="{esc(_CONFIDENCE_TITLE)}">{esc(confidence)} data</span>'
         if confidence
         else ""
     )
@@ -312,6 +312,15 @@ def _latest_release_row(entry: dict[str, Any], top: float) -> str:
         f'<p class="latest-release-meta">{esc(meta)}</p></div>'
         "</details></li>"
     )
+
+
+# Mirrors the title in site/assets/app.js; the seed must match what the
+# renderer draws (tests/test_latest_releases_view.py).
+_CONFIDENCE_TITLE = (
+    "How much of the score is backed by observed data. High: at least two signals were found "
+    "and they cover 75% or more of the score. Low: fewer than two signals were found, or they "
+    "cover less than 40% of the score. Not a quality rating."
+)
 
 
 def _latest_releases_seed(dashboard: dict[str, Any]) -> dict[str, str]:

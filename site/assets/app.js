@@ -1291,6 +1291,11 @@ const I18N = {
     "{value} · unverified": "{value} · 未经核验",
     "source ↗": "来源 ↗",
     "Coverage {coverage}": "覆盖率 {coverage}",
+    "latest.legend":
+      "数字是关注度得分（满分 100）。下方的标签是另一回事：得分有多少来自实际观察到的数据。“高”表示至少找到两类信号，且合计覆盖得分的 75% 以上；“低”表示找到的信号少于两类，或合计覆盖不到得分的 40%。它不代表 benchmark 本身的好坏。",
+    "{level} data": "数据支撑：{level}",
+    "How much of the score is backed by observed data. High: at least two signals were found and they cover 75% or more of the score. Low: fewer than two signals were found, or they cover less than 40% of the score. Not a quality rating.":
+      "得分有多少来自实际观察到的数据。高：至少找到两类信号，且合计覆盖得分的 75% 以上。低：找到的信号少于两类，或合计覆盖不到得分的 40%。不是质量评级。",
     unranked: "未排名",
     high: "高",
     medium: "中",
@@ -10109,7 +10114,12 @@ function latestReleaseRow(entry, maxScore, open = new Set()) {
       confidence
         ? element("span", {
             className: `pill pill-confidence pill-confidence-${confidence}`,
-            text: t(confidence),
+            text: t("{level} data", { level: t(confidence) }),
+            attrs: {
+              title: t(
+                "How much of the score is backed by observed data. High: at least two signals were found and they cover 75% or more of the score. Low: fewer than two signals were found, or they cover less than 40% of the score. Not a quality rating.",
+              ),
+            },
           })
         : null,
     ]),

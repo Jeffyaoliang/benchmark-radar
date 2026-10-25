@@ -5728,6 +5728,13 @@ dialog {
   border-color: var(--blue);
 }
 
+@media (min-width: 761px) {
+  .latest-releases .leaderboard-top-row,
+  .latest-releases .leaderboard-top-columns {
+    grid-template-columns: 2rem minmax(0, 1.4fr) minmax(0, 1fr) 7.5rem;
+  }
+}
+
 .latest-releases-window {
   color: var(--muted);
   font-weight: 400;
@@ -5781,8 +5788,28 @@ dialog {
   opacity: 0.45;
 }
 
-.leaderboard-top-count .pill-confidence {
-  margin-left: 0.35rem;
+/* The tag sits under the score, not beside it, so it no longer reads as a
+   second number and the score column stays narrow (issue #921). */
+.latest-release-summary .leaderboard-top-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  white-space: normal;
+}
+
+.latest-release-summary .leaderboard-top-count .pill-confidence {
+  margin-left: 0;
+  align-self: flex-end;
+  white-space: nowrap;
+}
+
+.latest-releases .leaderboard-top-bar {
+  max-width: 28rem;
+}
+
+.latest-releases .leaderboard-top-name {
+  max-width: none;
 }
 
 .latest-release-body {
