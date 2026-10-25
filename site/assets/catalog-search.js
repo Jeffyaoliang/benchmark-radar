@@ -25,6 +25,7 @@ const BM25_K1 = 1.2;
 const BM25_B = 0.75;
 const NAME_MATCH_MULTIPLIERS = [3.0, 1.5, 0.75];
 const PHRASE_MULTIPLIER = 0.5;
+const MIN_PREFIX_LENGTH = 2;
 // Han ideographs plus hiragana and katakana, which share unspaced text with Han.
 const CJK_CHARS =
   "々ぁ-ゟァ-ヺー-ヿㇰ-ㇿ㐀-䶿一-鿿豈-﫿";
@@ -127,20 +128,50 @@ function containsTokens(haystack, needle) {
   return false;
 }
 
+// The word still being typed: the last query word also matches the words that
+// start with it. ASCII only, as in Python, because CJK tokens are character pairs.
+function prefixTerm(queryTokens) {
+  const last = queryTokens[queryTokens.length - 1];
+  return Array.from(last).length >= MIN_PREFIX_LENGTH && ASCII.test(last) ? last : null;
+}
+
+// Per field, how many tokens start with `term` without being `term`.
+function prefixCounts(document, term) {
+  const counts = {};
+  for (const field of FIELD_ORDER) {
+    let total = 0;
+    for (const [token, count] of document.fieldCounts[field]) {
+      if (token !== term && token.startsWith(term)) total += count;
+    }
+    if (total) counts[field] = total;
+  }
+  return counts;
+}
+
 function nameMatchTier(nameTokens, queryTokens) {
   const same = (a, b) => a.length === b.length && a.every((token, index) => token === b[index]);
   if (same(nameTokens, queryTokens)) return 0;
-  if (same(nameTokens.slice(0, queryTokens.length), queryTokens)) return 1;
+  const head = nameTokens.slice(0, queryTokens.length);
+  if (same(head, queryTokens)) return 1;
+  if (
+    head.length === queryTokens.length &&
+    prefixTerm(queryTokens) !== null &&
+    same(head.slice(0, -1), queryTokens.slice(0, -1)) &&
+    head[head.length - 1].startsWith(queryTokens[queryTokens.length - 1])
+  ) {
+    return 1;
+  }
   if (containsTokens(nameTokens, queryTokens)) return 2;
   return null;
 }
 
-function bm25fScore(document, queryTokens, corpus) {
+function bm25fScore(document, queryTokens, corpus, prefixHits) {
   let score = 0.0;
   for (const term of queryTokens) {
     let weightedFrequency = 0.0;
     for (const field of FIELD_ORDER) {
-      const frequency = document.fieldCounts[field].get(term) || 0;
+      let frequency = document.fieldCounts[field].get(term) || 0;
+      if (term === queryTokens[queryTokens.length - 1]) frequency += prefixHits[field] || 0;
       if (!frequency) continue;
       // Length normalization keeps ASCII terms on their original token
       // population so Unicode support does not reorder English hits.
@@ -165,10 +196,13 @@ function present(value) {
 // completeness, name length, folded name, key. Also returns the query words the
 // record lacks, QueryService's `missing_tokens`.
 function sortKey(document, queryTokens, corpus) {
-  if (!queryTokens.some((token) => document.allTokens.has(token))) return null;
+  const lastTerm = prefixTerm(queryTokens);
+  const prefixHits = lastTerm ? prefixCounts(document, lastTerm) : {};
+  if (!queryTokens.some((token) => document.allTokens.has(token)) && !Object.keys(prefixHits).length) return null;
   const matched = new Set();
   for (const field of FIELD_ORDER) {
     for (const token of queryTokens) if (document.fieldCounts[field].has(token)) matched.add(token);
+    if (prefixHits[field]) matched.add(lastTerm);
   }
   const tier = nameMatchTier(document.fieldTokens.name, queryTokens);
   let queryWeight = 0;
@@ -182,7 +216,7 @@ function sortKey(document, queryTokens, corpus) {
   );
   const phraseBonus = nonNamePhrase ? queryWeight * PHRASE_MULTIPLIER : 0.0;
   const nameBonus = tier !== null ? queryWeight * NAME_MATCH_MULTIPLIERS[tier] : 0.0;
-  const retrievalScore = bm25fScore(document, queryTokens, corpus) + phraseBonus + nameBonus;
+  const retrievalScore = bm25fScore(document, queryTokens, corpus, prefixHits) + phraseBonus + nameBonus;
   const record = document.record;
   const completeness =
     ["publisher", "released", "modality"].filter((field) => present(record[field])).length +

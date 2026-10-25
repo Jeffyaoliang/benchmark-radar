@@ -127,6 +127,9 @@ SYNTHETIC = [
         categories=["Robotics"],
     ),
     record("i", "Grasp", description="", categories=[]),
+    record("k", "Humanity's Last Exam", description="Expert questions.", categories=["Knowledge"]),
+    record("l", "SafetyBench", description="", categories=[]),
+    record("m", "Chat Arena", description="Votes from human raters on model safety.", categories=[]),
     record("j", "Planning Grasp Robot", description="", categories=["Robotics"]),
 ]
 
@@ -145,6 +148,12 @@ QUERIES = [
     "  Robot   GRASP ",
     "absent-term",
     "!!!",
+    "saf",
+    "safe",
+    "hu",
+    "human",
+    "robot gra",
+    "x",
 ]
 
 
@@ -169,6 +178,20 @@ def test_partial_candidates_are_distinguished_from_full_matches():
     assert "c" in site["keys"] and "c" not in site["full"]
 
 
+def test_a_partly_typed_word_matches_words_that_start_with_it():
+    # Issue #883: the search box searches as you type, so `saf` and `hu` showed
+    # an empty page and `human` ranked a name that starts with it below prose.
+    ranked = site_ranking(SYNTHETIC, ["saf", "hu", "human", "robot gra", "x"])
+    assert ranked["saf"]["keys"] == ["l", "m"]
+    assert ranked["hu"]["keys"][0] == "k" and set(ranked["hu"]["keys"]) == {"k", "m", "h"}
+    assert ranked["human"]["keys"][0] == "k"
+    assert "j" in ranked["robot gra"]["keys"]
+    assert ranked["x"]["keys"] == []
+
+
+ISSUE_883_QUERIES = ["saf", "safe", "safety", "human", "hu"]
+
+
 def fixture_queries() -> list[str]:
     queries: list[str] = []
     for name in ("search_evaluation.yml", "search_relevance.yml"):
@@ -182,8 +205,19 @@ def fixture_queries() -> list[str]:
 @pytest.mark.skipif(not INDEX.exists(), reason="build the data release first")
 def test_site_search_matches_queryservice_on_the_published_catalog():
     records = json.loads(INDEX.read_text(encoding="utf-8"))["benchmarks"]
-    queries = fixture_queries()
+    queries = list(dict.fromkeys(fixture_queries() + ISSUE_883_QUERIES))
     assert queries
     site = site_ranking(records, queries)
     for query in queries:
         assert site[query] == service_ranking(records, query), query
+
+
+@pytest.mark.skipif(not INDEX.exists(), reason="build the data release first")
+def test_issue_883_queries_return_records_on_the_published_catalog():
+    records = json.loads(INDEX.read_text(encoding="utf-8"))["benchmarks"]
+    site = site_ranking(records, ISSUE_883_QUERIES)
+    for query in ("saf", "hu"):
+        assert len(site[query]["keys"]) > 0, query
+    names = {item["key"]: item["name"] for item in records}
+    first_page = [names[key] for key in site["human"]["keys"][:50]]
+    assert "Humanity's Last Exam" in first_page
