@@ -176,3 +176,14 @@ def test_model_noun_inside_a_benchmark_name_does_not_make_it_a_model() -> None:
     # The title carries no benchmark word, so only the descriptor can decide.
     item["title"] = "Last Exam in Physics"
     assert classify_release_record(item) == BENCHMARK
+
+
+def test_coordinated_descriptor_with_a_benchmark_noun_is_a_benchmark() -> None:
+    item = {
+        "title": "WOVEN",
+        "summary": "We introduce WOVEN, a training source and benchmark for video reasoning.",
+        "source": "arXiv",
+    }
+    assert classify_release_record(item) == BENCHMARK
+    item["summary"] = "We propose X, a training framework for agents evaluated on benchmarks."
+    assert classify_release_record(item) == METHOD

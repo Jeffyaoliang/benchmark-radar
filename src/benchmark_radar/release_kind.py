@@ -62,6 +62,12 @@ _INTRODUCES = re.compile(
 
 _ARTICLE_START = re.compile(r"\s*(?:a|an|the|new|first|our)\b", re.IGNORECASE)
 
+# Words that end the descriptor and start its elaboration.
+_HEAD_END = re.compile(
+    r"\s(?:of|for|that|which|to|with|in|on|from|by|via|using|where|trained|built)\s",
+    re.IGNORECASE,
+)
+
 
 def _headline_kind(summary: str) -> str | None:
     """The kind of the first thing the abstract says its authors introduce."""
@@ -74,6 +80,11 @@ def _headline_kind(summary: str) -> str | None:
     name, comma, descriptor = rest.partition(",")
     if comma and not _ARTICLE_START.match(name):
         rest = descriptor
+    # "a training source and benchmark": a benchmark noun anywhere in the
+    # coordinated descriptor makes the record a benchmark.
+    head = _HEAD_END.split(rest, maxsplit=1)[0]
+    if re.search(_BENCHMARK_NOUN, head, re.IGNORECASE):
+        return BENCHMARK
     noun = _HEADLINE_NOUN.search(rest)
     if noun is None:
         return None
