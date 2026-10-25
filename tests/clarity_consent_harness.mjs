@@ -6,7 +6,7 @@ import { test } from "node:test";
 const source = readFileSync("site/assets/clarity.js", "utf8");
 const key = "benchmark-radar:analytics-consent";
 
-function page({ storage = new Map(), blocked = false, cookies = new Map(), reset = true } = {}) {
+function page({ storage = new Map(), blocked = false, writeBlocked = false, cookies = new Map(), reset = true } = {}) {
   const nodes = new Map();
   const listeners = {};
   const scripts = [];
@@ -15,7 +15,7 @@ function page({ storage = new Map(), blocked = false, cookies = new Map(), reset
   let reloads = 0;
   const localStorage = {
     getItem(k) { if (blocked) throw Error("blocked"); return storage.get(k) ?? null; },
-    setItem(k, v) { if (blocked) throw Error("blocked"); storage.set(k, v); },
+    setItem(k, v) { if (blocked || writeBlocked) throw Error("blocked"); storage.set(k, v); },
     removeItem(k) { if (blocked) throw Error("blocked"); storage.delete(k); },
   };
   const privacy = { append(node) { nodes.set("reset", node); } };
@@ -190,4 +190,17 @@ test("restoring a cached page honors withdrawal that happened while away", () =>
   storage.set(key, "denied");
   tab.restore();
   assert.equal(tab.recording, false);
+});
+
+
+test("withdrawal removes a readable old grant when saving denial exceeds quota", () => {
+  const storage = new Map([[key, "granted"]]);
+  const tab = page({ storage, writeBlocked: true });
+  tab.loadSdk();
+  tab.choose("denied");
+  assert.equal(tab.recording, false);
+  assert.equal(tab.reloads, 1);
+  assert.equal(storage.has(key), false);
+  const restored = page({ storage, writeBlocked: true });
+  assert.equal(restored.scripts.length, 0);
 });

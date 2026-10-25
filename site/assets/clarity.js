@@ -17,7 +17,15 @@
       if (value === null) window.localStorage.removeItem(STORAGE_KEY);
       else window.localStorage.setItem(STORAGE_KEY, value);
     } catch {
-      // Storage blocked: the choice holds for this page view only.
+      // Quota failures can leave an old grant readable. Removing it uses no
+      // space and makes withdrawal fail closed on the next page load.
+      if (value === "denied") {
+        try {
+          window.localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Storage inaccessible: readChoice also falls back to no consent.
+        }
+      }
     }
   }
 
