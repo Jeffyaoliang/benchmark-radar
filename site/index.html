@@ -257,10 +257,6 @@
           <a href="/leaderboard/" data-view="leaderboard" aria-controls="leaderboard-view" data-i18n="Landscape">
             Landscape
           </a>
-          <!-- Blog and About are documents, not dashboard views, and they live
-               in the footer nav instead: this row is for the tools a reader
-               came to use, and every entry it carries competes with them for a
-               glance. -->
           <!-- The label reads Publications because that is the word a reader
                looks for; the path stays /cite/, which is already indexed and
                linked from the paper. /publications/ and /publication/ redirect
@@ -275,6 +271,7 @@
           >
             Publications
           </a>
+          <a href="/about/" data-i18n="About">About</a>
         </nav>
       </div>
       <div class="masthead-end" aria-label="Site utilities" data-i18n-aria="Site utilities">
@@ -1167,11 +1164,8 @@
     </dialog>
 
     <footer>
-      <!-- The site's documents, kept out of the view row above so that row
-           stays a list of tools. These are real links with real paths, so the
-           pages are reachable by a reader and a crawler alike. -->
+      <!-- These documents keep real links so readers and crawlers can reach them. -->
       <nav class="footer-nav" aria-label="About this site" data-i18n-aria="About this site">
-        <a href="/about/" data-i18n="About">About</a>
         <a href="/blog/" data-i18n="Blog">Blog</a>
       </nav>
       <p id="build-meta">Updated —</p>

@@ -3270,20 +3270,18 @@ def test_issue_332_the_freshest_releases_reach_page_one():
 # adding pages beside it is to let the new thing leak into its router.
 
 
-def test_the_documents_are_linked_from_the_footer_not_the_view_row():
-    """The view row lists tools. Blog and About are reading, and sit below it.
-
-    Both are real anchors either way, so a reader and a crawler reach the same
-    pages; what moved is which of them competes for the reader's first glance.
-    """
+def test_about_is_last_in_the_view_row_and_blog_stays_in_the_footer():
+    """About is discoverable in the masthead without becoming an SPA view."""
     html = Path("site/index.html").read_text(encoding="utf-8")
     view_nav = re.search(r'<nav class="view-nav".*?</nav>', html, re.S).group(0)
     footer_nav = re.search(r'<nav class="footer-nav".*?</nav>', html, re.S).group(0)
-    for path in ("/blog/", "/about/"):
-        assert f'href="{path}"' not in view_nav, path
-        links = re.findall(rf'<a\b[^>]*href="{path}"[^>]*>', footer_nav)
-        assert len(links) == 1, path
-        assert "data-view" not in links[0], path
+    assert 'href="/blog/"' not in view_nav
+    assert 'href="/blog/"' in footer_nav
+    links = re.findall(r'<a\b[^>]*href="([^"]+)"[^>]*>', view_nav)
+    assert links[-1] == "/about/"
+    about = re.search(r'<a\b[^>]*href="/about/"[^>]*>', view_nav).group(0)
+    assert "data-view" not in about
+    assert 'href="/about/"' not in footer_nav
 
 
 def test_the_blog_link_is_not_a_client_route():

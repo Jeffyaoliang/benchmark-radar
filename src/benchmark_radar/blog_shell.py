@@ -177,7 +177,7 @@ def _adapt_navigation(nav: str, active_path: str) -> tuple[str, bool]:
     nav = _drop_spa_attributes(nav)
     # Whichever section this page belongs to is the current one everywhere it
     # renders, so the chrome marks it rather than the page patching the nav back.
-    # A miss is not an error here: documents like /blog/ and /about/ are linked
+    # A miss is not an error here: documents like /blog/ are linked
     # from the footer nav instead, so the caller is told and checks there too.
     return _mark_active(nav, active_path)
 
