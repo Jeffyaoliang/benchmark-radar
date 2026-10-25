@@ -392,10 +392,11 @@ def test_social_checklist_embeds_the_days_images():
     base = (
         "https://raw.githubusercontent.com/ktwu01/benchmark-radar-cards/refs/heads/daily/2026-10-23"
     )
-    assert f"![Top benchmarks on 2026-10-23]({base}/top3.png)" in section
+    assert f"[![Top benchmarks on 2026-10-23]({base}/top3.png)]({base}/top3.png)" in section
     # Every card is shown inline, so a card cannot be forgotten.
     for index in (1, 2):
-        assert f"]({base}/card-0{index}.png)\n\n![" in section
+        assert f"]({base}/card-0{index}.png)\n\n[![" in section
+        assert f"]({base}/card-0{index}.png)]({base}/card-0{index}.png)" in section
 
 
 def test_spent_lookup_budget_fails_fast_without_calling_the_api(monkeypatch):
