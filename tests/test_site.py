@@ -93,8 +93,20 @@ def test_every_html_entry_point_loads_clarity_once_and_discloses_analytics():
 
     homepage = Path("site/index.html").read_text(encoding="utf-8")
     assert "session replays and heatmaps" in homepage
-    assert "Sensitive content is masked by default" in homepage
+    assert "sensitive content is masked by default" in homepage
     assert "https://privacy.microsoft.com/privacystatement" in homepage
+    assert "By using this site, you agree" not in homepage
+    assert "data-analytics-consent-reset" in homepage
+
+
+def test_clarity_loads_only_after_stored_opt_in():
+    loader = Path("site/assets/clarity.js").read_text(encoding="utf-8")
+    entry = loader.rsplit("const choice = readChoice();", 1)[1]
+    assert 'if (choice === "granted") loadClarity();' in entry
+    assert 'else if (choice !== "denied") showBanner();' in entry
+    assert 'data-consent="granted"' in loader
+    assert 'data-consent="denied"' in loader
+    assert '"consentv2"' in loader
 
 
 def test_privacy_notice_is_collapsible_and_collapsed_by_default():
@@ -106,7 +118,7 @@ def test_privacy_notice_is_collapsible_and_collapsed_by_default():
     assert "<summary" in disclosure
     assert "Privacy notice" in disclosure.split("<summary", 1)[1].split("</summary>", 1)[0]
     assert "session replays and heatmaps" in disclosure
-    assert "Sensitive content is masked by default" in disclosure
+    assert "sensitive content is masked by default" in disclosure
     assert "https://privacy.microsoft.com/privacystatement" in disclosure
     assert 'class="privacy-note" open' not in homepage
 
