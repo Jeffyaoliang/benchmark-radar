@@ -60,13 +60,21 @@ _INTRODUCES = re.compile(
     re.IGNORECASE,
 )
 
+_ARTICLE_START = re.compile(r"\s*(?:a|an|the|new|first|our)\b", re.IGNORECASE)
+
 
 def _headline_kind(summary: str) -> str | None:
     """The kind of the first thing the abstract says its authors introduce."""
     match = _INTRODUCES.search(summary)
     if match is None:
         return None
-    noun = _HEADLINE_NOUN.search(match.group("rest"))
+    rest = match.group("rest")
+    # "We introduce <Name>, a <descriptor>": words inside the name ("World
+    # Models' Last Exam") are not its type, so read the descriptor after the comma.
+    name, comma, descriptor = rest.partition(",")
+    if comma and not _ARTICLE_START.match(name):
+        rest = descriptor
+    noun = _HEADLINE_NOUN.search(rest)
     if noun is None:
         return None
     for kind in (BENCHMARK, MODEL, METHOD):

@@ -161,3 +161,18 @@ def test_typed_out_records_stay_in_the_snapshot_corpus() -> None:
     snapshot = {"date": "2026-10-24", "generated_at": AS_OF.isoformat(), "evidence_items": items}
     filter_release_cohort([snapshot], window_days=30, as_of=AS_OF, include_unconfirmed=True)
     assert len(snapshot["evidence_items"]) == len(RECORDS)
+
+
+def test_model_noun_inside_a_benchmark_name_does_not_make_it_a_model() -> None:
+    item = {
+        "title": "World Models' Last Exam in Physics",
+        "summary": (
+            "We introduce World Models' Last Exam in Physics, a measurement-based benchmark "
+            "for physical reasoning."
+        ),
+        "source": "arXiv",
+    }
+    assert classify_release_record(item) == BENCHMARK
+    # The title carries no benchmark word, so only the descriptor can decide.
+    item["title"] = "Last Exam in Physics"
+    assert classify_release_record(item) == BENCHMARK
