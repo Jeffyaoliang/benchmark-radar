@@ -641,7 +641,6 @@
             <span id="latest-releases-info"></span>
           </div>
           <p class="section-note latest-releases-deck" data-i18n="latest.deck">Recently released benchmarks, ranked by the attention they are receiving now: GitHub stars, Hugging Face paper upvotes and Hugging Face dataset downloads over the last 30 days.</p>
-          <p class="section-note latest-releases-legend" data-i18n="latest.legend">The number is the attention score, out of 100. The tag under it is a separate check: how much of the score is backed by data. A high tag means all three signals were found; a low tag means most were missing. It says nothing about how good the benchmark is.</p>
           <div class="latest-releases-windows" role="group" aria-label="Release window" data-i18n-aria="Release window">
             <button type="button" class="latest-releases-window-button" data-lwindow="7d" aria-pressed="false" data-i18n="7 days">7 days</button>
             <button type="button" class="latest-releases-window-button" data-lwindow="30d" aria-pressed="true" data-i18n="30 days">30 days</button>
@@ -667,6 +666,7 @@
           <ol class="leaderboard-top-list latest-releases-list" id="latest-releases-list"></ol>
           <p class="empty-state latest-releases-empty" id="latest-releases-empty" aria-live="polite" hidden></p>
           <p class="section-note" id="latest-releases-note" aria-live="polite"></p>
+          <p class="section-note latest-releases-legend" data-i18n="latest.legend">The number is the attention score, out of 100. The tag under it is a separate check: how much of the score is backed by observed data. A high tag means most of the score comes from at least two signals that were found; a low tag means little was found. It says nothing about how good the benchmark is.</p>
         </section>
 
         <!-- The adoption view, shown when the reader picks it or follows a

@@ -1292,10 +1292,10 @@ const I18N = {
     "source ↗": "来源 ↗",
     "Coverage {coverage}": "覆盖率 {coverage}",
     "latest.legend":
-      "数字是关注度得分（满分 100）。下方的标签是另一回事：得分背后有多少数据支撑。“高”表示三类信号都找到了，“低”表示大部分缺失。它不代表 benchmark 本身的好坏。",
+      "数字是关注度得分（满分 100）。下方的标签是另一回事：得分有多少来自实际观察到的数据。“高”表示得分的大部分来自至少两类已找到的信号，“低”表示找到的很少。它不代表 benchmark 本身的好坏。",
     "{level} data": "数据支撑：{level}",
-    "How much of the score is backed by data. High: all three signals were found. Low: most were missing. Not a quality rating.":
-      "得分背后有多少数据支撑。高：三类信号都找到了。低：大部分缺失。不是质量评级。",
+    "How much of the score is backed by observed data. High: most of the score comes from at least two signals that were found. Low: little was found. Not a quality rating.":
+      "得分有多少来自实际观察到的数据。高：得分的大部分来自至少两类已找到的信号。低：找到的很少。不是质量评级。",
     unranked: "未排名",
     high: "高",
     medium: "中",
@@ -10103,7 +10103,7 @@ function latestReleaseRow(entry, maxScore, open = new Set()) {
             text: t("{level} data", { level: t(confidence) }),
             attrs: {
               title: t(
-                "How much of the score is backed by data. High: all three signals were found. Low: most were missing. Not a quality rating.",
+                "How much of the score is backed by observed data. High: most of the score comes from at least two signals that were found. Low: little was found. Not a quality rating.",
               ),
             },
           })
