@@ -860,7 +860,7 @@ const I18N = {
     "Link copied": "链接已复制",
     "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
     "opens in a new tab": "在新标签页打开",
-    "top 3 benchmarks of the day": "今日前三个基准",
+    "top 3 benchmarks of the day": "今日前三个 benchmark",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
     "No observations match these filters. Clear one or more filters to widen the view.":
