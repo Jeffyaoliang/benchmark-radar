@@ -1,43 +1,54 @@
-"""Pick the day's top new benchmarks and name who made them (issue #671).
+"""Choose the day's benchmarks to share and name who made them (issue #671).
 
-The daily share image is posted to X, WeChat groups and Discord, where a reader
-sees four rows and nothing else. Two things make a row worth reading: it is new,
-and it says who made it. This module decides both; rendering lives in
-scripts/generate_daily_share_image.py.
+The daily run writes a ``share`` block into the day's snapshot; the images in
+ktwu01/benchmark-radar-cards are rendered from that block alone. Choosing and
+looking up happen once, here, so the same snapshot always renders the same
+images.
 
-Selection reuses the radar's own score and recommendation. It adds only the
-filters that keep the image from repeating itself: a version release of a tool
-is not a new benchmark, a paper the radar already showed on an earlier day is
-not news, and four rows from one uploader read as one row.
+Which benchmarks: the LLM daily briefing already picks the day's benchmarks and
+says in its first sentence what each one tests. Its bullets, in its order, are
+the cards; the first three are the top-3 image. A day without a model-written
+briefing falls back to the radar's own score, with the filters that keep that
+list from repeating itself: a version release of a tool is not a new
+benchmark, a paper the radar showed on an earlier day is not news, and three
+rows from one uploader read as one row.
 
-Creators come from the item when its source names them (papers, DataCite,
-Crossref). GitHub and Hugging Face items only carry the owner handle, so the
-handle is resolved to the name and affiliation its public profile states. arXiv
-items carry authors but no institutions: OpenAlex has them once it indexes the
-paper, which can take days, and until then the paper's own arXiv HTML has them
-when its LaTeX template marks affiliations. An affiliation neither states is
-left off rather than guessed.
+Who made them: the item's own authors and institutions when its source names
+them (papers, DataCite, Crossref). GitHub and Hugging Face items only carry the
+owner handle, so the handle is resolved to the name and affiliation its public
+profile states. arXiv items carry authors but no institutions: OpenAlex has
+them once it indexes the paper, which can take days, and until then the
+paper's own arXiv HTML has them when its LaTeX template marks affiliations. An
+affiliation neither states is left off rather than guessed.
 """
 
 from __future__ import annotations
 
 import html
 import http.client
+import json
 import os
 import re
 import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
+from .corpus import organizations_for_item
 from .http import RequestError, get_json, get_text
+from .snapshots import _write_json, load_snapshots, validate_snapshot
 
-# A lookup that fails in any of these ways costs the image one fact. An
+# A lookup that fails in any of these ways costs the card one fact. An
 # IncompleteRead or a reset connection escapes http.py as itself, not as
-# RequestError, and the image is built inside the required Pages build.
+# RequestError, and a failed lookup must never cost the day its snapshot.
 _LOOKUP_ERRORS = (RequestError, OSError, http.client.HTTPException)
 
-DEFAULT_LIMIT = 4
+CARDS_REPOSITORY = "ktwu01/benchmark-radar-cards"
+CARDS_RAW_URL = f"https://raw.githubusercontent.com/{CARDS_REPOSITORY}/refs/heads"
+
+DEFAULT_LIMIT = 3
+SHARE_SCHEMA_VERSION = 1
 
 # Version tags of tracked tools (mteb 2.26.15, garak v0.17.1) arrive as
 # event_kind "released" too, and the release cadence of a busy repository would
@@ -54,9 +65,8 @@ _SPAN_TAG = re.compile(r"<(/?)span\b[^>]*>")
 
 Fetch = Callable[..., Any]
 
-# Up to a week of images is rebuilt on every Pages deploy. One rate-limited API
-# answering Retry-After: 60 to each retry would run the build past its
-# ten-minute limit and block the deploy for a fact the image can omit, so all
+# One rate-limited API answering Retry-After: 60 to each retry would hold the
+# daily run for many minutes over facts a card can omit, so all of a day's
 # lookups share one deadline and never retry.
 LOOKUP_BUDGET_SECONDS = 90.0
 _LOOKUP_TIMEOUT_SECONDS = 10.0
@@ -90,7 +100,9 @@ def _identities(item: dict[str, Any]) -> set[str]:
 
 
 def _owner_key(item: dict[str, Any]) -> str:
-    organizations = item.get("organizations") or []
+    # Raw snapshots keep a Hugging Face or GitHub owner only in source_id
+    # ("utahnlp/knows-benchmark"); the dashboard derives it the same way.
+    organizations = organizations_for_item(item)
     if item.get("source") in _HANDLE_SOURCES and organizations:
         return str(organizations[0]).casefold()
     authors = item.get("authors") or []
@@ -214,7 +226,7 @@ def resolve_creators(
     shows fewer facts, never a guessed one.
     """
     authors = _unique_people([str(name) for name in item.get("authors") or []])
-    organizations = _unique([str(name) for name in item.get("organizations") or []])
+    organizations = _unique(organizations_for_item(item))
     source = str(item.get("source") or "")
     url = str(item.get("url") or "")
     try:
@@ -237,3 +249,131 @@ def resolve_creators(
         if source in _HANDLE_SOURCES:
             return {"authors": authors, "affiliations": []}
     return {"authors": authors, "affiliations": organizations}
+
+
+_EVIDENCE_IDS = re.compile(r"Evidence:\s*([^.]*)")
+_FIRST_SENTENCE = re.compile(r"^(.+?[.!?])(?:\s|$)")
+_MODEL_BRIEFING = "openai-responses"
+
+
+def _blurb(bullet: str) -> str:
+    """The bullet's first sentence, which states what the benchmark tests."""
+    text = " ".join(bullet.split())
+    match = _FIRST_SENTENCE.match(text)
+    return match.group(1) if match else text
+
+
+def briefing_items(snapshot: dict[str, Any]) -> list[tuple[dict[str, Any], str]]:
+    """Return (evidence item, blurb) for each briefing bullet, in briefing order.
+
+    Each bullet names its evidence ("Evidence: E014."); its first cited item is
+    the benchmark the bullet is about. A deterministic fallback briefing has
+    no such citations, so it yields nothing and the caller falls back too.
+    """
+    briefing = snapshot.get("briefing") or {}
+    if briefing.get("generator") != _MODEL_BRIEFING:
+        return []
+    citations = {str(entry.get("id")): entry for entry in briefing.get("citations") or []}
+    by_url = {item.get("url"): item for item in snapshot.get("evidence_items") or []}
+    picked: list[tuple[dict[str, Any], str]] = []
+    seen: set[str] = set()
+    for bullet in briefing.get("bullets") or []:
+        match = _EVIDENCE_IDS.search(str(bullet))
+        ids = re.findall(r"\b[A-Z]\d+\b", match.group(1)) if match else []
+        citation = next((citations[i] for i in ids if i in citations), None)
+        url = str((citation or {}).get("url") or "")
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        item = by_url.get(url) or {
+            "title": citation.get("title"),
+            "url": url,
+            "source": citation.get("source"),
+        }
+        picked.append((item, _blurb(str(bullet))))
+    return picked
+
+
+def _card(
+    item: dict[str, Any],
+    blurb: str,
+    creators: dict[str, list[str]],
+) -> dict[str, Any]:
+    return {
+        "title": item.get("title"),
+        "url": item.get("url"),
+        "source": item.get("source"),
+        "published_at": item.get("published_at"),
+        "categories": list(item.get("categories") or []),
+        "blurb": blurb or str(item.get("summary") or ""),
+        "authors": creators["authors"],
+        "affiliations": creators["affiliations"],
+    }
+
+
+def build_share_block(
+    days: list[dict[str, Any]],
+    date: str,
+    *,
+    previous: dict[str, Any] | None = None,
+    fetch: Fetch | None = None,
+    fetch_text: Fetch | None = None,
+) -> dict[str, Any] | None:
+    """Return the ``share`` block for ``date``, or None without that day's snapshot.
+
+    ``previous`` is the block an earlier pass wrote for the same day. Its cards
+    are kept as they are, in their order, so a second pass cannot change a
+    card that may already have been posted.
+    """
+    snapshot = next((day for day in days if day.get("date") == date), None)
+    if snapshot is None:
+        return None
+    picked = briefing_items(snapshot)
+    basis = "briefing"
+    if not picked:
+        basis = "radar_score"
+        picked = [(item, "") for item in select_top_items(days, date, limit=DEFAULT_LIMIT)]
+    # Cards an earlier pass recorded may already be posted under their file
+    # name (card-01.png is the first card), so they keep their place and their
+    # content. A later pass only appends benchmarks the day had not carded.
+    kept = [dict(card) for card in (previous or {}).get("cards") or [] if card.get("url")]
+    carded = {card["url"] for card in kept}
+    if fetch is None or fetch_text is None:
+        fetch, fetch_text = budgeted_fetchers()
+    cards = kept + [
+        _card(item, blurb, resolve_creators(item, fetch=fetch, fetch_text=fetch_text))
+        for item, blurb in picked
+        if item.get("url") not in carded
+    ]
+    return {
+        "schema_version": SHARE_SCHEMA_VERSION,
+        "date": date,
+        "basis": str((previous or {}).get("basis") or basis) if kept else basis,
+        "top": [card["url"] for card in cards[:DEFAULT_LIMIT]],
+        "cards": cards,
+    }
+
+
+def card_image_name(index: int) -> str:
+    """File name of the ``index``-th (1-based) card on the day's branch."""
+    return f"card-{index:02d}.png"
+
+
+def daily_image_url(date: str, name: str) -> str:
+    """Public URL of an image on the day's branch in the cards repository."""
+    return f"{CARDS_RAW_URL}/daily/{date}/{name}"
+
+
+def write_share_block(snapshot_dir: Path, date: str) -> dict[str, Any] | None:
+    """Add the ``share`` block to the committed snapshot for ``date``."""
+    path = snapshot_dir / f"{date}.json"
+    if not path.exists():
+        return None
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    block = build_share_block(load_snapshots(snapshot_dir), date, previous=raw.get("share"))
+    if block is None:
+        return None
+    raw["share"] = block
+    validate_snapshot(raw, source=str(path))
+    _write_json(path, raw)
+    return block

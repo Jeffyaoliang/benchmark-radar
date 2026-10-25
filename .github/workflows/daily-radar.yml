@@ -193,6 +193,108 @@ jobs:
           git commit -m "Record daily radar snapshot"
           git push origin HEAD:main
 
+  # Issue #671: the day's share cards. Runs only after the snapshot is
+  # persisted, so a slow or failed lookup can never cost the day its evidence.
+  # It records the chosen cards and who made them in the snapshot once, then
+  # renders the images from that record alone and pushes them to their own
+  # branch in ktwu01/benchmark-radar-cards. Images in this repository would
+  # grow every clone; a branch per day keeps each day's images at a stable URL.
+  publish-share-images:
+    needs: [build-report, persist-snapshot]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Create snapshot and cards writer token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RADAR_APP_ID }}
+          private-key: ${{ secrets.RADAR_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: benchmark-radar,benchmark-radar-cards
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Download validated snapshot
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: benchmark-radar-${{ github.run_id }}
+          path: generated/
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install '.[dev]'
+      # The briefing's benchmarks, or the radar-score top 3 on a day without a
+      # model briefing, and who made them. Cards an earlier pass recorded are
+      # kept as they are, so a rerun never changes a posted card.
+      - name: Record the day's share cards in the snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          snapshot_date="$(cat generated/out/snapshot-date.txt)"
+          benchmark-radar share --items generated/out/items.json
+          git config user.name "benchmark-radar[bot]"
+          git config user.email "benchmark-radar[bot]@users.noreply.github.com"
+          git add "data/snapshots/${snapshot_date}.json"
+          if git diff --cached --name-only |
+            grep -Fvx "data/snapshots/${snapshot_date}.json"
+          then
+            echo "::error::Share step attempted to modify an unexpected path"
+            exit 1
+          fi
+          if git diff --cached --quiet; then
+            echo "Share cards are already recorded"
+            exit 0
+          fi
+          # [skip ci]: the site does not read the share block, so this commit
+          # must not start a second full Pages build after persist-snapshot's.
+          git commit -m "Record daily share cards [skip ci]"
+          git push origin HEAD:main || {
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
+      - name: Render and publish the day's share images
+        env:
+          CARDS_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          snapshot_date="$(cat generated/out/snapshot-date.txt)"
+          branch="daily/${snapshot_date}"
+          remote="https://x-access-token:${CARDS_TOKEN}@github.com/ktwu01/benchmark-radar-cards.git"
+          python scripts/render_share_images.py \
+            --snapshot "data/snapshots/${snapshot_date}.json" \
+            --output-dir share-out
+          if [[ -z "$(ls -A share-out 2>/dev/null)" ]]; then
+            echo "No share cards for ${snapshot_date}"
+            exit 0
+          fi
+          # A same-day rerun adds a commit to the day's branch, so earlier
+          # images stay in its history.
+          if git ls-remote --exit-code --heads "${remote}" "${branch}" > /dev/null; then
+            git clone -q --depth 1 --branch "${branch}" "${remote}" cards
+          else
+            git init -q -b "${branch}" cards
+          fi
+          cp share-out/*.png cards/
+          cd cards
+          git config user.name "benchmark-radar[bot]"
+          git config user.email "benchmark-radar[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "Share images for ${snapshot_date} are already current"
+            exit 0
+          fi
+          git commit -q -m "Share images for ${snapshot_date}"
+          git push -q "${remote}" "HEAD:refs/heads/${branch}"
+
   # Issue #88: one daily Issue carrying only the day's social posting checklist.
   # The dashboard and site/feed.xml remain the reading surface (issue #37), so
   # the Issue does not duplicate the report; its body is just the rendered
@@ -203,15 +305,17 @@ jobs:
   # social section is rendered deterministically here (never by a model) from
   # the artifact's items.json plus the last 24 hours of git history.
   publish-issue:
-    needs: [build-report, persist-snapshot]
+    needs: [build-report, persist-snapshot, publish-share-images]
+    # The checklist still goes out when the images could not be published.
     if: >-
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish)
+      always() && needs.persist-snapshot.result == 'success' &&
+      (github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish))
     permissions:
       contents: read
       issues: write
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       # Checkout before downloading the artifact: actions/checkout clears a
       # non-repository workspace, which would delete a previously downloaded
@@ -239,6 +343,7 @@ jobs:
         run: python -m pip install .
       - name: Create idempotent daily social-checklist issue
         env:
+          SHARE_IMAGES_RESULT: ${{ needs.publish-share-images.result }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         shell: bash
@@ -255,6 +360,12 @@ jobs:
           existing="$(gh issue list --state open --search "\"${title}\" in:title" \
             --json number,title --jq ".[] | select(.title == \"${title}\") | .number" | head -1)"
           existing_body_args=()
+          # The share block is committed before its images are pushed, so a
+          # failed push would leave the checklist embedding missing images.
+          share_args=()
+          if [[ "${SHARE_IMAGES_RESULT}" != "success" ]]; then
+            share_args=(--skip-share-images)
+          fi
           if [[ -n "${existing}" ]]; then
             gh issue view "${existing}" --json body --jq .body > generated/out/current_body.md
             existing_body_args=(--existing-body generated/out/current_body.md)
@@ -264,18 +375,8 @@ jobs:
             --repo . \
             --channels config/social.yml \
             "${existing_body_args[@]}" \
+            "${share_args[@]}" \
             --social-output generated/out/body.md
-          # The checklist embeds the day's share image (issue #671), which the
-          # Pages deploy triggered by the snapshot push above is still building.
-          # Wait for it so the issue does not open on a broken image; publish
-          # anyway after about ten minutes; the image appears once Pages lands.
-          image_url="https://benchmark-radar.org/share/top4/${date_key}.png"
-          if grep -qF "${image_url}" generated/out/body.md; then
-            for _ in $(seq 1 40); do
-              curl -fsI --max-time 10 "${image_url}" > /dev/null && break
-              sleep 15
-            done
-          fi
           if [[ -n "${existing}" ]]; then
             gh issue edit "${existing}" --body-file generated/out/body.md \
               --add-label automated --add-label traction --remove-label daily-radar
