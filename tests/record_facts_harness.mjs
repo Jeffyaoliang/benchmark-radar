@@ -31,6 +31,13 @@ const unreported = globalThis.__recordFactEntries({
   authors: ["Deyao Hong"],
   metrics: {},
 });
+// A GitHub record whose connector left organizations empty still names its
+// owner, because the card title no longer shows it.
+const slugOwner = globalThis.__recordFactEntries({
+  title: "NVIDIA-NeMo/Gym",
+  organizations: [],
+  metrics: {},
+});
 const dates = globalThis.__recordDateEntries({
   published_at: "2026-08-24T17:59:04Z",
   updated_at: "2026-08-25T17:59:04Z",
@@ -40,6 +47,7 @@ const rendered = globalThis.__recordFacts(reportedItem);
 console.log(
   JSON.stringify({
     reported,
+    slug_owner: slugOwner,
     unreported,
     dates,
     rendered: {

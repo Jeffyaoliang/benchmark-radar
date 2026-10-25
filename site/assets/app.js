@@ -1189,6 +1189,10 @@ const I18N = {
       "无法从引文文档中逐字读到该benchmark的分数。缺失的数值既不是零,也不是平台期。",
     "Open public discussion ↗": "打开公开讨论 ↗",
     Organizations: "机构",
+    Code: "代码",
+    Demo: "演示",
+    Link: "链接",
+    By: "发布者",
     "Pinned · click the marker again or press Escape to close": "已固定 · 再次点击标记或按 Escape 关闭",
     Priority: "优先度",
     "Priority is the weighted mean of four components, each measured on a 0 to":
@@ -2309,8 +2313,75 @@ const RECORD_METRIC_LABELS = {
   influential_citations: "Influential citations",
 };
 
+// GitHub and Hugging Face titles are "owner/repo-name" IDs (issue #908). The
+// card names the benchmark in words and the owner once, in the byline. Every
+// rule reads only fields the item already has, so a card always renders the
+// same: a word keeps capitals it already has, else takes the capitals the
+// item's own summary gives it ("rna" -> "RNA"), else short vowel-less words
+// read as acronyms ("rl" -> "RL"), else the first letter is capitalized.
+// A GitHub Release title adds its version: "owner/repo 2.26.20".
+const SLUG_TITLE = /^([^\s/]+)\/([^\s/]+)(\s+\S+)?$/;
+const TITLE_SMALL_WORDS = new Set(["a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "with"]);
+
+// Some DataCite titles and creator names arrive HTML-escaped ("Schema &amp;
+// Academic"). Decoded as a plain string: source text never reaches an HTML
+// parser on this site.
+const NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+function decodeEntities(text) {
+  return String(text ?? "").replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (entity, code) => {
+    if (code[0] !== "#") return NAMED_ENTITIES[code.toLowerCase()] ?? entity;
+    const point = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+    return Number.isInteger(point) && point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : entity;
+  });
+}
+
+// DataCite descriptions can be escaped HTML, sometimes escaped twice
+// ("&lt;p&gt;&lt;strong&gt;..."). The card shows their text.
+// Only named HTML tags are removed: decoding also turns "p&lt;0.001 ...
+// p&gt;=0.084" into angle brackets, and a generic <...> pattern would delete
+// the reported results between them.
+const SUMMARY_TAG =
+  /<\/?(?:a|b|blockquote|br|code|div|em|h[1-6]|hr|i|img|li|ol|p|pre|span|strong|sub|sup|table|tbody|td|th|thead|tr|u|ul)\b[^<>]*\/?>/gi;
+
+function plainSummary(text) {
+  const decoded = decodeEntities(decodeEntities(text));
+  return decoded.replace(SUMMARY_TAG, " ").replace(/\s+/g, " ").trim();
+}
+
+function slugParts(item) {
+  const match = String(item.title || "").trim().match(SLUG_TITLE);
+  return match ? { owner: match[1], name: match[2], version: match[3]?.trim() || "" } : null;
+}
+
+function displayTitle(item) {
+  const parts = slugParts(item);
+  if (!parts) return decodeEntities(item.title);
+  const summaryCasing = new Map();
+  for (const word of String(item.summary || "").split(/[^A-Za-z0-9]+/)) {
+    if (/[A-Z]/.test(word) && !summaryCasing.has(word.toLowerCase())) {
+      summaryCasing.set(word.toLowerCase(), word);
+    }
+  }
+  const words = parts.name.split(/[-_]+/).filter(Boolean);
+  if (!words.length) return item.title;
+  const name = words
+    .map((word, index) => {
+      if (/[A-Z]/.test(word)) return word;
+      if (index > 0 && TITLE_SMALL_WORDS.has(word)) return word;
+      if (summaryCasing.has(word)) return summaryCasing.get(word);
+      // "y" counts as a vowel, so "gym" stays a word while "rl" and "llm" read as acronyms.
+      if (/^[b-df-hj-np-tv-xz]{2,4}$/.test(word)) return word.toUpperCase();
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+  return parts.version ? `${name} ${parts.version}` : name;
+}
+
 function compactNames(values, limit = 2) {
-  const names = [...new Set((values || []).map((value) => String(value).trim()).filter(Boolean))];
+  const names = [
+    ...new Set((values || []).map((value) => decodeEntities(value).trim()).filter(Boolean)),
+  ];
   if (!names.length) return "";
   const shown = names.slice(0, limit).join(", ");
   return names.length > limit ? `${shown} +${names.length - limit}` : shown;
@@ -2325,8 +2396,15 @@ function recordFactEntries(item) {
   const facts = [];
   const organizations = compactNames(item.organizations);
   const authors = compactNames(item.authors);
-  if (organizations) facts.push([t("Organizations"), organizations]);
-  if (authors) facts.push([t("Authors"), authors]);
+  const owner = slugParts(item)?.owner;
+  const ownerOnly = owner && organizations === owner;
+  // The third field marks a value that earns bold (design.md, "Bold values,
+  // never labels"): a name, or a count above zero.
+  if (organizations) facts.push([t(ownerOnly ? "By" : "Organizations"), organizations, true]);
+  // The title no longer shows the owner, so a record whose connector left
+  // `organizations` empty still names it once.
+  else if (owner) facts.push([t("By"), owner, true]);
+  if (authors) facts.push([t("Authors"), authors, true]);
   const metrics = item.metrics || {};
   let metricCount = 0;
   Object.entries(RECORD_METRIC_LABELS).forEach(([key, label]) => {
@@ -2335,10 +2413,12 @@ function recordFactEntries(item) {
     const value = Number(rawValue);
     if (rawValue === null || rawValue === undefined || !Number.isFinite(value)) return;
     const locale = getLang() === "zh" ? "zh-CN" : "en-US";
-    facts.push([t(label), value.toLocaleString(locale)]);
+    facts.push([t(label), value.toLocaleString(locale), value > 0]);
     metricCount += 1;
   });
-  if (!metricCount) facts.push([t("Activity counters"), t("Not reported by this source")]);
+  if (!metricCount) {
+    facts.push([t("Activity counters"), t("Not reported by this source"), false]);
+  }
   return facts;
 }
 
@@ -2347,14 +2427,21 @@ function recordDateEntries(item) {
   if (item.published_at) {
     entries.push([t("Published"), formatDate(item.published_at, { dateStyle: "medium" })]);
   }
-  if (item.updated_at && item.updated_at !== item.published_at) {
+  if (
+    item.updated_at &&
+    String(item.updated_at).slice(0, 10) !== String(item.published_at || "").slice(0, 10)
+  ) {
     entries.push([t("Updated"), formatDate(item.updated_at, { dateStyle: "medium" })]);
   }
   return entries;
 }
 
-function recordFacts(item) {
-  const facts = recordFactEntries(item);
+function recordFacts(item, { quietUnreported = false } = {}) {
+  // An evidence card says nothing about counters a source never publishes;
+  // the line would repeat on every paper.
+  const facts = recordFactEntries(item).filter(
+    ([label]) => !(quietUnreported && label === t("Activity counters")),
+  );
   if (!facts.length) return null;
   return element(
     "div",
@@ -2362,10 +2449,10 @@ function recordFacts(item) {
       className: "record-facts",
       attrs: { role: "group", "aria-label": t("Source metadata") },
     },
-    facts.map(([label, value]) =>
+    facts.map(([label, value, emphasize]) =>
       element("span", {}, [
-        element("strong", { text: label }),
-        document.createTextNode(`: ${value}`),
+        document.createTextNode(`${label} `),
+        emphasize ? element("strong", { text: value }) : document.createTextNode(value),
       ]),
     ),
   );
@@ -4231,7 +4318,6 @@ function openRubric(item = null, versionOverride = null, updateUrl = true) {
 function expandedRecord(item, teaser) {
   const isAttention = item.observation_kind === "attention";
   const primaryArtifact = item.primary_artifact_url || item.artifact_urls?.[0];
-  const sourceFacts = recordFactEntries(item);
   const sourceDates = recordDateEntries(item);
   const scoreEntries = isAttention
     ? [
@@ -4244,20 +4330,27 @@ function expandedRecord(item, teaser) {
         [t("Published"), formatDate(item.published_at, { dateStyle: "medium" })],
       ]
     : [
-        [t("Priority"), Number(item.total_score || 0).toFixed(2)],
-        [t("Relevance"), Number(item.relevance_score || 0).toFixed(2)],
-        [t("Evidence"), Number(item.evidence_score || 0).toFixed(2)],
-        [t("Recency"), Number(item.recency_score || 0).toFixed(2)],
+        // Issue #908: expanding only adds. The header already shows the
+        // priority and the source facts, so the grid holds the components
+        // that explain the priority, and the dates.
+        [t("Relevance"), Number(item.relevance_score || 0).toFixed(0)],
+        [t("Evidence"), Number(item.evidence_score || 0).toFixed(0)],
+        [t("Recency"), Number(item.recency_score || 0).toFixed(0)],
         // Adoption is weighted into the total, so hiding it here left the
         // four shown components unable to explain the priority above them.
-        [t("Adoption"), Number(item.adoption_score || 0).toFixed(2)],
+        [t("Adoption"), Number(item.adoption_score || 0).toFixed(0)],
         ...sourceDates,
-        ...sourceFacts,
       ];
+  // "Primary record: GitHub" and "Also found via GitHub" restate the source
+  // the header names.
+  const restatesSource = (reason) =>
+    reason === `Primary record: ${item.source}` || reason === `Also found via ${item.source}`;
   const rationale = element(
     "ul",
     { className: "rationale-list" },
-    (item.rationale || []).map((reason) => element("li", { text: reason })),
+    (item.rationale || [])
+      .filter((reason) => !restatesSource(reason))
+      .map((reason) => element("li", { text: reason })),
   );
   const attentionNotice = isAttention
     ? element("div", { className: "attention-notice" }, [
@@ -4319,26 +4412,33 @@ function expandedRecord(item, teaser) {
   const categoryLine = (item.categories || []).length
     ? (item.categories || []).map(titleCase).join(" · ")
     : t("uncategorized");
+  // The header already names the source, event, categories and date, and
+  // says when the source published no description.
+  const remainder = item.summary
+    ? teaser
+      ? summaryRemainder(item.summary, teaser)
+      : item.summary
+    : "";
   return element("div", { className: "record-detail" }, [
-    element("p", {
-      className: "detail-source",
-      text:
-        `${item.source} · ${eventVerb(item)} · ${categoryLine}` +
-        `${item.watchlist ? ` · ★ ${item.watchlist}` : ""} · ${item.snapshot_date}`,
-    }),
-    element("p", {
-      className: item.summary ? "detail-summary" : "detail-summary signal-nodesc",
-      text: item.summary
-        ? teaser
-          ? summaryRemainder(item.summary, teaser) || t("No further description beyond the preview above.")
-          : item.summary
-        : t("No description published at the source."),
-    }),
+    isAttention
+      ? element("p", {
+          className: "detail-source",
+          text:
+            `${item.source} · ${eventVerb(item)} · ${categoryLine}` +
+            `${item.watchlist ? ` · ★ ${item.watchlist}` : ""} · ${item.snapshot_date}`,
+        })
+      : null,
+    remainder ? element("p", { className: "detail-summary", text: remainder }) : null,
     attentionNotice,
     element(
       "dl",
       { className: "detail-grid" },
-      scoreEntries.map(([label, value]) => definition(label, value)),
+      scoreEntries.map(([label, value]) => {
+        const entry = definition(label, value);
+        // A zero is shown but not emphasized (design.md, "Bold values, never labels").
+        if (String(value) === "0") entry.classList.add("value-zero");
+        return entry;
+      }),
     ),
     element("h3", { text: t("Why surfaced") }),
     rationale,
@@ -10756,8 +10856,162 @@ function attentionActivity(item) {
   ]);
 }
 
-function observationCard(item, index) {
+// Evidence cards are one readable row (issue #908, after benchmark-radar.com):
+// a date rail with the source as a link, the benchmark's name, what it is, who
+// made it, and links to its paper, code or data. Nothing hides behind an
+// expander, and no score breakdown competes with the name.
+const ARTIFACT_LINK_KINDS = [
+  [/github\.com\//i, "Code"],
+  [/huggingface\.co\/spaces\//i, "Demo"],
+  [/huggingface\.co\/papers\/|arxiv\.org\/|openreview\.net\/|aclanthology\.org\//i, "Paper"],
+  [/huggingface\.co\/datasets\/|kaggle\.com\/|zenodo\.org\/|figshare\.com\/|doi\.org\/10\.(5281|6084)\//i, "Data"],
+];
+
+// The rail's source link already opens this kind of page on its own site; the
+// links row does not repeat it ("GitHub Release ↗" above, the same repository's
+// "Code ↗" below). A same-kind link on another site is a new destination and
+// stays: a Hugging Face Papers card keeps its direct arXiv "Paper ↗".
+const SOURCE_LINK_KIND = {
+  arXiv: "Paper",
+  "Hugging Face Papers": "Paper",
+  OpenReview: "Paper",
+  GitHub: "Code",
+  "GitHub Release": "Code",
+  "GitHub Organization": "Code",
+  "Hugging Face": "Data",
+  "Kaggle Dataset": "Data",
+  Zenodo: "Data",
+  DataCite: "Data",
+};
+
+function linkHost(href) {
+  try {
+    return new URL(href).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function artifactLinks(item) {
+  const primary = safeHttpUrl(item.url);
+  const seen = new Set([primary]);
+  const kinds = new Set();
+  const links = [];
+  for (const url of item.artifact_urls || []) {
+    const href = safeHttpUrl(url);
+    if (!href || seen.has(href)) continue;
+    seen.add(href);
+    const kind = ARTIFACT_LINK_KINDS.find(([pattern]) => pattern.test(href))?.[1] || "Link";
+    const railCovers = kind === SOURCE_LINK_KIND[item.source] && linkHost(href) === linkHost(primary);
+    if (railCovers || kinds.has(kind)) continue;
+    kinds.add(kind);
+    links.push(
+      element("a", {
+        text: `${t(kind)} ↗`,
+        attrs: { href, target: "_blank", rel: "noopener noreferrer" },
+      }),
+    );
+  }
+  return links.length ? element("div", { className: "radar-links" }, links) : null;
+}
+
+// "AgentPhishing: A Benchmark of LLM Email Agents" leads with its name; the
+// rest reads as the subtitle. A long prefix is a sentence, not a name. A prefix
+// under 4 characters ("T1: Terminal Agent Reinforcement Learning...") is not a
+// name a reader knows, so the whole title stays together.
+function splitBenchmarkTitle(title) {
+  const match = String(title).match(/^(.{2,40}?):\s+(.{8,})$/);
+  if (!match || match[1].trim().length < 4) return { name: title, subtitle: "" };
+  return { name: match[1], subtitle: match[2] };
+}
+
+// "Released 24 Oct", "Updated 24 Oct": a date alone does not say what
+// happened on it.
+function railEvent(item) {
+  const kind = String(item.event_kind || "");
+  const verb = kind === "updated" ? t("Updated") : kind === "released" ? t("Released") : titleCase(kind);
+  // Each word is paired with the date of that event: a paper published on
+  // 8 Oct and found on 24 Oct was discovered on 24 Oct.
+  const when =
+    kind === "updated"
+      ? item.updated_at || item.published_at
+      : kind === "discovered"
+        ? item.discovered_at || item.published_at
+        : item.published_at || item.discovered_at;
+  const date = railDate(when);
+  // "GitHub Release ↗" already says it was released.
+  const named = kind && String(item.source || "").toLowerCase().includes(kind.replace(/d$/, ""));
+  return { verb: named ? "" : verb, date };
+}
+
+function railDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const sameYear = date.getUTCFullYear() === new Date().getUTCFullYear();
+  return date.toLocaleDateString(getLang() === "zh" ? "zh-CN" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+  });
+}
+
+function evidenceCard(item) {
+  const fullTitle = displayTitle(item);
+  const { name, subtitle } = splitBenchmarkTitle(fullTitle);
+  const categories = (item.categories || []).slice(0, 3).map(titleCase);
+  const sourceHref = safeHttpUrl(item.url);
+  const sourceLabel = `${item.source} ↗`;
+  // A repository past 100 or 1,000 GitHub stars is tinted gold. The tint
+  // reports a count the source published; it is not a quality judgement.
+  const stars = Number(item.metrics?.stars);
+  const tier = stars > 1000 ? " stars-1000" : stars > 100 ? " stars-100" : "";
+  return element("article", { className: `record-card radar-card${tier}` }, [
+    element("div", { className: "radar-rail" }, [
+      sourceHref
+        ? element("a", {
+            className: "radar-source",
+            text: sourceLabel,
+            attrs: { href: sourceHref, target: "_blank", rel: "noopener noreferrer" },
+          })
+        : element("span", { className: "radar-source", text: item.source }),
+      railEvent(item).verb
+        ? element("span", { className: "radar-event", text: railEvent(item).verb })
+        : null,
+      element("span", { className: "radar-date", text: railEvent(item).date }),
+    ]),
+    element("div", { className: "radar-body" }, [
+      categories.length || item.watchlist
+        ? element("div", { className: "radar-chips" }, [
+            ...categories.map((category) => element("span", { text: category })),
+            ...(item.watchlist ? [element("span", { text: `★ ${item.watchlist}` })] : []),
+          ])
+        : null,
+      element("h3", {
+        className: "radar-title",
+        text: name,
+        attrs: name !== item.title ? { title: item.title } : {},
+      }),
+      subtitle ? element("p", { className: "radar-subtitle", text: subtitle }) : null,
+      recordFacts(item, { quietUnreported: true }),
+      ...(item.watchlist && item.watchlist_note
+        ? [element("p", { className: "signal-tldr", text: item.watchlist_note })]
+        : []),
+      element("p", {
+        className: item.summary ? "radar-summary" : "radar-summary signal-nodesc",
+        text: item.summary || t("No description published at the source."),
+      }),
+      artifactLinks(item),
+    ]),
+    scoreBlock(item),
+  ]);
+}
+
+function observationCard(record, index) {
+  const item = { ...record, summary: plainSummary(record.summary) };
   const isAttention = item.observation_kind === "attention";
+  if (!isAttention) return evidenceCard(item);
   const metadata = isAttention
     ? element("div", { className: "signal-meta" }, [
         element("span", { className: "attention-badge", text: t("attention") }),
@@ -10784,7 +11038,10 @@ function observationCard(item, index) {
     element("div", { className: "record-heading" }, [
       // The benchmark title leads the row; the provenance line follows it
       // instead of classifying the item before it is named (issue #248).
-      element("h3", { text: item.title }),
+      element("h3", {
+        text: displayTitle(item),
+        attrs: slugParts(item) ? { title: item.title } : {},
+      }),
       metadata,
       // Attention rows already show their source-specific points, comments,
       // and submissions in attentionActivity; the generic facts helper does

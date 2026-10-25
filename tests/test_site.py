@@ -1,8 +1,13 @@
+import json
 import re
+import shutil
+import subprocess
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
+
+import pytest
 
 
 class SiteParser(HTMLParser):
@@ -1071,8 +1076,11 @@ def test_attention_signals_are_not_offered_the_evidence_rubric():
 def test_detail_grid_shows_every_component_that_moves_the_total():
     script = Path("site/assets/app.js").read_text(encoding="utf-8")
 
-    for component in ("Priority", "Relevance", "Evidence", "Recency", "Adoption"):
+    for component in ("Relevance", "Evidence", "Recency", "Adoption"):
         assert f'[t("{component}"), Number(item.' in script
+    # Issue #908: the header's score badge already shows the priority, so the
+    # expanded grid does not repeat it.
+    assert '[t("Priority"), Number(item.' not in script
 
 
 def test_today_view_has_one_filterable_observation_list_and_one_source_status():
@@ -1171,14 +1179,20 @@ def test_evidence_cards_show_fetched_source_metadata_without_inventing_zeroes():
     )
     facts = json.loads(result.stdout)
 
+    # The third field marks a value that earns bold: a name, or a count above
+    # zero (design.md, "Bold values, never labels").
     assert facts["reported"] == [
-        ["Organizations", "OpenAI"],
-        ["Authors", "Alice, Bob +1"],
-        ["Stars", "0"],
+        ["Organizations", "OpenAI", True],
+        ["Authors", "Alice, Bob +1", True],
+        ["Stars", "0", False],
+    ]
+    assert facts["slug_owner"] == [
+        ["By", "NVIDIA-NeMo", True],
+        ["Activity counters", "Not reported by this source", False],
     ]
     assert facts["unreported"] == [
-        ["Authors", "Deyao Hong"],
-        ["Activity counters", "Not reported by this source"],
+        ["Authors", "Deyao Hong", True],
+        ["Activity counters", "Not reported by this source", False],
     ]
     assert facts["dates"] == [
         ["Published", "date:2026-08-24T17:59:04Z"],
@@ -3329,3 +3343,124 @@ def test_model_filter_controls_and_status_have_chinese_translations():
         "文档发布日期",
         "搜索全部 benchmark（暂不按分数筛选）",
     ]
+
+
+def test_card_titles_read_as_names_and_decode_escaped_text():
+    # Issue #908: an "owner/repo-name" ID shows as the repo name in words, the
+    # owner moves to the byline, and escaped source text shows as text. The
+    # helpers are run as written in app.js.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("// GitHub and Hugging Face titles")
+    helpers = script[start : script.index("function compactNames")]
+    cases = [
+        {"title": "kizmiz/cabo-rl", "summary": "Play Cabo with friends"},
+        {"title": "zuwasi/swe-sweep", "summary": "ESL SWE-sweep workspace"},
+        {"title": "Zelin259/rna-velocity-benchmark", "summary": "RNA Velocity Benchmark Data"},
+        {"title": "MatinMalekikh/selective-classification-and-abstention", "summary": ""},
+        {"title": "Agnuxo1/AIMS-PAIEC-2026", "summary": ""},
+        {"title": "Schema &amp; Citation Dataset (Volume 183)", "summary": ""},
+        {"title": "embeddings-benchmark/mteb 2.26.20", "summary": "MTEB release"},
+        {"title": "yojul/bluesky-gym-leaderboard-results", "summary": ""},
+        {"title": "kizmiz/llm-nlp-eval", "summary": ""},
+    ]
+    program = (
+        helpers
+        + "const cases = "
+        + json.dumps(cases)
+        + ";\nconsole.log(JSON.stringify({titles: cases.map(displayTitle), "
+        + "owners: cases.map((c) => slugParts(c)?.owner ?? null), "
+        + "summary: plainSummary("
+        + "'&lt;p&gt;&lt;strong&gt;A &amp;amp; B&lt;/strong&gt;&lt;/p&gt;'), "
+        + "comparison: plainSummary("
+        + "'accuracy rose (p&lt;0.001) while recall held (p&gt;=0.084).')}));"
+    )
+    result = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert result["titles"] == [
+        "Cabo RL",
+        "SWE Sweep",
+        "RNA Velocity Benchmark",
+        "Selective Classification and Abstention",
+        "AIMS PAIEC 2026",
+        "Schema & Citation Dataset (Volume 183)",
+        "MTEB 2.26.20",
+        "Bluesky Gym Leaderboard Results",
+        "LLM NLP Eval",
+    ]
+    assert result["owners"] == [
+        "kizmiz",
+        "zuwasi",
+        "Zelin259",
+        "MatinMalekikh",
+        "Agnuxo1",
+        None,
+        "embeddings-benchmark",
+        "yojul",
+        "kizmiz",
+    ]
+    assert result["summary"] == "A & B"
+    # Comparisons decode to angle brackets but are not tags (2026-10-24 Bashkir
+    # benchmark summary): the results between them must survive.
+    assert result["comparison"] == "accuracy rose (p<0.001) while recall held (p>=0.084)."
+
+
+def test_card_rail_pairs_each_event_with_its_own_date():
+    # A paper published 8 Oct and discovered 24 Oct reads "Discovered 24 Oct".
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index('// "Released 24 Oct", "Updated 24 Oct"')
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const t = (v) => v; const getLang = () => 'en';"
+        "const titleCase = (v) => v.charAt(0).toUpperCase() + v.slice(1);"
+        + helpers
+        + "const base = {published_at: '2026-10-08T00:00:00Z', "
+        + "discovered_at: '2026-10-24T00:00:00Z', updated_at: '2026-10-20T00:00:00Z'};"
+        + "console.log(JSON.stringify(['discovered', 'updated', 'released'].map("
+        + "(event_kind) => railEvent({...base, source: 'arXiv', event_kind}))));"
+    )
+    rails = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [rail["verb"] for rail in rails] == ["Discovered", "Updated", "Released"]
+    assert [rail["date"].split()[0] for rail in rails] == ["24", "20", "8"]
+
+
+def test_card_links_skip_only_what_the_rail_already_opens():
+    # "GitHub Release ↗" already opens the repository's site, so its repo link
+    # is not repeated; a Hugging Face Papers card keeps its direct arXiv link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const ARTIFACT_LINK_KINDS")
+    helpers = script[start : script.index('// "AgentPhishing: A Benchmark')]
+    program = (
+        "const t = (v) => v;"
+        "const element = (tag, props = {}, children = []) => ({ tag, props, children });"
+        "const safeHttpUrl = (v) => String(v);"
+        + helpers
+        + "const kinds = (item) => (artifactLinks(item)?.children || []).map((a) => a.props.text);"
+        + "console.log(JSON.stringify([kinds({source: 'GitHub Release', "
+        + "url: 'https://github.com/embeddings-benchmark/mteb/releases/tag/2.26.20', "
+        + "artifact_urls: ['https://github.com/embeddings-benchmark/mteb']}), "
+        + "kinds({source: 'Hugging Face Papers', url: 'https://huggingface.co/papers/2610.1', "
+        + "artifact_urls: ['https://arxiv.org/abs/2610.1', 'https://github.com/a/b']})]));"
+    )
+    release, paper = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert release == []
+    assert paper == ["Paper ↗", "Code ↗"]
