@@ -264,15 +264,14 @@ def render_social_section(
                 "",
                 f"![Top benchmarks on {day}]({top})",
                 "",
-                "**One card per benchmark:** "
-                + " · ".join(
-                    f"[{index}. {_escape(str(card.get('title') or 'untitled'))[:60]}]"
-                    f"({daily_image_url(day, card_image_name(index))})"
-                    for index, card in enumerate(share["cards"], start=1)
-                ),
+                "**One card per benchmark** (each image is shown here so none is forgotten):",
                 "",
             ]
         )
+        for index, card in enumerate(share["cards"], start=1):
+            title = _escape(str(card.get("title") or "untitled"))[:60]
+            url = daily_image_url(day, card_image_name(index))
+            lines.extend([f"{index}. [{title}]({url})", "", f"![{title}]({url})", ""])
     lines += [
         "Ready-to-post material for today. Rephrase per platform; the two "
         "sentences below are the factual core.",
