@@ -77880,6 +77880,37 @@
         "source": "Semantic Scholar",
         "title": "Prompt and Circumstance: Evaluating Accessibility in LLM-Generated HTML Form Components",
         "url": "https://www.semanticscholar.org/paper/c236771bce56f6ca7f426410a7bd5a44de8ed8b7"
+      },
+      {
+        "affiliations": [],
+        "authors": [
+          "Vahit Feryad"
+        ],
+        "blurb": "The new LongHaul-Bench release evaluates a self-improving agent across roughly 1,000 sequential episodes while preserving its evolving knowledge state and enforcing a fixed experience-memory budget.",
+        "categories": [
+          "benchmark",
+          "agentic"
+        ],
+        "published_at": "2026-10-24T19:36:32+00:00",
+        "source": "DataCite",
+        "title": "LongHaul-Bench: A Reproducible Benchmark for Long-Horizon Reliability of Self-Improving LLM Agents Under Industrial Edge Constraints",
+        "url": "https://doi.org/10.5281/zenodo.23624798"
+      },
+      {
+        "affiliations": [],
+        "authors": [
+          "KK Thuwajit"
+        ],
+        "blurb": "The new GraphIV benchmark release changes research-agent retrieval from finding one matching paper to recovering a complementary cohort of papers cited by arXiv review articles.",
+        "categories": [
+          "benchmark",
+          "dataset",
+          "agentic"
+        ],
+        "published_at": "2026-10-24T09:18:57+00:00",
+        "source": "Hugging Face",
+        "title": "kkuroma/GraphIV_benchmarks",
+        "url": "https://huggingface.co/datasets/kkuroma/GraphIV_benchmarks"
       }
     ],
     "date": "2026-10-25",
