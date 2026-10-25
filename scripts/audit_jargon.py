@@ -23,12 +23,13 @@ import re
 import sys
 from pathlib import Path
 
+# "frontier" and "protocol" are deliberately absent: readers can take both in
+# context, so flagging them only buried the real hits. "corpus" stays.
 # term -> why a reader outside this project cannot be expected to know it.
 JARGON = {
     "comparable run": "internal name for scores sharing an instrument and protocol",
     "comparable group": "internal join key; means nothing to a reader",
     "instrument": "used here to mean the exact test variant, not its dictionary sense",
-    "protocol": "used here to mean the run conditions, not its dictionary sense",
     "shard": "storage detail; a reader does not load files",
     "corpus": "means 'everything collected'; say that instead",
     "donor": "internal term for a record lending its identity",
@@ -38,7 +39,6 @@ JARGON = {
     "schema": "developer word for the shape of a file",
     "observation count": "means 'how many scores'; say that instead",
     "saturation": "jargon unless the page explains it on the spot",
-    "frontier": "used here as a section name, not a plain-English word",
     "readable score": "project term of art; explained on some pages, not all",
 }
 
