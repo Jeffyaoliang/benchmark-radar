@@ -279,6 +279,8 @@ function initialLang() {
 // to a string for storage is forbidden project-wide).
 const staticI18nMarkup = new Map();
 
+document.addEventListener("analytics-consent-shown", () => applyStaticI18n());
+
 function applyStaticI18n() {
   if (typeof document === "undefined") return;
   const table = I18N[getLang()] || {};
