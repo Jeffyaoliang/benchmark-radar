@@ -910,6 +910,35 @@ a.briefing-chip-sources:focus-visible {
   color: white;
 }
 
+/* Several sources open as a list of links; a native disclosure keeps Tab and
+   Enter/Space working without script. */
+.briefing-sources summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.briefing-sources summary::-webkit-details-marker {
+  display: none;
+}
+
+.briefing-sources summary:hover,
+.briefing-sources summary:focus-visible,
+.briefing-sources[open] summary {
+  background: var(--ink);
+  color: white;
+}
+
+.briefing-sources-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+}
+
+.briefing-sources-list a {
+  color: var(--blue-deep);
+  text-decoration: underline;
+}
+
 .briefing-evidence-link {
   color: var(--blue-deep);
   font-weight: 500;

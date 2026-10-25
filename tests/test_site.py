@@ -1979,10 +1979,19 @@ def test_rendered_briefing_splits_each_bullet_into_head_body_and_meta():
     assert "High confidence" in subtext(meta)
     assert "3 sources" in subtext(meta)
     multi_source_chip = next(
-        node for node in meta["children"] if "briefing-chip-sources" in node["className"].split()
+        node for node in _flatten(meta) if "briefing-chip-sources" in node["className"].split()
     )
-    assert multi_source_chip["tag"] == "span"
-    assert multi_source_chip["href"] == ""
+    # Issue #919: the count is a disclosure summary, and the details element
+    # lists one link per cited source so each of the N sources is reachable.
+    assert multi_source_chip["tag"] == "summary"
+    disclosure = next(
+        node
+        for node in _flatten(meta)
+        if node["tag"] == "details" and node["className"] == "briefing-sources"
+    )
+    links = [node for node in _flatten(disclosure) if node["tag"] == "a"]
+    assert len(links) == 3
+    assert all(link["href"].startswith("http") for link in links)
 
     # An older bullet without the "Why it matters" structure degrades to a head
     # with no body, yet its evidence and confidence still move to the metadata.
