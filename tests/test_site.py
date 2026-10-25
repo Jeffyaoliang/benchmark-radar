@@ -2374,7 +2374,8 @@ def test_dashboard_and_markdown_format_statistics_identically():
 
 def test_rendered_questions_link_cited_evidence_to_its_source():
     nodes = list(_flatten(_rendered_questions()))
-    links = [node for node in nodes if node["href"]]
+    # The single-source count is itself a link to the same evidence (#956).
+    links = [node for node in nodes if node["href"] and node["className"] != "answer-source-count"]
 
     assert [node["href"] for node in links] == ["https://arxiv.org/abs/2608.00001"]
     assert links[0]["text"] == "A harness for long-horizon agent tasks"
@@ -2525,6 +2526,38 @@ def test_rendered_answers_hold_confidence_as_metadata_not_question_text():
     summary = next(n for n in nodes if n["className"] == "answer-disclosure-summary")
     assert "View analysis" in summary["text"]
     assert "READ the full answer" not in summary["text"].upper()
+
+
+def test_rendered_answer_source_count_is_clickable(tmp_path):
+    """Issue #956: the answer's source count links to every cited source."""
+    single = [n for n in _flatten(_rendered_questions()) if n["className"] == "answer-source-count"]
+    assert [(n["tag"], n["text"], n["href"]) for n in single] == [
+        ("a", "1 source", "https://arxiv.org/abs/2608.00001")
+    ]
+
+    def add_second(fixture):
+        evidence = fixture["questions"]["groups"][0]["answers"][0]["cited_evidence"]
+        evidence.append(
+            {
+                "id": "E002",
+                "title": "Second paper",
+                "url": "https://example.com/two",
+                "source": "hn",
+            }
+        )
+
+    rendered = _render_with(add_second, tmp_path)
+    count = next(n for n in _flatten(rendered) if n["className"] == "answer-source-count")
+    assert count["tag"] == "summary"
+    assert count["text"] == "2 sources"
+    disclosure = next(
+        n
+        for n in _flatten(rendered)
+        if n["tag"] == "details" and n["className"] == "briefing-sources"
+    )
+    assert "open" not in disclosure["attributes"]
+    links = [n["href"] for n in _flatten(disclosure) if n["tag"] == "a"]
+    assert links == ["https://arxiv.org/abs/2608.00001", "https://example.com/two"]
 
 
 def test_leaderboard_coverage_counts_are_native_disclosures():

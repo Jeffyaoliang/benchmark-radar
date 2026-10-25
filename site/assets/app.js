@@ -2549,6 +2549,40 @@ function briefingParts(line) {
   return { head, body, confidence, evidenceIds };
 }
 
+// One source stays a direct link; several open as a native disclosure listing a
+// link to each, so the count a reader sees is never a dead end. Shared by the
+// briefing chips and the question answers.
+function sourcesControl(citedSources, chipClass) {
+  const sourceText = `${citedSources.length} ${
+    citedSources.length === 1 ? t("source") : t("sources")
+  }`;
+  if (citedSources.length === 1) {
+    const citation = citedSources[0];
+    return element("a", {
+      className: chipClass,
+      text: sourceText,
+      attrs: {
+        href: citation.href,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        title: `Open evidence: ${citation.title}`,
+        "aria-label": `${sourceText}: ${citation.title}`,
+      },
+    });
+  }
+  return element("details", { className: "briefing-sources" }, [
+    element("summary", { className: chipClass, text: sourceText }),
+    element("ul", { className: "briefing-sources-list" }, citedSources.map((entry) =>
+      element("li", {}, [
+        element("a", {
+          text: entry.title,
+          attrs: { href: entry.href, target: "_blank", rel: "noopener noreferrer" },
+        }),
+        element("span", { text: ` (${entry.source})` }),
+      ]))),
+  ]);
+}
+
 function briefingMeta(parts, citations) {
   const chips = [];
   if (parts.confidence) {
@@ -2562,40 +2596,7 @@ function briefingMeta(parts, citations) {
     return citation ? [citation] : [];
   });
   if (citedSources.length > 0) {
-    const sourceText = `${citedSources.length} ${
-      citedSources.length === 1 ? t("source") : t("sources")
-    }`;
-    const citation = citedSources.length === 1 ? citedSources[0] : null;
-    chips.push(citation
-      ? element("a", {
-          className: "briefing-chip briefing-chip-sources",
-          text: sourceText,
-          attrs: {
-            href: citation.href,
-            target: "_blank",
-            rel: "noopener noreferrer",
-            title: `Open evidence: ${citation.title}`,
-            "aria-label": `${sourceText}: ${citation.title}`,
-          },
-        })
-      : element("details", { className: "briefing-sources" }, [
-          element("summary", {
-            className: "briefing-chip briefing-chip-sources",
-            text: sourceText,
-          }),
-          element("ul", { className: "briefing-sources-list" }, citedSources.map((entry) =>
-            element("li", {}, [
-              element("a", {
-                text: entry.title,
-                attrs: {
-                  href: entry.href,
-                  target: "_blank",
-                  rel: "noopener noreferrer",
-                },
-              }),
-              element("span", { text: ` (${entry.source})` }),
-            ]))),
-        ]));
+    chips.push(sourcesControl(citedSources, "briefing-chip briefing-chip-sources"));
   }
   if (!chips.length) return null;
   return element("p", { className: "briefing-insight-meta" }, chips);
@@ -2780,7 +2781,7 @@ function answerBlock(answer) {
   // support (Tab to focus, Enter/Space to toggle) for free and stays collapsed
   // on load because no `open` attribute is rendered.
   const citations = answerCitations(answer);
-  const sourceCount = validBriefingCitations(answer?.cited_evidence).length;
+  const citedSources = validBriefingCitations(answer?.cited_evidence);
   const meta = element("p", { className: "answer-meta" }, [
     ...(confidence
       ? [
@@ -2790,13 +2791,8 @@ function answerBlock(answer) {
           }),
         ]
       : []),
-    ...(sourceCount
-      ? [
-          element("span", {
-            className: "answer-source-count",
-            text: `${sourceCount} ${sourceCount === 1 ? t("source") : t("sources")}`,
-          }),
-        ]
+    ...(citedSources.length
+      ? [sourcesControl(citedSources, "answer-source-count")]
       : []),
   ]);
   const detail = element("div", { className: "answer-detail" }, [
