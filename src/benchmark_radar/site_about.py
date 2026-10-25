@@ -86,6 +86,11 @@ _ELSEWHERE: tuple[tuple[str, str, str], ...] = (
         "Koutian Wu's blog, with a post for each day of work from day 1 onward.",
     ),
     (
+        "Day 47: Citation Surfaces Turn Reader-First",
+        "https://koutian.is-a.dev/posts/2026/09/benchmark-radar-day47/",
+        "Koutian Wu's build log on the citation card, CITATION.md, and navigation.",
+    ),
+    (
         "Benchmark Radar: an evidence-first daily radar for AI benchmarks",
         "https://koutian.is-a.dev/posts/2026/07/benchmark-radar/",
         "The post that started it, explaining the idea before any of it was built.",
@@ -119,6 +124,65 @@ _INSIDE: tuple[tuple[str, str], ...] = (
     ("/blog/", "Read the daily brief: what appeared today and what it means"),
     ("/cli/", "Query the whole catalog offline from the command line"),
     (CITE_PATH, "Cite the technical report, or read the publications behind it"),
+)
+
+# Keep labels factual: a paper listing or social post is not an endorsement.
+_COVERAGE: tuple[tuple[str, str, str], ...] = (
+    (
+        "Daily AI Wire News",
+        "https://dailyaiwire.news/article/benchmark-radar-ai-evaluation-database-search-engine",
+        "Article",
+    ),
+    (
+        "Moonlight",
+        "https://www.themoonlight.io/en/review/"
+        "benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-evaluation",
+        "Paper summary",
+    ),
+    ("Papers with Code", "https://paperswithcode.co/paper/2609.11115", "Paper listing"),
+    ("alphaXiv", "https://www.alphaxiv.org/abs/2609.11115", "Paper discussion"),
+    ("Hugging Face Papers", "https://huggingface.co/papers/2609.11115", "Paper discussion"),
+    (
+        "arXivDaily",
+        "https://www.arxivdaily.com/universities/sjtu",
+        "Shanghai Jiao Tong University paper feed (rolling)",
+    ),
+    ("Geepity", "https://geepity.com/2609.11115/", "Paper page"),
+    ("Isfahan AI", "https://isfahan-ai.ir/news/1248", "News post"),
+    (
+        "Collected",
+        "https://collected.ga/typesafe-ai-daily-benchmark-radar-a-living-database-"
+        "and-search-engine-for-ai-benchmarks-and-eval/",
+        "Typesafe AI Daily",
+    ),
+    (
+        "Alexy Khrabrov on LinkedIn",
+        "https://www.linkedin.com/posts/chiefscientist_typesafe-ai-daily-benchmark-radar-"
+        "a-living-share-7504531089483309056-9uO7/",
+        "Community post",
+    ),
+    (
+        "Daily AI Wire News on LinkedIn",
+        "https://www.linkedin.com/posts/benchmark-radar-launches-as-centralized-ai-"
+        "share-7504478957413527552-jdN_/",
+        "Article announcement",
+    ),
+    ("@SciFi on X", "https://x.com/SciFi/status/2098817718036127993", "Community post"),
+    (
+        "@HuggingPapers on X",
+        "https://x.com/HuggingPapers/status/2099412410264060340",
+        "Community post",
+    ),
+    (
+        "@marcel_butucea on X",
+        "https://x.com/marcel_butucea/status/2098914581204680765",
+        "Community post",
+    ),
+    (
+        "Moltbook",
+        "https://www.moltbook.com/post/a65591a2-d28d-4f3d-b381-fe2836c4e4c3",
+        "Community post",
+    ),
 )
 
 _STORY = (
@@ -181,6 +245,9 @@ def about_body() -> str:
 </header>
 <div class="blog-prose">{story}
 <section><h2>Where to start</h2>{_inside_list()}</section>
+<section id="coverage"><h2>Media and community</h2>
+<p>Read coverage, paper summaries, and community discussions of Benchmark Radar.</p>
+{_link_list(_COVERAGE)}</section>
 <section><h2>Benchmark Radar elsewhere</h2>{_link_list(_ELSEWHERE)}</section>
 </div>"""
 

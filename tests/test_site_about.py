@@ -51,6 +51,40 @@ def test_about_marks_its_own_nav_entry_active(about: str):
     """The chrome is the dashboard's, so About must not arrive under Blog."""
     active = re.findall(r'<a class="nav-active"[^>]*href="([^"]+)"', about)
     assert active == ["/about/"]
+    header = re.search(r'<nav class="view-nav".*?</nav>', about, re.S).group(0)
+    assert 'aria-current="page" href="/about/"' in header
+    assert re.findall(r'href="([^"]+)"', header)[-1] == "/about/"
+
+
+def test_about_contains_every_coverage_link_from_issue_626(about: str):
+    coverage = re.search(r'<section id="coverage">.*?</section>', about, re.S).group(0)
+    for path in (
+        "paperswithcode.co/paper/2609.11115",
+        "www.arxivdaily.com/universities/sjtu",
+        "www.moltbook.com/post/a65591a2-d28d-4f3d-b381-fe2836c4e4c3",
+        "www.themoonlight.io/en/review/benchmark-radar-a-living-database-and-search-engine-"
+        "for-ai-benchmarks-and-evaluation",
+        "www.linkedin.com/posts/chiefscientist_typesafe-ai-daily-benchmark-radar-a-living-"
+        "share-7504531089483309056-9uO7/",
+        "collected.ga/typesafe-ai-daily-benchmark-radar-a-living-database-and-search-engine-"
+        "for-ai-benchmarks-and-eval/",
+        "www.alphaxiv.org/abs/2609.11115",
+        "x.com/SciFi/status/2098817718036127993",
+        "x.com/HuggingPapers/status/2099412410264060340",
+        "geepity.com/2609.11115/",
+        "x.com/marcel_butucea/status/2098914581204680765",
+        "isfahan-ai.ir/news/1248",
+        "www.linkedin.com/posts/benchmark-radar-launches-as-centralized-ai-share-"
+        "7504478957413527552-jdN_/",
+        "dailyaiwire.news/article/benchmark-radar-ai-evaluation-database-search-engine",
+        "huggingface.co/papers/2609.11115",
+    ):
+        assert f'href="https://{path}"' in coverage
+    build_log = re.search(
+        r"<section><h2>Benchmark Radar elsewhere</h2>.*?</section>", about, re.S
+    ).group(0)
+    assert 'href="https://koutian.is-a.dev/posts/2026/09/benchmark-radar-day47/"' in build_log
+    assert "benchmark-radar-day47" not in coverage
 
 
 def test_about_links_out_to_the_project_and_the_build_log(about: str):
