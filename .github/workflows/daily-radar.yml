@@ -253,9 +253,13 @@ jobs:
             echo "Share cards are already recorded"
             exit 0
           fi
-          # [skip ci]: the site does not read the share block, so this commit
-          # must not start a second full Pages build after persist-snapshot's.
-          git commit -m "Record daily share cards [skip ci]"
+          # No [skip ci]: the site reads the share block (the Share buttons),
+          # and persist-snapshot's push built Pages from a snapshot without
+          # it. This push touches data/snapshots/**, so it starts the second
+          # Pages build that adds the buttons. The App token is used so the
+          # push triggers workflows; the github-pages concurrency group queues
+          # the build behind one already running instead of cancelling it.
+          git commit -m "Record daily share cards"
           git push origin HEAD:main || {
             git pull --rebase origin main
             git push origin HEAD:main
