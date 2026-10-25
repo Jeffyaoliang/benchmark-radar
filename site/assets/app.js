@@ -383,7 +383,7 @@ const I18N = {
   zh: {
     "Chart notes": "图表说明",
     "Chart legend": "图例",
-    "Shown / corpus": "显示数／目录总数",
+    "Shown / total": "显示数／目录总数",
     "source document": "份来源文档",
     "Document publication date": "文档发布日期",
     "Model release": "模型发布日期",
@@ -553,7 +553,7 @@ const I18N = {
     "Adoption not recorded": "采用量未记录",
     "Hollow marks: count or score scale unverified": "空心点：数量未知或分数刻度未核实",
     "Count or score scale unverified": "数量或分数刻度未核实",
-    "{visible} of {n} benchmarks shown · {s} sources in corpus": "显示 {visible} / {n} 个 benchmark · 全部数据来自 {s} 个来源",
+    "{visible} of {n} benchmarks shown · {s} sources in total": "显示 {visible} / {n} 个 benchmark · 全部数据来自 {s} 个来源",
     "Browse all benchmarks": "查找全部 benchmark",
     "Benchmark Frontier": "Benchmark 前沿",
     "Benchmark Frontier chart": "Benchmark 前沿图",
@@ -5669,14 +5669,14 @@ function renderBenchmarkSkyline(cutoff = state.lscore) {
   contents.push(frontierTooltip());
   replaceChildren(host, contents);
   replaceChildren(byId("benchmark-skyline-legend"), [skylineLegend()]);
-  byId("benchmark-skyline-sources").textContent = `${t("Shown / corpus")}: ${sourceCounts.join(" · ")}`;
+  byId("benchmark-skyline-sources").textContent = `${t("Shown / total")}: ${sourceCounts.join(" · ")}`;
   byId("benchmark-skyline-coverage").textContent = `${heightCoverage} · ${heightBasis}`;
   byId("benchmark-skyline-pareto").textContent = t("Pareto: {p} of {n} benchmarks with verified score scales and a recorded height count. Unverified scales do not enter the frontier.", {
     p: model.comparable.filter((row) => row.pareto).length, n: model.comparable.length,
   });
   enableFrontierTouchTargets(svg);
   enableSkylineKeyboard(svg);
-  byId("benchmark-skyline-count").textContent = t("{visible} of {n} benchmarks shown · {s} sources in corpus", {
+  byId("benchmark-skyline-count").textContent = t("{visible} of {n} benchmarks shown · {s} sources in total", {
     visible: model.visible.length.toLocaleString(), n: model.population.toLocaleString(), s: model.sources,
   });
   byId("benchmark-skyline-note").textContent = t("{unscored} without scores excluded · {older} before 2024 · {hidden} hidden by score", {
