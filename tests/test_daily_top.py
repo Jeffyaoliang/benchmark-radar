@@ -392,8 +392,25 @@ def test_social_checklist_embeds_the_days_images():
     base = (
         "https://raw.githubusercontent.com/ktwu01/benchmark-radar-cards/refs/heads/daily/2026-10-23"
     )
-    assert f"![Top benchmarks on 2026-10-23]({base}/top3.png)" in section
-    assert f"{base}/card-02.png" in section
+    assert f"[![Top benchmarks on 2026-10-23]({base}/top3.png)]({base}/top3.png)" in section
+    # Every card is shown inline, so a card cannot be forgotten.
+    for index in (1, 2):
+        assert f"]({base}/card-0{index}.png)\n\n[![" in section
+        assert f"]({base}/card-0{index}.png)]({base}/card-0{index}.png)" in section
+
+
+def test_checklist_title_cut_never_splits_an_escape():
+    block = _snapshot_with_cards(1)["share"]
+    block["cards"][0]["title"] = "a" * 59 + "|tail"
+    section = render_social_section("insight", "repo", [], [{"name": "X"}], share=block)
+    assert "[1. " not in section and "\\]" not in section.split("1. ")[1].split("\n")[0]
+
+
+def test_checklist_title_cut_on_a_backslash_keeps_its_brackets_closed():
+    block = _snapshot_with_cards(1)["share"]
+    block["cards"][0]["title"] = "a" * 59 + "\\tail"
+    section = render_social_section("insight", "repo", [], [{"name": "X"}], share=block)
+    assert "\\](" not in section
 
 
 def test_spent_lookup_budget_fails_fast_without_calling_the_api(monkeypatch):
