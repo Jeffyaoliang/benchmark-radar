@@ -269,7 +269,7 @@ def render_social_section(
             ]
         )
         for index, card in enumerate(share["cards"], start=1):
-            title = _escape(str(card.get("title") or "untitled")[:60])
+            title = _escape(str(card.get("title") or "untitled")[:60].rstrip("\\"))
             url = daily_image_url(day, card_image_name(index))
             lines.extend([f"{index}. [{title}]({url})", "", f"[![{title}]({url})]({url})", ""])
     lines += [
