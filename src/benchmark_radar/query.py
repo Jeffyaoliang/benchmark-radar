@@ -48,6 +48,7 @@ _BM25_K1 = 1.2
 _BM25_B = 0.75
 _NAME_MATCH_MULTIPLIERS = (3.0, 1.5, 0.75)
 _PHRASE_MULTIPLIER = 0.5
+_MIN_PREFIX_LENGTH = 2
 # Han ideographs plus hiragana and katakana, which share unspaced text with Han.
 _CJK_CHARS = (
     r"\u3005\u3041-\u309f\u30a1-\u30fa\u30fc-\u30ff\u31f0-\u31ff"
@@ -261,12 +262,52 @@ def _contains_tokens(haystack: tuple[str, ...], needle: tuple[str, ...]) -> bool
     )
 
 
+def _unique_query_tokens(query: str) -> tuple[str, ...]:
+    """Unique query words in first-seen order, except that the word the user typed
+    last stays last, since it is the one treated as still being typed."""
+    tokens = _tokens(query)
+    unique = dict.fromkeys(tokens)
+    if tokens:
+        unique.pop(tokens[-1])
+        unique[tokens[-1]] = None
+    return tuple(unique)
+
+
+def _prefix_term(query_tokens: tuple[str, ...]) -> str | None:
+    """The word still being typed. The search box searches as you type, so the
+    last query word also matches the words that start with it. Only ASCII words
+    qualify: CJK tokens are character pairs, and a one-character prefix of a pair
+    would match every pair that starts with that character."""
+    last = query_tokens[-1]
+    return last if len(last) >= _MIN_PREFIX_LENGTH and last.isascii() else None
+
+
+def _prefix_counts(document: _SearchDocument, term: str) -> dict[str, int]:
+    """Per field, how many tokens start with `term` without being `term`."""
+    counts: dict[str, int] = {}
+    for field, field_counts in document.field_counts.items():
+        total = sum(
+            count
+            for token, count in field_counts.items()
+            if token != term and token.startswith(term)
+        )
+        if total:
+            counts[field] = total
+    return counts
+
+
 def _name_match(
     name_tokens: tuple[str, ...], query_tokens: tuple[str, ...]
 ) -> tuple[int, str] | None:
     if name_tokens == query_tokens:
         return 0, "exact name match"
-    if name_tokens[: len(query_tokens)] == query_tokens:
+    head = name_tokens[: len(query_tokens)]
+    if head == query_tokens or (
+        len(head) == len(query_tokens)
+        and head[:-1] == query_tokens[:-1]
+        and _prefix_term(query_tokens) is not None
+        and head[-1].startswith(query_tokens[-1])
+    ):
         return 1, "name prefix match"
     if _contains_tokens(name_tokens, query_tokens):
         return 2, "name token-sequence match"
@@ -277,12 +318,18 @@ def _bm25f_score(
     document: _SearchDocument,
     query_tokens: tuple[str, ...],
     corpus: _SearchCorpus,
+    prefix_counts: dict[str, int],
 ) -> float:
     score = 0.0
     for term in query_tokens:
         weighted_frequency = 0.0
         for field in _FIELD_ORDER:
             frequency = document.field_counts[field][term]
+            # A word that exists in the corpus keeps its whole-word scores, so
+            # finishing "agent" does not reorder results; an unknown fragment such
+            # as "saf" has no whole-word score, so its prefix hits supply it.
+            if prefix_counts and term == query_tokens[-1] and not corpus.document_frequency[term]:
+                frequency += prefix_counts.get(field, 0)
             if not frequency:
                 continue
             # CJK bigrams expand descriptions that were invisible to English
@@ -310,13 +357,17 @@ def _match(
     corpus: _SearchCorpus,
 ) -> tuple[tuple[Any, ...], dict[str, Any]] | None:
     query_token_set = set(query_tokens)
-    if document.all_tokens.isdisjoint(query_token_set):
+    prefix_term = _prefix_term(query_tokens)
+    prefix_counts = _prefix_counts(document, prefix_term) if prefix_term else {}
+    if document.all_tokens.isdisjoint(query_token_set) and not prefix_counts:
         return None
 
     matched_fields: list[str] = []
     matched_tokens: set[str] = set()
     for field in _FIELD_ORDER:
         hits = query_token_set.intersection(document.field_counts[field])
+        if field in prefix_counts:
+            hits.add(prefix_term)
         if hits:
             matched_fields.append(field)
             matched_tokens.update(hits)
@@ -339,7 +390,7 @@ def _match(
             f"across fields; IDF coverage {idf_coverage:.2f}"
         )
 
-    bm25f_score = _bm25f_score(document, query_tokens, corpus)
+    bm25f_score = _bm25f_score(document, query_tokens, corpus, prefix_counts)
     phrase_fields = [
         field
         for field in _FIELD_ORDER
@@ -581,7 +632,7 @@ class QueryService:
         sources: frozenset[str] | None = None,
     ) -> dict[str, Any]:
         query = " ".join(str(query).split())
-        query_tokens = tuple(dict.fromkeys(_tokens(query)))
+        query_tokens = _unique_query_tokens(query)
         if not query_tokens:
             raise QueryError(
                 "query must contain at least one letter or number",
