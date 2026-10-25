@@ -853,6 +853,14 @@ const I18N = {
     topics: "个主题",
     // --- Today / health ------------------------------------------------------
     "Evidence cited by GPT": "GPT 引用的证据",
+    "Share image": "分享图片",
+    "Top 3 of the day": "今日前三",
+    "Copy link": "复制链接",
+    "Copy image link": "复制图片链接",
+    "Link copied": "链接已复制",
+    "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
+    "opens in a new tab": "在新标签页打开",
+    "top 3 benchmarks of the day": "今日前三个基准",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
     "No observations match these filters. Clear one or more filters to widen the view.":
@@ -2601,7 +2609,77 @@ function briefingMeta(parts, citations) {
   return element("p", { className: "briefing-insight-meta" }, chips);
 }
 
-function briefingInsight(line, citations) {
+// Share images (issue #671) are rendered by the daily pipeline and published
+// per day, so the page only links to one. An item the day did not make a card
+// for gets no control: a link to an image that was never rendered would be a
+// dead end, and the item stays listed either way.
+function shareCardFor(day, url) {
+  const href = safeHttpUrl(url);
+  if (!href) return null;
+  const card = (day?.share?.cards || []).find((entry) => safeHttpUrl(entry.url) === href);
+  const image = card ? safeHttpUrl(card.image) : "";
+  return image ? { image } : null;
+}
+
+function shareControl(image, label) {
+  const status = element("span", {
+    className: "share-status",
+    attrs: { role: "status" },
+  });
+  const copy = element("button", {
+    className: "share-copy",
+    text: t("Copy link"),
+    attrs: { type: "button", "aria-label": `${t("Copy image link")}: ${label}` },
+  });
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(image);
+      status.textContent = t("Link copied");
+    } catch {
+      status.textContent = t("Could not copy. Open the image and copy its address.");
+    }
+  });
+  return element("div", { className: "share-control" }, [
+    element("a", {
+      className: "share-link",
+      text: `${t("Share image")} \u2197`,
+      attrs: {
+        href: image,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        "aria-label": `${t("Share image")}: ${label} (${t("opens in a new tab")})`,
+      },
+    }),
+    copy,
+    status,
+  ]);
+}
+
+function briefingShare(parts, citations, day) {
+  const citation = parts.evidenceIds
+    .map((id) => citations.find((entry) => entry.id === id))
+    .find(Boolean);
+  const card = citation ? shareCardFor(day, citation.href) : null;
+  return card ? shareControl(card.image, citation.title) : null;
+}
+
+function renderTopShare(day, visible) {
+  const host = byId("today-share");
+  if (!host) return;
+  const image = visible ? safeHttpUrl(day?.share?.top3_image) : "";
+  host.hidden = !image;
+  replaceChildren(
+    host,
+    image
+      ? [
+          element("span", { className: "today-share-label", text: t("Top 3 of the day") }),
+          shareControl(image, t("top 3 benchmarks of the day")),
+        ]
+      : [],
+  );
+}
+
+function briefingInsight(line, citations, day) {
   const parts = briefingParts(line);
   const head = element("h3", { className: "briefing-insight-head" },
     briefingContent(parts.head || line, citations));
@@ -2614,6 +2692,7 @@ function briefingInsight(line, citations) {
     head,
     body,
     briefingMeta(parts, citations),
+    briefingShare(parts, citations, day),
   ]);
 }
 
@@ -2699,7 +2778,7 @@ function renderDailyBriefing(day) {
           // head (the takeaway), the "why it matters" support beneath it, and a
           // metadata line carrying confidence and source count instead of
           // paragraph-wide prose and mid-sentence evidence IDs.
-          ...usable.map((line) => briefingInsight(line, citations)),
+          ...usable.map((line) => briefingInsight(line, citations, day)),
           briefingDetails(briefing, citations),
         ]
       : [
@@ -3226,11 +3305,12 @@ function renderToday({ resultsOnly = false } = {}) {
       : releasesLead
         ? t("Sort: New releases first, then Recency ↓, then Priority ↓")
         : t("Sort: Recency ↓, then Priority ↓");
+  renderTopShare(day, !showingAllDates && !range);
   const listHost = byId("today-list");
   replaceChildren(
     listHost,
     visibleObservations.length
-      ? visibleObservations.map((item, offset) => observationCard(item, pageStart + offset))
+      ? visibleObservations.map((item, offset) => observationCard(item, pageStart + offset, day))
       : emptyTodayNodes(day, benchmarkMatches),
   );
   byId("today-page-status").textContent = t(
@@ -10988,7 +11068,8 @@ function railDate(value) {
   });
 }
 
-function evidenceCard(item) {
+function evidenceCard(item, day) {
+  const shareCard = shareCardFor(day, item.url);
   const fullTitle = displayTitle(item);
   const { name, subtitle } = splitBenchmarkTitle(fullTitle);
   const categories = (item.categories || []).slice(0, 3).map(titleCase);
@@ -11034,15 +11115,16 @@ function evidenceCard(item) {
         text: item.summary || t("No description published at the source."),
       }),
       artifactLinks(item),
+      shareCard ? shareControl(shareCard.image, fullTitle) : null,
     ]),
     scoreBlock(item),
   ]);
 }
 
-function observationCard(record, index) {
+function observationCard(record, index, day) {
   const item = { ...record, summary: plainSummary(record.summary) };
   const isAttention = item.observation_kind === "attention";
-  if (!isAttention) return evidenceCard(item);
+  if (!isAttention) return evidenceCard(item, day);
   const metadata = isAttention
     ? element("div", { className: "signal-meta" }, [
         element("span", { className: "attention-badge", text: t("attention") }),
