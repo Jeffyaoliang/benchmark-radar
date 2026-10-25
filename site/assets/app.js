@@ -2573,10 +2573,24 @@ function briefingMeta(parts, citations) {
             "aria-label": `${sourceText}: ${citation.title}`,
           },
         })
-      : element("span", {
-          className: "briefing-chip briefing-chip-sources",
-          text: sourceText,
-        }));
+      : element("details", { className: "briefing-sources" }, [
+          element("summary", {
+            className: "briefing-chip briefing-chip-sources",
+            text: sourceText,
+          }),
+          element("ul", { className: "briefing-sources-list" }, citedSources.map((entry) =>
+            element("li", {}, [
+              element("a", {
+                text: entry.title,
+                attrs: {
+                  href: entry.href,
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                },
+              }),
+              element("span", { text: ` (${entry.source})` }),
+            ]))),
+        ]));
   }
   if (!chips.length) return null;
   return element("p", { className: "briefing-insight-meta" }, chips);
