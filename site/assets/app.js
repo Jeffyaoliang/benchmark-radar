@@ -873,13 +873,9 @@ const I18N = {
     // --- Today / health ------------------------------------------------------
     "Evidence cited by GPT": "GPT 引用的证据",
     "Share image": "分享图片",
-    "Top 3 of the day": "今日前三",
-    "Top 2 of the day": "今日前二",
-    "Top benchmark of the day": "今日第一",
-    "Copy link": "复制链接",
-    "Copy image link": "复制图片链接",
-    "Link copied": "链接已复制",
-    "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
+    "Share the top 3 benchmark of the day": "分享今日前三个 benchmark",
+    "Share the top 2 benchmarks of the day": "分享今日前两个 benchmark",
+    "Share the top benchmark of the day": "分享今日第一 benchmark",
     "opens in a new tab": "在新标签页打开",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
@@ -2641,37 +2637,18 @@ function shareCardFor(day, url) {
   return image ? { image } : null;
 }
 
-function shareControl(image, label) {
-  const status = element("span", {
-    className: "share-status",
-    attrs: { role: "status" },
-  });
-  const copy = element("button", {
-    className: "share-copy",
-    text: t("Copy link"),
-    attrs: { type: "button", "aria-label": `${t("Copy image link")}: ${label}` },
-  });
-  copy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(image);
-      status.textContent = t("Link copied");
-    } catch {
-      status.textContent = t("Could not copy. Open the image and copy its address.");
-    }
-  });
+function shareControl(image, label, linkLabel = t("Share image")) {
   return element("div", { className: "share-control" }, [
     element("a", {
       className: "share-link",
-      text: `${t("Share image")} \u2197`,
+      text: `${linkLabel} \u2197`,
       attrs: {
         href: image,
         target: "_blank",
         rel: "noopener noreferrer",
-        "aria-label": `${t("Share image")}: ${label} (${t("opens in a new tab")})`,
+        "aria-label": `${linkLabel === label ? linkLabel : `${linkLabel}: ${label}`} (${t("opens in a new tab")})`,
       },
     }),
-    copy,
-    status,
   ]);
 }
 
@@ -2686,8 +2663,8 @@ function briefingShare(parts, citations, day) {
 // top3.png holds the first three cards, or fewer when the day has fewer, so
 // the label follows the number of cards the picture really shows.
 function topShareLabel(count) {
-  if (count >= 3) return t("Top 3 of the day");
-  return count === 2 ? t("Top 2 of the day") : t("Top benchmark of the day");
+  if (count >= 3) return t("Share the top 3 benchmark of the day");
+  return count === 2 ? t("Share the top 2 benchmarks of the day") : t("Share the top benchmark of the day");
 }
 
 function renderTopShare(day, visible) {
@@ -2699,10 +2676,7 @@ function renderTopShare(day, visible) {
   replaceChildren(
     host,
     image
-      ? [
-          element("span", { className: "today-share-label", text: topShareLabel(count) }),
-          shareControl(image, topShareLabel(count)),
-        ]
+      ? [shareControl(image, topShareLabel(count), topShareLabel(count))]
       : [],
   );
 }
