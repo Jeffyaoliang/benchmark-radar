@@ -10,8 +10,8 @@ Cohorts:
   window_start <= release_timestamp <= generated_at_utc
 - Canonical benchmark entities with at least one `event_kind == "released"`
   observation in the window. Routine `updated` records are excluded, and so are
-  records typed as a model, a method paper or a software version release
-  (`release_kind.py`).
+  records typed as a model, a method, an agent, a harness, or a software version
+  release (`release_kind.py`).
 - Normalization: log1p(val) / log1p(window_max) with fixed weights:
   GitHub stars: 55%
   Hugging Face paper upvotes: 30%
@@ -444,9 +444,10 @@ def filter_release_cohort(
     for canonical_id, occurrences in items_by_canonical.items():
         release_dates = []
         for item, snap in occurrences:
-            # A model, a method paper or a software version tag is a release of
-            # something, but not of a benchmark. It stays in the corpus; it just
-            # does not open a Latest releases entry (issue #902).
+            # A model, a method, an agent, a harness, or a software version tag
+            # is a release of something, but not of a benchmark. It stays in the
+            # corpus; it just does not open a Latest releases entry
+            # (issues #902 and #961).
             if item.get("event_kind") == "released" and is_benchmark_release(item):
                 ts = (
                     item.get("published_at")

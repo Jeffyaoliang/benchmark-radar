@@ -4173,6 +4173,36 @@ dialog::backdrop {
   text-decoration: underline;
 }
 
+.cite-media {
+  margin-top: 1.6rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.cite-media-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.95rem;
+}
+
+.cite-media-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.cite-media-list a {
+  color: var(--ink);
+}
+
+.cite-media-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .copy-label {
   margin: 0 0 0.5rem;
   color: var(--muted);
@@ -4354,8 +4384,7 @@ dialog::backdrop {
   font-size: 1.05rem;
 }
 
-.adoption-actions,
-.footer-dataset-actions {
+.adoption-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -4365,25 +4394,6 @@ dialog::backdrop {
 .adoption-actions button {
   background: transparent;
   cursor: pointer;
-}
-
-.footer-dataset {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0.7rem 0 0;
-  padding: 0.9rem;
-  border-left: 3px solid var(--orange);
-  background: #fff4d6;
-  color: var(--ink);
-  font-family: var(--utility);
-  font-size: 0.75rem;
-}
-
-.footer-dataset a {
-  color: var(--ink);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .stale-banner {
@@ -4458,39 +4468,373 @@ button.stale-banner-action {
 }
 
 footer {
-  /* One left-aligned column: document links, updated stamp, then the dataset
-     card underneath them. */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.9rem;
-  padding: 1.5rem 0 3rem;
+  /* Three bands, read top to bottom: the email signup, the link columns,
+     then legal and contact. */
+  display: grid;
+  gap: 2rem;
+  padding: 2rem 0 3rem;
   border-top: 1px solid var(--edge);
   color: var(--muted);
 }
 
 .copyright {
+  margin: 0;
   font-size: 0.72rem;
 }
 
-.footer-nav {
+.email-signup {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.email-signup-card {
+  margin-bottom: 1.25rem;
+}
+
+.email-signup-title {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
+.email-signup-form {
+  display: grid;
+}
+
+.email-signup-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.email-signup-row label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.email-signup-row input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 0.9rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+}
+
+.email-signup-row button {
+  flex: 0 0 auto;
+  min-height: var(--control-height);
+  padding: 0 1.2rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.email-signup-row button:hover,
+.email-signup-row button:focus-visible {
+  background: var(--blue-deep);
+  border-color: var(--blue-deep);
+}
+
+.email-signup-form input:focus-visible,
+.email-signup-row button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Collapsed until the reader types an address. Animating the row track from
+   0fr to 1fr opens the panel to its natural height; visibility keeps the
+   hidden checkbox and radios out of the tab order while it is closed. */
+.email-signup-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.3s ease,
+    opacity 0.2s ease,
+    visibility 0s linear 0.3s;
+}
+
+.email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    grid-template-rows 0.3s ease,
+    opacity 0.25s ease 0.05s,
+    visibility 0s;
+}
+
+/* Without :has() the panel could never open, and its required checkbox would
+   block every submission, so those browsers get it open. */
+@supports not selector(:has(*)) {
+  .email-signup-more {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .email-signup-more,
+  .email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {
+    transition: none;
+  }
+}
+
+.email-signup-more-inner {
+  display: grid;
+  gap: 0.65rem;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--body);
+  font-size: 13px;
+  letter-spacing: normal;
+  line-height: 1.5;
+}
+
+/* Spacing sits on the first child, not as padding on the clipped wrapper,
+   because padding would keep the closed panel 0.85rem tall. */
+.email-signup-consent {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.15rem 0.55rem;
+  align-items: start;
+  cursor: pointer;
+}
+
+.email-signup-consent input {
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  margin: 0.15rem 0 0;
+  padding: 0;
+}
+
+.email-signup-consent a {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.email-signup-consent a,
+.email-signup-frequency {
+  color: var(--ink);
+}
+
+.email-signup-frequency {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 1.25rem;
-  font-family: var(--utility);
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
+  gap: 0.4rem 1.1rem;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.footer-nav a {
+.email-signup-frequency legend {
+  float: left;
+  margin-right: 0.2rem;
+  padding: 0;
+  color: var(--muted);
+}
+
+.email-signup-frequency input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.email-signup-hint {
+  color: var(--muted);
+}
+
+.email-signup-frequency label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* The footer copy is wide, so the band puts the pitch beside the form;
+   the sidebar card above the briefing keeps the stacked layout. */
+.footer-signup {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 30rem);
+  align-items: start;
+  padding: 1.75rem 2rem;
+}
+
+.footer-signup .email-signup-title {
+  /* Centred on the input row, which is one control-height tall. */
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  font-size: 1.35rem;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.4fr) repeat(4, minmax(9rem, 1fr));
+  gap: 2rem;
+  align-items: start;
+}
+
+.footer-columns .adoption-cta {
+  margin-top: 0;
+}
+
+.footer-links {
+  display: grid;
+  gap: 0.55rem;
+  font-family: var(--body);
+  font-size: 14px;
+  letter-spacing: normal;
+}
+
+.footer-links h2 {
+  margin: 0 0 0.25rem;
   color: var(--ink);
+  font-family: var(--utility);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+
+.footer-links a {
+  color: var(--muted);
   text-decoration: none;
 }
 
-.footer-nav a:hover,
-.footer-nav .nav-active {
+.footer-links a:hover,
+.footer-links a:focus-visible,
+.footer-links .nav-active {
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.25em;
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: baseline;
+}
+
+.footer-lang {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.footer-lang:hover,
+.footer-lang:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.footer-contact {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.footer-contact a {
+  color: var(--ink);
+}
+
+.footer-contact svg.brand-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+  fill-rule: evenodd;
+  vertical-align: middle;
+}
+
+.footer-wechat {
+  position: relative;
+}
+
+.footer-wechat summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+}
+
+.footer-wechat summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The ID is a popover, so opening it never moves the other contact icons. */
+.footer-wechat-id {
+  position: absolute;
+  right: 0;
+  bottom: 1.5rem;
+  display: none;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  white-space: nowrap;
+  user-select: all;
+}
+
+.footer-wechat:hover .footer-wechat-id,
+.footer-wechat[open] .footer-wechat-id {
+  display: block;
+}
+
+@media (max-width: 1050px) {
+  .footer-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footer-columns .adoption-cta {
+    grid-column: 1 / -1;
+  }
+
+  .footer-signup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .email-signup-row {
+    flex-direction: column;
+  }
+
+  .footer-signup {
+    padding: 1.25rem;
+  }
 }
 
 @media (max-width: 1050px) {
@@ -7220,7 +7564,7 @@ a.radar-source::after {
   margin-top: 0.4rem;
 }
 
-/* Share control (issue #671): opens or copies the day's pre-rendered image for
+/* Share control (issue #671): opens the day's pre-rendered image for
    one benchmark. It reads as a quiet text action like the card links, with 44px
    touch targets and negative margins so the card does not grow. */
 .share-control {
@@ -7231,8 +7575,7 @@ a.radar-source::after {
   font-size: 0.98rem;
 }
 
-.share-link,
-.share-copy {
+.share-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -7247,14 +7590,8 @@ a.radar-source::after {
   cursor: pointer;
 }
 
-.share-link:hover,
-.share-copy:hover {
+.share-link:hover {
   text-decoration: underline;
-}
-
-.share-status {
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 .briefing-insight .share-control {
@@ -7274,8 +7611,16 @@ a.radar-source::after {
   display: none;
 }
 
-.today-share-label {
-  color: var(--muted);
-  font-family: var(--utility);
-  font-size: 0.8rem;
+/* Primary discovery controls remain visible at every viewport width. */
+.today-filters { align-items: end; }
+.today-segments { border: 0; padding: 0; margin: 0; min-width: 0; }
+.today-segments legend { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.today-segments > div { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+.today-segments button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 5px; background: white; color: #171717; white-space: nowrap; font: inherit; font-size: 14px; }
+.today-segments button[aria-pressed="true"] { background: #e2e6e9; color: #171717; }
+.today-segments button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .today-filters { grid-template-columns: minmax(0, 1fr) auto; }
+  .today-segments { grid-column: 1 / -1; }
+  .today-segments button { flex: 1; min-height: 40px; }
 }

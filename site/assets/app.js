@@ -360,7 +360,6 @@ function rerenderCurrentView() {
   if (state.view === "trends") renderTrends();
   if (state.view === "map") renderTrendMap();
   renderStaleBanner();
-  renderBuildMeta();
 }
 
 function toggleLang() {
@@ -623,6 +622,26 @@ const I18N = {
     Trend: "趋势",
     Explore: "探索",
     Blog: "博客",
+    Media: "媒体报道",
+    "Get benchmark updates by email": "通过邮件获取 benchmark 更新",
+    "Email address": "邮箱地址",
+    Subscribe: "订阅",
+    "email.signup.consent": "我同意接收 Benchmark Radar 的邮件，并可随时退订。",
+    "How often?": "多久一封？",
+    Daily: "每天",
+    "the latest each day": "每天最新动态",
+    Weekly: "每周",
+    "every Monday": "每周一",
+    "Download the dataset": "下载数据集",
+    "Command-line tool": "命令行工具",
+    "RSS feed": "RSS 订阅",
+    "Source code": "源代码",
+    Project: "项目",
+    Contribute: "参与贡献",
+    "Suggest a benchmark or source": "推荐 benchmark 或数据源",
+    "Report a mistake": "报告错误",
+    "Share how you use it": "分享你的使用场景",
+    "In the media": "媒体报道",
     Rubric: "评分标准",
     "Daily briefing": "每日简报",
     "Questions for today": "今日问答",
@@ -657,6 +676,12 @@ const I18N = {
     Filters: "筛选",
     "More filters": "更多筛选",
     "Date:": "日期:",
+    "Latest": "最新",
+    "Past 90 days": "近 90 天",
+    "Time window": "时间范围",
+    "Sort by": "排序方式",
+    "Sort: Newest": "排序：最新",
+    "Sort: Recorded stars + likes + downloads + points; missing signals last": "排序：已记录的星标、点赞、下载和积分总数；缺少数据的记录排在最后",
     "Search benchmarks…": "搜索benchmark…",
     "Refresh data": "刷新数据",
     "Today's radar": "今日雷达",
@@ -854,13 +879,9 @@ const I18N = {
     // --- Today / health ------------------------------------------------------
     "Evidence cited by GPT": "GPT 引用的证据",
     "Share image": "分享图片",
-    "Top 3 of the day": "今日前三",
-    "Top 2 of the day": "今日前二",
-    "Top benchmark of the day": "今日第一",
-    "Copy link": "复制链接",
-    "Copy image link": "复制图片链接",
-    "Link copied": "链接已复制",
-    "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
+    "Share the top 3 benchmark of the day": "分享今日前三个 benchmark",
+    "Share the top 2 benchmarks of the day": "分享今日前两个 benchmark",
+    "Share the top benchmark of the day": "分享今日第一 benchmark",
     "opens in a new tab": "在新标签页打开",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
@@ -1125,7 +1146,6 @@ const I18N = {
       "完整数据集可以免费下载。如果它帮你节省了研究时间，请给仓库点个 Star，让更多评测开发者找到它。",
     Download: "下载",
     "Star the repository": "给仓库点 Star",
-    "Free dataset. No crawler needed.": "免费数据集，无需爬虫。",
     "If this saved you research time, cite the work, star the repo and help other eval builders find it.":
       "如果它帮你节省了研究时间，请引用这项工作、给仓库点 Star，让更多评测开发者找到它。",
     Cite: "引用",
@@ -1410,6 +1430,7 @@ const state = {
   data: null,
   view: "today",
   todayDate: "",
+  todaySort: "attention",
   q: "",
   kind: "",
   category: "",
@@ -1705,6 +1726,7 @@ function readUrl() {
   // A bare search permalink has archive-wide intent. An explicit date remains
   // a deliberate narrow search, including the "today" link in the scope banner.
   state.todayDate = params.get("date") || (state.q ? "all" : "");
+  state.todaySort = params.get("sort") === "newest" ? "newest" : "attention";
   state.kind = params.get("kind") || "";
   state.category = params.get("category") || "";
   state.source = params.get("source") || "";
@@ -1806,6 +1828,7 @@ function writeUrl(mode = "replace") {
       // on reload after the reader clicked "Search today" in the scope banner.
       params.set("date", state.todayDate);
     }
+    if (state.todaySort === "newest") params.set("sort", "newest");
     if (state.q) params.set("q", state.q);
     if (state.kind) params.set("kind", state.kind);
     if (state.category) params.set("category", state.category);
@@ -2624,37 +2647,18 @@ function shareCardFor(day, url) {
   return image ? { image } : null;
 }
 
-function shareControl(image, label) {
-  const status = element("span", {
-    className: "share-status",
-    attrs: { role: "status" },
-  });
-  const copy = element("button", {
-    className: "share-copy",
-    text: t("Copy link"),
-    attrs: { type: "button", "aria-label": `${t("Copy image link")}: ${label}` },
-  });
-  copy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(image);
-      status.textContent = t("Link copied");
-    } catch {
-      status.textContent = t("Could not copy. Open the image and copy its address.");
-    }
-  });
+function shareControl(image, label, linkLabel = t("Share image")) {
   return element("div", { className: "share-control" }, [
     element("a", {
       className: "share-link",
-      text: `${t("Share image")} \u2197`,
+      text: `${linkLabel} \u2197`,
       attrs: {
         href: image,
         target: "_blank",
         rel: "noopener noreferrer",
-        "aria-label": `${t("Share image")}: ${label} (${t("opens in a new tab")})`,
+        "aria-label": `${linkLabel === label ? linkLabel : `${linkLabel}: ${label}`} (${t("opens in a new tab")})`,
       },
     }),
-    copy,
-    status,
   ]);
 }
 
@@ -2669,8 +2673,8 @@ function briefingShare(parts, citations, day) {
 // top3.png holds the first three cards, or fewer when the day has fewer, so
 // the label follows the number of cards the picture really shows.
 function topShareLabel(count) {
-  if (count >= 3) return t("Top 3 of the day");
-  return count === 2 ? t("Top 2 of the day") : t("Top benchmark of the day");
+  if (count >= 3) return t("Share the top 3 benchmark of the day");
+  return count === 2 ? t("Share the top 2 benchmarks of the day") : t("Share the top benchmark of the day");
 }
 
 function renderTopShare(day, visible) {
@@ -2682,10 +2686,7 @@ function renderTopShare(day, visible) {
   replaceChildren(
     host,
     image
-      ? [
-          element("span", { className: "today-share-label", text: topShareLabel(count) }),
-          shareControl(image, topShareLabel(count)),
-        ]
+      ? [shareControl(image, topShareLabel(count), topShareLabel(count))]
       : [],
   );
 }
@@ -3002,7 +3003,7 @@ function renderDailyQuestions(day) {
   );
 }
 
-const TODAY_WINDOWS = { "30d": 30, "60d": 60 };
+const TODAY_WINDOWS = { "30d": 30, "60d": 60, "90d": 90 };
 
 function todayDateRange(date = state.todayDate) {
   const days = TODAY_WINDOWS[date];
@@ -3029,22 +3030,12 @@ function renderTodayDateOptions() {
       option("all", t("All dates"), state.todayDate === "all"),
       option("30d", t("Past 30 days"), state.todayDate === "30d"),
       option("60d", t("Past 60 days"), state.todayDate === "60d"),
+      option("90d", t("Past 90 days"), state.todayDate === "90d"),
       ...[...state.data.facets.dates].reverse().map((date) =>
         option(date, formatDate(date, { dateStyle: "medium" }), date === state.todayDate),
       ),
     ],
   );
-}
-
-function renderBuildMeta() {
-  if (!state.data) return;
-  byId("build-meta").textContent = `${t("Updated")} ${formatDate(
-    state.data.generated_at,
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  )} UTC`;
 }
 
 // The search box reads the daily feed: titles, summaries and source names of
@@ -3223,6 +3214,13 @@ function renderToday({ resultsOnly = false } = {}) {
   }
   state.todayRenderedDate = state.todayDate;
   byId("today-date").value = state.todayDate;
+  document.querySelectorAll("[data-today-window]").forEach((button) => {
+    const value = button.dataset.todayWindow === "latest" ? state.data.latest_date : button.dataset.todayWindow;
+    button.setAttribute("aria-pressed", String(value === state.todayDate));
+  });
+  document.querySelectorAll("[data-today-sort]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.todaySort === state.todaySort));
+  });
   const range = todayDateRange();
   const heading = range ? `Past ${TODAY_WINDOWS[state.todayDate]} days`
     : showingAllDates ? "All dates" : "Today's radar";
@@ -3253,6 +3251,7 @@ function renderToday({ resultsOnly = false } = {}) {
   renderSearchScopeBanner(observations.length, benchmarkMatches);
   const resultsKey = [
     state.todayDate,
+    state.todaySort,
     state.q,
     state.kind,
     state.category,
@@ -3282,35 +3281,9 @@ function renderToday({ resultsOnly = false } = {}) {
   const attentionCount = observations.length - evidenceCount;
   byId("today-breakdown").textContent =
     `${evidenceCount} ${t("normal")} · ${attentionCount} ${t("attention")}`;
-  // The list is sorted by priority within a day; say so at the point of use
-  // rather than making the reader infer it. Attention rows carry no priority,
-  // so a kind-filtered attention set falls back to date order, and in All
-  // dates mode the archive is ordered by date first and priority second
-  // (issue #248).
-  //
-  // Releases lead each day ahead of priority (issue #332), so the caption says
-  // that too whenever the result set actually mixes releases with anything
-  // else. A set that is all releases, or has none, is ordered by priority
-  // alone, and naming a tie-break that changed nothing would misdescribe it.
-  // Read off the whole result set rather than the current page: the caption
-  // describes the ordering the reader is paging through, and page one of a
-  // release-led day is all releases even when later pages are not.
-  //
-  // The caption stops at "new releases first" rather than claiming a strict
-  // timestamp order across release tiers. Inside each tier, scored recency now
-  // leads priority so v5's event-kind discount changes the visible order.
-  const priorityScored = visibleObservations.some((item) => Number(item.total_score) > 0);
-  const releases = observations.filter(isRelease).length;
-  const releasesLead = releases > 0 && releases < observations.length;
-  byId("today-sort").textContent = !priorityScored
-    ? t("Sort: Date ↓")
-    : showingAllDates
-      ? releasesLead
-        ? t("Sort: Date, then new releases, then Recency ↓, then Priority ↓")
-        : t("Sort: Date, then Recency ↓, then Priority ↓")
-      : releasesLead
-        ? t("Sort: New releases first, then Recency ↓, then Priority ↓")
-        : t("Sort: Recency ↓, then Priority ↓");
+  byId("today-sort").textContent = state.todaySort === "newest"
+    ? t("Sort: Newest")
+    : t("Sort: Recorded stars + likes + downloads + points; missing signals last");
   renderTopShare(day, !showingAllDates && !range);
   const listHost = byId("today-list");
   replaceChildren(
@@ -4199,6 +4172,8 @@ function updateFiltersCount() {
     state.source,
     state.organization,
     state.event,
+    state.todayDate && state.todayDate !== state.data?.latest_date
+      && !["30d", "90d"].includes(state.todayDate),
   ].filter(Boolean).length;
   byId("filters-count").textContent = `(${active})`;
 }
@@ -4209,6 +4184,14 @@ function closeFiltersDrawer() {
     drawer.hidden = true;
     byId("filters-toggle").setAttribute("aria-expanded", "false");
   }
+}
+
+// Missing activity stays inspectable, after records with measured signals.
+function observationAttention(item) {
+  const values = ["stars", "likes", "downloads", "points"]
+    .map((key) => item.metrics?.[key])
+    .filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : -1;
 }
 
 function filteredObservations() {
@@ -4229,7 +4212,15 @@ function filteredObservations() {
       (!query || haystack.includes(query))
     );
   });
-  return todayIsMultiDate() ? latestObservationsByRecord(matches) : matches;
+  const records = todayIsMultiDate() ? latestObservationsByRecord(matches) : matches;
+  return records.sort((a, b) => {
+    if (state.todaySort !== "newest") {
+      const attentionOrder = observationAttention(b) - observationAttention(a);
+      if (attentionOrder) return attentionOrder;
+    }
+    const timestamp = (item) => Date.parse(eventTimestamp(item)) || Date.parse(item.snapshot_date) || 0;
+    return timestamp(b) - timestamp(a);
+  });
 }
 
 // Generated utility pages ship their sheet already open so it is useful before
@@ -11506,6 +11497,50 @@ function citeCredit() {
   return node;
 }
 
+// Coverage under the citation formats. This mirrors MEDIA_COVERAGE in
+// media.py, which also feeds the seeded card and the /media/ page.
+const MEDIA_COVERAGE = [
+  ["Daily AI Wire News", "https://dailyaiwire.news/article/benchmark-radar-ai-evaluation-database-search-engine", "Article"],
+  ["Moonlight", "https://www.themoonlight.io/en/review/benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-evaluation", "Paper summary"],
+  ["Papers with Code", "https://paperswithcode.co/paper/2609.11115", "Paper listing"],
+  ["alphaXiv", "https://www.alphaxiv.org/abs/2609.11115", "Paper discussion"],
+  ["Hugging Face Papers", "https://huggingface.co/papers/2609.11115", "Paper discussion"],
+  ["arXivDaily", "https://www.arxivdaily.com/universities/sjtu", "Shanghai Jiao Tong University paper feed (rolling)"],
+  ["Geepity", "https://geepity.com/2609.11115/", "Paper page"],
+  ["Isfahan AI", "https://isfahan-ai.ir/news/1248", "News post"],
+  ["Collected", "https://collected.ga/typesafe-ai-daily-benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-eval/", "Typesafe AI Daily"],
+  ["Alexy Khrabrov on LinkedIn", "https://www.linkedin.com/posts/chiefscientist_typesafe-ai-daily-benchmark-radar-a-living-share-7504531089483309056-9uO7/", "Community post"],
+  ["Daily AI Wire News on LinkedIn", "https://www.linkedin.com/posts/benchmark-radar-launches-as-centralized-ai-share-7504478957413527552-jdN_/", "Article announcement"],
+  ["@SciFi on X", "https://x.com/SciFi/status/2098817718036127993", "Community post"],
+  ["@HuggingPapers on X", "https://x.com/HuggingPapers/status/2099412410264060340", "Community post"],
+  ["@marcel_butucea on X", "https://x.com/marcel_butucea/status/2098914581204680765", "Community post"],
+  ["Moltbook", "https://www.moltbook.com/post/a65591a2-d28d-4f3d-b381-fe2836c4e4c3", "Community post"],
+];
+
+function citeMedia() {
+  return element("section", { className: "cite-media", attrs: { "aria-labelledby": "cite-media-title" } }, [
+    element("h3", {
+      className: "cite-media-title",
+      text: t("In the media"),
+      attrs: { id: "cite-media-title" },
+    }),
+    element(
+      "ul",
+      { className: "cite-media-list" },
+      MEDIA_COVERAGE.map(([label, url, note]) =>
+        element("li", {}, [
+          element("a", {
+            text: label,
+            attrs: { href: url, target: "_blank", rel: "noopener noreferrer" },
+          }),
+          document.createTextNode(" "),
+          element("span", { className: "cite-media-note", text: note }),
+        ]),
+      ),
+    ),
+  ]);
+}
+
 // Reachable at /cite/, so the card has a short link that can be pasted into a
 // paper, a README or a message instead of a reader hunting the footer for it.
 function openCite(updateUrl = true) {
@@ -11542,6 +11577,7 @@ function openCite(updateUrl = true) {
       attrs: { href: CITE_CFF_URL, target: "_blank", rel: "noopener noreferrer" },
     }),
     citeCredit(),
+    citeMedia(),
   ]);
   showModalDialog(dialog);
 }
@@ -11624,6 +11660,11 @@ function bindEvents() {
   window.addEventListener("popstate", onPopState);
   const langToggle = byId("lang-toggle");
   if (langToggle) langToggle.addEventListener("click", toggleLang);
+  // The footer switch is a second door to the masthead toggle, so both stay
+  // one control with one state.
+  document.querySelectorAll("[data-lang-switch]").forEach((item) => {
+    item.addEventListener("click", toggleLang);
+  });
   document.querySelectorAll("[data-view]").forEach((item) => {
     item.addEventListener("click", async (event) => {
       // View nav entries are anchors so crawlers can follow them; keep the
@@ -11766,6 +11807,20 @@ function bindEvents() {
     selectFrontier(event.target.value);
     renderAdoptionFrontier(catalogDocumentBoard());
     writeUrl("push");
+  });
+  document.querySelectorAll("[data-today-window]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!state.data) return;
+      const select = byId("today-date");
+      select.value = button.dataset.todayWindow === "latest" ? state.data.latest_date : button.dataset.todayWindow;
+      select.dispatchEvent(new Event("change"));
+    });
+  });
+  document.querySelectorAll("[data-today-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.todaySort = button.dataset.todaySort;
+      renderToday({ resultsOnly: true });
+    });
   });
   byId("today-date").addEventListener("change", async (event) => {
     // A newer date or range must also supersede a pending Trends-day load.
@@ -12326,7 +12381,6 @@ async function initialize() {
     if (state.view === "trends") renderTrends();
     if (state.view === "map") renderTrendMap();
 
-    renderBuildMeta();
     renderStaleBanner();
     if (state.rubric) {
       openRubric(null, state.rubric === "current" ? null : state.rubric, false);
@@ -12349,7 +12403,6 @@ async function initialize() {
       syncLeaderboardNav();
       setView(state.view, false);
       rerenderCurrentView();
-      renderBuildMeta();
       renderStaleBanner();
       return;
     }

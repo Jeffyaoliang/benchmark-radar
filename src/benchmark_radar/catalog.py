@@ -50,6 +50,12 @@ SOURCES = {
 }
 
 _SLUG_STRIP = re.compile(r"[^a-z0-9]+")
+# Hosts that answer every http:// request with a permanent redirect to the same
+# https:// URL (checked 2026-10-26). A source that still writes http:// for them
+# costs each reader and crawler a redirect hop, so the link is published as the
+# address the host sends them to. Any other host keeps the scheme it was given:
+# rewriting a host that only speaks http would break the link.
+_HTTPS_HOSTS = frozenset({"arxiv.org", "github.com", "robodojo-benchmark.com"})
 
 # One organization, one name, across all sources.
 #
@@ -202,6 +208,13 @@ def value_kind(raw: str, parsed: float | None) -> str:
     return "number" if parsed is not None else "text"
 
 
+def https_url(url: str) -> str:
+    """The https:// form of a link whose host only redirects http:// to it."""
+    if url[:7].lower() == "http://" and urlsplit(url).hostname in _HTTPS_HOSTS:
+        return "https://" + url[7:]
+    return url
+
+
 def _source_record(
     row: dict[str, Any],
     slug: str,
@@ -220,7 +233,7 @@ def _source_record(
         ("dataset", "dataset_url"),
         ("website", "project_url"),
     ):
-        url = (row.get(column) or "").strip()
+        url = https_url((row.get(column) or "").strip())
         if url:
             artifact = {"kind": kind, "url": url}
             identifier = artifact_identifier(url)
@@ -229,7 +242,7 @@ def _source_record(
             if artifact not in artifacts:
                 artifacts.append(artifact)
     provenance = {
-        "source_url": (row.get("detail_source_url") or "").strip() or None,
+        "source_url": https_url((row.get("detail_source_url") or "").strip()) or None,
         "crawled_at": crawled_at,
         "crawl_bundle": snapshot_id,
     }

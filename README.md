@@ -237,4 +237,4 @@ daily builder brief, [BuilderPulse](https://github.com/BuilderPulse/BuilderPulse
 
 </details>
 
-© 2026 Koutian Wu and contributors
+© 2026 Benchmark Radar contributors

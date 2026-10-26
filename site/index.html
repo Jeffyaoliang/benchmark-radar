@@ -270,6 +270,8 @@
           >
             Publications
           </a>
+          <a href="/media/" data-i18n="Media">Media</a>
+          <a href="/blog/" data-i18n="Blog">Blog</a>
           <a href="/about/" data-i18n="About">About</a>
         </nav>
       </div>
@@ -388,10 +390,6 @@
         <h1 class="visually-hidden" data-i18n="Search AI, LLM, agent, multimodal, and AI-for-science benchmarks">
           Search AI, LLM, agent, multimodal, and AI-for-science benchmarks
         </h1>
-        <!-- The toolbar stays one compact row so the results below stay
-             above the fold: search, the scan date, a trigger that opens the
-             secondary filters, and a refresh control. The badge on the
-             trigger counts how many secondary filters are active. -->
         <form class="filter-panel today-filters" id="filters">
           <label class="search-field">
             <span class="visually-hidden" data-i18n="Search">Search</span>
@@ -403,10 +401,21 @@
               data-i18n-placeholder="Search benchmarks…"
             >
           </label>
-          <label class="date-field">
-            <span data-i18n="Date:">Date:</span>
-            <select id="today-date" name="date"></select>
-          </label>
+          <fieldset class="today-segments" id="today-window">
+            <legend data-i18n="Time window">Time window</legend>
+            <div>
+              <button type="button" data-today-window="latest" aria-pressed="true" data-i18n="Latest">Latest</button>
+              <button type="button" data-today-window="30d" aria-pressed="false" data-i18n="30 days">30 days</button>
+              <button type="button" data-today-window="90d" aria-pressed="false" data-i18n="90 days">90 days</button>
+            </div>
+          </fieldset>
+          <fieldset class="today-segments" id="today-order">
+            <legend data-i18n="Sort by">Sort by</legend>
+            <div>
+              <button type="button" data-today-sort="attention" aria-pressed="true" data-i18n="Attention">Attention</button>
+              <button type="button" data-today-sort="newest" aria-pressed="false" data-i18n="Newest">Newest</button>
+            </div>
+          </fieldset>
           <button
             type="button"
             class="filters-toggle"
@@ -440,6 +449,10 @@
             aria-label="More filters"
             data-i18n-aria="More filters"
           >
+            <label class="date-field">
+              <span data-i18n="Date:">Date:</span>
+              <select id="today-date" name="date"></select>
+            </label>
             <label>
               <span data-i18n="Kind">Kind</span>
               <select id="kind-filter" name="kind"></select>
@@ -493,12 +506,6 @@
               <p id="today-page-status" role="status"></p>
               <button type="button" id="today-page-next" data-i18n="Next">Next</button>
             </nav>
-            <div class="footer-dataset">
-              <strong data-i18n="Free dataset. No crawler needed.">Free dataset. No crawler needed.</strong>
-              <span class="footer-dataset-actions">
-                <a href="https://huggingface.co/datasets/ktwu01/benchmark-radar" data-i18n="Download">Download</a>
-              </span>
-            </div>
           </div>
           <div>
             <!-- The day's narrative and Q&A describe the whole scan date
@@ -506,6 +513,38 @@
                  above the health and corpus cards (issue #248). The briefing
                  says what changed, the Q&A answers what a reader would ask
                  about it. -->
+            <!-- The signup sits above the briefing because that card is what
+                 the weekly email repeats, so a reader decides with the sample
+                 in view (issue #906). -->
+            <section class="email-signup email-signup-card" aria-labelledby="briefing-signup-heading">
+              <h2 class="email-signup-title" id="briefing-signup-heading" data-i18n="Get benchmark updates by email">Get benchmark updates by email</h2>
+              <form class="email-signup-form" action="https://app.kit.com/forms/10097391/subscriptions" method="post" target="_blank">
+                <div class="email-signup-row">
+                  <label>
+                    <span class="visually-hidden" data-i18n="Email address">Email address</span>
+                    <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
+                  </label>
+                  <button type="submit" data-i18n="Subscribe">Subscribe</button>
+                </div>
+                <!-- Consent and cadence open only once an address is typed, so the
+                     resting form is a title, a field and a button. -->
+                <div class="email-signup-more">
+                  <div class="email-signup-more-inner">
+                    <label class="email-signup-consent">
+                      <input type="checkbox" required>
+                      <span data-i18n="email.signup.consent">I agree to receive Benchmark Radar emails and can unsubscribe anytime.</span>
+                      <a href="#privacy-notice" data-i18n="Privacy notice">Privacy notice</a>
+                    </label>
+                    <fieldset class="email-signup-frequency">
+                      <legend data-i18n="How often?">How often?</legend>
+                      <!-- No default: the reader picks, and the group is required. -->
+                      <label><input type="radio" name="fields[frequency]" value="daily" required> <span data-i18n="Daily">Daily</span> <span class="email-signup-hint" data-i18n="the latest each day">the latest each day</span></label>
+                      <label><input type="radio" name="fields[frequency]" value="weekly"> <span data-i18n="Weekly">Weekly</span> <span class="email-signup-hint" data-i18n="every Monday">every Monday</span></label>
+                    </fieldset>
+                  </div>
+                </div>
+              </form>
+            </section>
             <section class="daily-briefing" id="daily-briefing" aria-labelledby="daily-briefing-heading">
               <h2 class="daily-briefing-title" id="daily-briefing-heading" data-i18n="Daily briefing">Daily briefing</h2>
               <div id="daily-briefing-body"></div>
@@ -1167,52 +1206,131 @@
     </dialog>
 
     <footer>
-      <!-- These documents keep real links so readers and crawlers can reach them. -->
-      <nav class="footer-nav" aria-label="About this site" data-i18n-aria="About this site">
-        <a href="/blog/" data-i18n="Blog">Blog</a>
-      </nav>
-      <p id="build-meta">Updated —</p>
-      <aside class="adoption-cta" aria-label="Support Benchmark Radar">
-        <p data-i18n="If this saved you research time, cite the work, star the repo and help other eval builders find it.">
-          If this saved you research time, cite the work, star the repo and help other eval builders find it.
-        </p>
-        <span class="adoption-actions">
-          <!-- A real path, so the citation panel is useful before JavaScript
-               and can be indexed as its own page. -->
-          <a
-            class="primary-link"
-            id="cite-open"
-            href="/cite/"
-            aria-haspopup="dialog"
-            aria-controls="cite-dialog"
-            aria-expanded="false"
-            data-i18n="Cite"
-          >Cite</a>
-          <a
-            class="primary-link"
-            href="https://github.com/ktwu01/benchmark-radar"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-i18n="Star the repository"
-          >Star the repository</a>
-          <button type="button" class="secondary-link" id="share-radar" data-i18n="Share">
-            Share
-          </button>
-        </span>
-      </aside>
-      <details class="privacy-note">
-        <summary data-i18n="Privacy notice">Privacy notice</summary>
-        <p>
-          If you accept, we use Microsoft Clarity cookies, session replays and heatmaps to understand
-          how people use this site and improve its navigation and content. Nothing loads until you
-          accept, and sensitive content is masked by default. See the
-          <a href="https://privacy.microsoft.com/privacystatement">Microsoft Privacy Statement</a>.
-        </p>
-        <p>
-          <button type="button" class="privacy-choice" data-analytics-consent-reset data-i18n="Change analytics choice">Change analytics choice</button>
-        </p>
-      </details>
-      <p class="copyright">© 2026 Koutian Wu and contributors</p>
+      <!-- Every page reuses this footer, so the signup reaches readers who
+           never open Today (issue #906). The form posts straight to Kit, with
+           no script, so it works on the blog and benchmark pages too. -->
+      <section class="email-signup footer-signup" aria-labelledby="footer-signup-heading">
+        <h2 class="email-signup-title" id="footer-signup-heading" data-i18n="Get benchmark updates by email">Get benchmark updates by email</h2>
+        <form class="email-signup-form" action="https://app.kit.com/forms/10097391/subscriptions" method="post" target="_blank">
+          <div class="email-signup-row">
+            <label>
+              <span class="visually-hidden" data-i18n="Email address">Email address</span>
+              <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
+            </label>
+            <button type="submit" data-i18n="Subscribe">Subscribe</button>
+          </div>
+          <!-- Consent and cadence open only once an address is typed, so the
+               resting form is a title, a field and a button. -->
+          <div class="email-signup-more">
+            <div class="email-signup-more-inner">
+              <label class="email-signup-consent">
+                <input type="checkbox" required>
+                <span data-i18n="email.signup.consent">I agree to receive Benchmark Radar emails and can unsubscribe anytime.</span>
+                <a href="#privacy-notice" data-i18n="Privacy notice">Privacy notice</a>
+              </label>
+              <fieldset class="email-signup-frequency">
+                <legend data-i18n="How often?">How often?</legend>
+                <!-- No default: the reader picks, and the group is required. -->
+                <label><input type="radio" name="fields[frequency]" value="daily" required> <span data-i18n="Daily">Daily</span> <span class="email-signup-hint" data-i18n="the latest each day">the latest each day</span></label>
+                <label><input type="radio" name="fields[frequency]" value="weekly"> <span data-i18n="Weekly">Weekly</span> <span class="email-signup-hint" data-i18n="every Monday">every Monday</span></label>
+              </fieldset>
+            </div>
+          </div>
+        </form>
+      </section>
+      <div class="footer-columns">
+        <aside class="adoption-cta" aria-label="Support Benchmark Radar">
+          <p data-i18n="If this saved you research time, cite the work, star the repo and help other eval builders find it.">
+            If this saved you research time, cite the work, star the repo and help other eval builders find it.
+          </p>
+          <span class="adoption-actions">
+            <!-- A real path, so the citation panel is useful before JavaScript
+                 and can be indexed as its own page. -->
+            <a
+              class="primary-link"
+              id="cite-open"
+              href="/cite/"
+              aria-haspopup="dialog"
+              aria-controls="cite-dialog"
+              aria-expanded="false"
+              data-i18n="Cite"
+            >Cite</a>
+            <a
+              class="primary-link"
+              href="https://github.com/ktwu01/benchmark-radar"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-i18n="Star the repository"
+            >Star the repository</a>
+            <button type="button" class="secondary-link" id="share-radar" data-i18n="Share">
+              Share
+            </button>
+          </span>
+        </aside>
+        <nav class="footer-links" aria-label="Explore" data-i18n-aria="Explore">
+          <h2 data-i18n="Explore">Explore</h2>
+          <a href="/" data-i18n="Today">Today</a>
+          <a href="/benchmarks/" data-i18n="All benchmarks">All benchmarks</a>
+          <a href="/library/" data-i18n="Library">Library</a>
+          <a href="/models/" data-i18n="Models">Models</a>
+          <a href="/trends/" data-i18n="Trends">Trends</a>
+          <a href="/saturation/" data-i18n="Saturation">Saturation</a>
+          <a href="/leaderboard/" data-i18n="Landscape">Landscape</a>
+        </nav>
+        <nav class="footer-links" aria-label="Data" data-i18n-aria="Data">
+          <h2 data-i18n="Data">Data</h2>
+          <a href="https://huggingface.co/datasets/ktwu01/benchmark-radar" data-i18n="Download the dataset">Download the dataset</a>
+          <a href="/cli/" data-i18n="Command-line tool">Command-line tool</a>
+          <a href="/feed.xml" data-i18n="RSS feed">RSS feed</a>
+          <a href="https://github.com/ktwu01/benchmark-radar" data-i18n="Source code">Source code</a>
+        </nav>
+        <nav class="footer-links" aria-label="Project" data-i18n-aria="Project">
+          <h2 data-i18n="Project">Project</h2>
+          <a href="/about/" data-i18n="About">About</a>
+          <a href="/cite/" data-i18n="Publications">Publications</a>
+          <a href="/media/" data-i18n="Media">Media</a>
+          <a href="/blog/" data-i18n="Blog">Blog</a>
+        </nav>
+        <nav class="footer-links" aria-label="Contribute" data-i18n-aria="Contribute">
+          <h2 data-i18n="Contribute">Contribute</h2>
+          <a href="https://github.com/ktwu01/benchmark-radar/issues/new?template=feature-request.yml" data-i18n="Suggest a benchmark or source">Suggest a benchmark or source</a>
+          <a href="https://github.com/ktwu01/benchmark-radar/issues/new?template=report.yml" data-i18n="Report a mistake">Report a mistake</a>
+          <a href="https://github.com/ktwu01/benchmark-radar/issues/new?template=use-case.yml" data-i18n="Share how you use it">Share how you use it</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-legal">
+          <p class="copyright">© 2026 Benchmark Radar contributors</p>
+          <details class="privacy-note" id="privacy-notice">
+            <summary data-i18n="Privacy notice">Privacy notice</summary>
+            <p>
+              If you accept, we use Microsoft Clarity cookies, session replays and heatmaps to understand
+              how people use this site and improve its navigation and content. Nothing loads until you
+              accept, and sensitive content is masked by default. See the
+              <a href="https://privacy.microsoft.com/privacystatement">Microsoft Privacy Statement</a>.
+            </p>
+            <p>
+              If you subscribe to the weekly email, Kit stores your email address to send it. Every email
+              has an unsubscribe link. To delete your address, write to
+              <a href="mailto:ktwu@utexas.edu">ktwu@utexas.edu</a>.
+            </p>
+            <p>
+              <button type="button" class="privacy-choice" data-analytics-consent-reset data-i18n="Change analytics choice">Change analytics choice</button>
+            </p>
+          </details>
+          <button type="button" class="footer-lang" data-lang-switch>English · 中文</button>
+        </div>
+        <div class="footer-contact">
+          <span data-i18n="Contact">Contact</span>
+          <a href="mailto:ktwu@utexas.edu" aria-label="ktwu@utexas.edu" title="ktwu@utexas.edu"><svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm9 6.9L4.2 6h15.6L12 11.9Zm-8 6.6V8.9l8 5.9 8-5.9v9.6H4Z"/></svg></a>
+          <a href="https://discord.com/invite/JX9Caj4fMF" target="_blank" rel="noopener noreferrer" aria-label="Discord" title="Discord"><svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286ZM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0957 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189Zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0957 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a>
+          <a href="https://x.com/ktwu01" target="_blank" rel="noopener noreferrer" aria-label="X" title="X"><svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></a>
+          <details class="footer-wechat">
+            <summary aria-label="WeChat" title="WeChat"><svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05a6.127 6.127 0 0 1-.253-1.72c0-3.571 3.437-6.467 7.678-6.467.233 0 .463.013.694.031C17.02 4.792 13.205 2.188 8.69 2.188Zm-2.6 4.408c.654 0 1.184.517 1.184 1.154 0 .637-.53 1.154-1.184 1.154-.654 0-1.184-.517-1.184-1.154 0-.637.53-1.154 1.184-1.154Zm5.51 0c.654 0 1.184.517 1.184 1.154 0 .637-.53 1.154-1.184 1.154-.654 0-1.184-.517-1.184-1.154 0-.637.53-1.154 1.184-1.154Zm7.835 3.124c-3.858 0-6.984 2.667-6.984 5.957 0 3.29 3.126 5.957 6.984 5.957.848 0 1.663-.146 2.418-.408a.622.622 0 0 1 .516.07l1.371.802a.235.235 0 0 0 .12.039.213.213 0 0 0 .208-.213c0-.052-.02-.102-.035-.153l-.28-1.067a.426.426 0 0 1 .153-.479c1.359-1.111 2.2-2.707 2.2-4.548 0-3.29-3.126-5.957-6.984-5.957Zm-3.865 3.594c.55 0 .996.435.996.971 0 .537-.446.972-.996.972-.55 0-.996-.435-.996-.972 0-.536.446-.971.996-.971Zm7.729 0c.55 0 .996.435.996.971 0 .537-.446.972-.996.972-.55 0-.996-.435-.996-.972 0-.536.446-.971.996-.971Z"/></svg></summary>
+            <span class="footer-wechat-id">ktwu001</span>
+          </details>
+        </div>
+      </div>
     </footer>
   </body>
 </html>
