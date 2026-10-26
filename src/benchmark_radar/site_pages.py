@@ -349,14 +349,68 @@ def _facts(record: dict[str, Any], scores_by_source: dict[str, Any]) -> list[tup
 def _json_ld(payload: dict[str, Any]) -> str:
     """Serialize structured data for a <script> block.
 
-    JSON may legally contain the substring `</`, which would close the script
-    tag early no matter how valid the JSON is. Escaping the slash keeps the
-    block intact and is valid JSON for every consumer.
+    JSON may legally contain `<`, and `</script` or `<!--` would end or bend the
+    script block no matter how valid the JSON is. Escaping every `<` keeps the
+    block intact, leaves no markup-shaped text in the page, and is valid JSON
+    for every consumer.
     """
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True).replace("<", "\\u003c")
 
 
-def _webpage_jsonld(slug: str, name: str, description: str, title: str) -> str:
+def _benchmark_entity(
+    slug: str,
+    name: str,
+    description: str,
+    record: dict[str, Any],
+    artifacts: list[tuple[str, str, str]],
+) -> dict[str, Any]:
+    """The benchmark itself as a schema.org Dataset, built only from shard fields.
+
+    A bare `Thing` told search and answer engines nothing but a name. The paper
+    is what a citing engine needs, so it goes in `citation`; the code, dataset
+    and website identify the same benchmark elsewhere, so they go in `sameAs`.
+    A field the record lacks is left out rather than guessed.
+    """
+    entity: dict[str, Any] = {
+        "@type": "Dataset",
+        "@id": f"{_canonical(slug)}#benchmark",
+        "name": name,
+        "description": description,
+        "url": _canonical(slug),
+        "includedInDataCatalog": {
+            "@type": "DataCatalog",
+            "name": "Benchmark Radar",
+            "url": f"{SITE_URL}/benchmarks/",
+        },
+    }
+    papers = [url for kind, _, url in artifacts if kind == "paper" and _http_url(url)]
+    if papers:
+        entity["citation"] = papers
+    same_as = [url for kind, _, url in artifacts if kind != "paper" and _http_url(url)]
+    if same_as:
+        entity["sameAs"] = same_as
+    publisher = _text(record, "publisher")
+    if publisher:
+        entity["creator"] = {"@type": "Organization", "name": publisher}
+    released = _text(record, "released")
+    if released and _is_calendar_date(released):
+        entity["datePublished"] = released
+    keywords = [word.strip() for word in _category_words(record).split(",") if word.strip()]
+    if keywords:
+        entity["keywords"] = keywords
+    return entity
+
+
+def _webpage_jsonld(
+    slug: str,
+    name: str,
+    description: str,
+    title: str,
+    record: dict[str, Any] | None = None,
+    artifacts: list[tuple[str, str, str]] | None = None,
+    lastmod: str | None = None,
+) -> str:
+    entity = _benchmark_entity(slug, name, description, record or {}, artifacts or [])
     payload = {
         "@context": "https://schema.org",
         "@type": "WebPage",
@@ -366,8 +420,11 @@ def _webpage_jsonld(slug: str, name: str, description: str, title: str) -> str:
         "description": description,
         "inLanguage": ["en", "zh-Hans"],
         "isPartOf": website_reference(),
-        "about": {"@type": "Thing", "name": name, "description": description},
+        "about": entity,
+        "mainEntity": {"@type": "Dataset", "@id": entity["@id"]},
     }
+    if lastmod:
+        payload["dateModified"] = lastmod
     return _json_ld(payload)
 
 
@@ -617,6 +674,9 @@ def _page_html(
         body,
         flags=re.S,
     )
+    jsonld = _webpage_jsonld(
+        slug, name, description, title, record, artifacts, _shard_lastmod(shard)
+    )
     interactive = f"{SITE_URL}/saturation/?lfrontier={slug}"
     nav = _benchmark_nav(interactive)
     return f"""<!doctype html>
@@ -635,7 +695,8 @@ def _page_html(
 <meta property="og:url" content="{canonical}">
 <meta property="og:image" content="{SITE_URL}/assets/og-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">{_webpage_jsonld(slug, name, description, title)}</script>
+<link rel="alternate" type="application/json" href="{SITE_URL}/data/benchmarks/{slug}.json">
+<script type="application/ld+json">{jsonld}</script>
 <script type="application/ld+json">{_breadcrumb_jsonld(slug, name)}</script>
 <style>@layer legacy {{{_BENCH_CSS}}}</style>
 <link rel="stylesheet" href="/assets/styles.css">
@@ -691,9 +752,11 @@ def _directory_html(entries: list[tuple[str, str]], header: str = "") -> str:
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Benchmark Radar">
 <meta property="og:title" content="Benchmark directory · Benchmark Radar">
+<meta property="og:description" content="{_esc(_DIR_DESCRIPTION)}">
 <meta property="og:url" content="{canonical}">
 <meta property="og:image" content="{SITE_URL}/assets/og-card.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/json" href="{SITE_URL}/data/benchmark-index.json">
 <script type="application/ld+json">{_json_ld(payload)}</script>
 <script type="application/ld+json">{_json_ld(breadcrumb)}</script>
 <style>@layer legacy {{{_DIR_CSS}}}</style>
