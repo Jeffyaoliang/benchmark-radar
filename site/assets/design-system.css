@@ -85,6 +85,29 @@
   margin-top: var(--space-6);
 }
 
+.record-page .lede {
+  max-width: 75ch;
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.record-page .record-scores > summary {
+  padding-block: var(--space-3);
+  cursor: pointer;
+}
+
+.record-page .record-scores > summary h3 {
+  display: inline;
+  font-size: 1rem;
+}
+
+.record-page .record-scores > summary:focus-visible,
+.catalog-result-section > summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
 .record-page dl {
   display: grid;
   grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);
@@ -116,6 +139,28 @@
 
 .record-page main a {
   overflow-wrap: anywhere;
+}
+
+.benchmark-resource-link {
+  min-height: 44px;
+  gap: 0.5rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+a.benchmark-resource-link::after {
+  content: none;
+}
+
+.record-page ul.benchmark-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.record-page ul.benchmark-resources li {
+  border: 0;
+  padding: 0;
 }
 
 @media (max-width: 700px) {

@@ -296,7 +296,7 @@ def test_detail_panel_renders_for_any_selected_record():
         "function catalogOpennessBlock", 1
     )[0]
     assert 't("Importer")' in identity
-    assert 't("Original evidence")' in identity
+    assert "catalogResourceLinks(detail)" in identity
     assert 't("Review status")' in identity
     assert "provenance.review_state" in identity
     assert 't("not reviewed")' not in identity
@@ -822,7 +822,7 @@ def test_issue_298_a_crawled_record_names_itself_once():
     assert 'eyebrow: ""' in external
     assert 'badge: ""' in external
     assert 'eyebrow: t("External catalog record")' not in script
-    assert "subline: catalogSubline(record, meta)" in external
+    assert "subline: meta.name" in external
 
     shell = script.split("function renderCatalogShell(", 1)[1].split("\nfunction ", 1)[0]
     # Empty means hidden, not rendered blank.
