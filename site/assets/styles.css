@@ -4764,12 +4764,26 @@ footer {
 .footer-contact {
   display: flex;
   gap: 0.6rem;
+  align-items: center;
   margin: 0;
   font-size: 0.72rem;
 }
 
 .footer-contact a {
   color: var(--ink);
+}
+
+.footer-contact svg.brand-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+  vertical-align: middle;
+}
+
+.footer-wechat {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
 }
 
 @media (max-width: 1050px) {

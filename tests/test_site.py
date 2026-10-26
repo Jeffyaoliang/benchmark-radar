@@ -3336,6 +3336,10 @@ def test_footer_offers_signup_link_columns_and_contact():
     assert "data-lang-switch" in footer
     contact = footer.split('class="footer-contact"', 1)[1]
     assert 'href="mailto:ktwu@utexas.edu"' in contact
+    # Issue #990: the footer carries the same reach-out channels as the dialog.
+    assert 'href="https://discord.com/invite/JX9Caj4fMF"' in contact
+    assert 'href="https://x.com/ktwu01"' in contact
+    assert "ktwu001" in contact
 
 
 def test_both_signup_forms_post_to_the_same_kit_form():
