@@ -3705,3 +3705,60 @@ def test_top_share_label_follows_the_number_of_cards_in_the_image():
         "Top 3 of the day",
         "Top 3 of the day",
     ]
+
+
+def test_issue_978_toolbar_offers_time_window_and_sort_by():
+    """The Today toolbar shows both choices without opening the drawer."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+
+    toolbar = html[html.index('id="filters"') : html.index("</form>", html.index('id="filters"'))]
+    controls = toolbar[toolbar.index('class="today-controls"') :]
+    windows = re.findall(r'data-twindow="([^"]+)"', controls)
+    sorts = re.findall(r'data-tsort="([^"]+)"', controls)
+    assert windows == ["latest", "30d", "90d"]
+    assert sorts == ["newest", "attention"]
+    assert 'data-twindow="latest" aria-pressed="true"' in controls
+    assert 'data-tsort="newest" aria-pressed="true"' in controls
+    # The single-day and All dates choices stay reachable from the drawer.
+    drawer = toolbar[toolbar.index('id="filters-drawer"') : toolbar.index('class="today-controls"')]
+    assert 'id="today-date"' in drawer
+    assert '"90d": 90' in script
+    assert 'option("90d", t("Past 90 days")' in script
+
+
+def test_issue_978_attention_sort_reorders_without_dropping_records():
+    import pytest
+
+    source = Path("site/assets/app.js").read_text(encoding="utf-8")
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    start = source.index("function sortTodayObservations(")
+    function = source[start : source.index("\nfunction renderToday(", start)]
+    rows = [
+        {"id": "newest", "adoption_score": 0},
+        {"id": "capped-few-stars", "adoption_score": 100, "metrics": {"stars": 18930}},
+        {"id": "discussion"},
+        {"id": "capped-many-stars", "adoption_score": 100, "metrics": {"stars": 391191}},
+        {"id": "some-downloads", "adoption_score": 40, "metrics": {"downloads": 900}},
+    ]
+    program = f"""
+const state = {{ todaySort: "attention" }};
+{function}
+const rows = {json.dumps(rows)};
+const attention = sortTodayObservations(rows).map((row) => row.id);
+state.todaySort = "newest";
+const newest = sortTodayObservations(rows).map((row) => row.id);
+console.log(JSON.stringify({{ attention, newest }}));
+"""
+    result = subprocess.run([node, "-e", program], capture_output=True, text=True, check=True)
+    data = json.loads(result.stdout)
+    assert data["attention"] == [
+        "capped-many-stars",
+        "capped-few-stars",
+        "some-downloads",
+        "newest",
+        "discussion",
+    ]
+    assert data["newest"] == [row["id"] for row in rows]

@@ -390,10 +390,10 @@
         <h1 class="visually-hidden" data-i18n="Search AI, LLM, agent, multimodal, and AI-for-science benchmarks">
           Search AI, LLM, agent, multimodal, and AI-for-science benchmarks
         </h1>
-        <!-- The toolbar stays one compact row so the results below stay
-             above the fold: search, the scan date, a trigger that opens the
-             secondary filters, and a refresh control. The badge on the
-             trigger counts how many secondary filters are active. -->
+        <!-- The toolbar stays compact so the results below stay above the
+             fold: search, a trigger that opens the secondary filters, and a
+             refresh control, then the time window and sort order. The badge
+             on the trigger counts how many secondary filters are active. -->
         <form class="filter-panel today-filters" id="filters">
           <label class="search-field">
             <span class="visually-hidden" data-i18n="Search">Search</span>
@@ -404,10 +404,6 @@
               placeholder="Search benchmarks…"
               data-i18n-placeholder="Search benchmarks…"
             >
-          </label>
-          <label class="date-field">
-            <span data-i18n="Date:">Date:</span>
-            <select id="today-date" name="date"></select>
           </label>
           <button
             type="button"
@@ -442,6 +438,12 @@
             aria-label="More filters"
             data-i18n-aria="More filters"
           >
+            <!-- A single past scan or the whole archive. The common windows
+                 are the Time window buttons below the search box. -->
+            <label class="date-field">
+              <span data-i18n="Date">Date</span>
+              <select id="today-date" name="date"></select>
+            </label>
             <label>
               <span data-i18n="Kind">Kind</span>
               <select id="kind-filter" name="kind"></select>
@@ -463,6 +465,26 @@
               <select id="event-filter" name="event"></select>
             </label>
             <button class="clear-button" id="clear-filters" type="button" data-i18n="Clear filters">Clear filters</button>
+          </div>
+          <!-- Issue #978: how recent and in what order, one tap each, without
+               opening the drawer. A search widens to All dates, which no
+               window button claims; the drawer's Date select shows it. -->
+          <div class="today-controls">
+            <div class="today-control-group" role="group" aria-labelledby="today-window-label">
+              <span class="today-control-label" id="today-window-label" data-i18n="Time window">Time window</span>
+              <div class="today-control-options">
+                <button type="button" class="today-control" data-twindow="latest" aria-pressed="true" data-i18n="Latest">Latest</button>
+                <button type="button" class="today-control" data-twindow="30d" aria-pressed="false" data-i18n="30 days">30 days</button>
+                <button type="button" class="today-control" data-twindow="90d" aria-pressed="false" data-i18n="90 days">90 days</button>
+              </div>
+            </div>
+            <div class="today-control-group" role="group" aria-labelledby="today-order-label">
+              <span class="today-control-label" id="today-order-label" data-i18n="Sort by">Sort by</span>
+              <div class="today-control-options">
+                <button type="button" class="today-control" data-tsort="newest" aria-pressed="true" data-i18n="Newest">Newest</button>
+                <button type="button" class="today-control" data-tsort="attention" aria-pressed="false" data-i18n="Attention">Attention</button>
+              </div>
+            </div>
           </div>
         </form>
 

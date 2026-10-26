@@ -681,6 +681,11 @@ const I18N = {
     "Today's radar": "今日雷达",
     "Past 30 days": "近 30 天",
     "Past 60 days": "近 60 天",
+    "Past 90 days": "近 90 天",
+    "Time window": "时间范围",
+    "Sort by": "排序方式",
+    "Latest": "最新一期",
+    "Sort: Attention ↓ (GitHub stars, downloads), then Newest": "排序:关注度 ↓(GitHub 星标、下载量),再按最新",
     "Data through": "数据截至",
     "Reported benchmark scores": "Benchmark 已报告成绩",
     "Browse scored benchmarks": "查找已有成绩的 benchmark",
@@ -1427,6 +1432,9 @@ const state = {
   data: null,
   view: "today",
   todayDate: "",
+  // "newest" keeps the release-led recency order; "attention" ranks by the
+  // public-attention signal each record carries (issue #978).
+  todaySort: "newest",
   q: "",
   kind: "",
   category: "",
@@ -1722,6 +1730,7 @@ function readUrl() {
   // A bare search permalink has archive-wide intent. An explicit date remains
   // a deliberate narrow search, including the "today" link in the scope banner.
   state.todayDate = params.get("date") || (state.q ? "all" : "");
+  state.todaySort = params.get("sort") === "attention" ? "attention" : "newest";
   state.kind = params.get("kind") || "";
   state.category = params.get("category") || "";
   state.source = params.get("source") || "";
@@ -1829,6 +1838,7 @@ function writeUrl(mode = "replace") {
     if (state.source) params.set("source", state.source);
     if (state.organization) params.set("organization", state.organization);
     if (state.event) params.set("event", state.event);
+    if (state.todaySort !== "newest") params.set("sort", state.todaySort);
     if (state.todayPage > 1) params.set("page", state.todayPage);
   }
   if (!utility && state.view === "map" && state.entity) params.set("entity", state.entity);
@@ -3019,7 +3029,7 @@ function renderDailyQuestions(day) {
   );
 }
 
-const TODAY_WINDOWS = { "30d": 30, "60d": 60 };
+const TODAY_WINDOWS = { "30d": 30, "60d": 60, "90d": 90 };
 
 function todayDateRange(date = state.todayDate) {
   const days = TODAY_WINDOWS[date];
@@ -3046,6 +3056,7 @@ function renderTodayDateOptions() {
       option("all", t("All dates"), state.todayDate === "all"),
       option("30d", t("Past 30 days"), state.todayDate === "30d"),
       option("60d", t("Past 60 days"), state.todayDate === "60d"),
+      option("90d", t("Past 90 days"), state.todayDate === "90d"),
       ...[...state.data.facets.dates].reverse().map((date) =>
         option(date, formatDate(date, { dateStyle: "medium" }), date === state.todayDate),
       ),
@@ -3206,6 +3217,41 @@ function renderSearchScopeBanner(observationCount, benchmarkMatches) {
   banner.hidden = false;
 }
 
+// The Time window and Sort by buttons mirror state rather than hold it, so a
+// permalink, the drawer's Date select and a search that widens to All dates
+// all leave the right button pressed, or none when no window button names
+// the current range.
+function syncTodayControls() {
+  const windowKey = state.todayDate === state.data?.latest_date ? "latest" : state.todayDate;
+  document.querySelectorAll("[data-twindow]").forEach((control) => {
+    control.setAttribute("aria-pressed", String(control.dataset.twindow === windowKey));
+  });
+  document.querySelectorAll("[data-tsort]").forEach((control) => {
+    control.setAttribute("aria-pressed", String(control.dataset.tsort === state.todaySort));
+  });
+}
+
+// Attention ranks by the public-attention signal a record already carries:
+// adoption_score, the log-scaled strongest of its GitHub stars and download
+// counts (pipeline.py). That score saturates, so every widely starred
+// repository ties at the top; raw stars, then downloads, separate them.
+// Discussion rows such as Hacker News carry none of these, so they follow the
+// scored records. The sort is stable, so the Newest order breaks any remaining
+// tie. Records are only reordered, never dropped.
+function sortTodayObservations(observations) {
+  if (state.todaySort !== "attention") return observations;
+  const signal = (item) => [
+    Number(item.adoption_score || 0),
+    Number(item.metrics?.stars || 0),
+    Number(item.metrics?.downloads || 0),
+  ];
+  return [...observations].sort((a, b) => {
+    const left = signal(a);
+    const right = signal(b);
+    return right[0] - left[0] || right[1] - left[1] || right[2] - left[2];
+  });
+}
+
 function renderToday({ resultsOnly = false } = {}) {
   // Events are bound before the data file resolves (initialize), so a nav
   // click or filter keystroke in the load window must no-op, not throw.
@@ -3229,6 +3275,7 @@ function renderToday({ resultsOnly = false } = {}) {
   }
   state.todayRenderedDate = state.todayDate;
   byId("today-date").value = state.todayDate;
+  syncTodayControls();
   const range = todayDateRange();
   const heading = range ? `Past ${TODAY_WINDOWS[state.todayDate]} days`
     : showingAllDates ? "All dates" : "Today's radar";
@@ -3254,11 +3301,12 @@ function renderToday({ resultsOnly = false } = {}) {
   // The badge tracks the secondary filters live, including during the
   // resultsOnly re-renders that follow each drawer interaction.
   updateFiltersCount();
-  const observations = filteredObservations();
+  const observations = sortTodayObservations(filteredObservations());
   const benchmarkMatches = renderTodayBenchmarks();
   renderSearchScopeBanner(observations.length, benchmarkMatches);
   const resultsKey = [
     state.todayDate,
+    state.todaySort,
     state.q,
     state.kind,
     state.category,
@@ -3308,7 +3356,9 @@ function renderToday({ resultsOnly = false } = {}) {
   const priorityScored = visibleObservations.some((item) => Number(item.total_score) > 0);
   const releases = observations.filter(isRelease).length;
   const releasesLead = releases > 0 && releases < observations.length;
-  byId("today-sort").textContent = !priorityScored
+  byId("today-sort").textContent = state.todaySort === "attention"
+    ? t("Sort: Attention ↓ (GitHub stars, downloads), then Newest")
+    : !priorityScored
     ? t("Sort: Date ↓")
     : showingAllDates
       ? releasesLead
@@ -11821,11 +11871,12 @@ function bindEvents() {
     renderAdoptionFrontier(catalogDocumentBoard());
     writeUrl("push");
   });
-  byId("today-date").addEventListener("change", async (event) => {
+  // The drawer's Date select and the Time window buttons choose the same
+  // thing, so both go through one loader.
+  const selectTodayDate = async (selectedDate) => {
     // A newer date or range must also supersede a pending Trends-day load.
     viewNavigationSequence += 1;
     const previousDate = state.todayRenderedDate || state.todayDate;
-    const selectedDate = event.target.value;
     state.todayDate = selectedDate;
     const notice = byId("today-load-error");
     notice.hidden = false;
@@ -11844,6 +11895,21 @@ function bindEvents() {
     if (state.todayDate !== selectedDate) return;
     notice.hidden = true;
     renderToday();
+  };
+  byId("today-date").addEventListener("change", (event) => selectTodayDate(event.target.value));
+  document.querySelectorAll("[data-twindow]").forEach((control) => {
+    control.addEventListener("click", () => {
+      if (!state.data) return;
+      const key = control.dataset.twindow;
+      selectTodayDate(key === "latest" ? state.data.latest_date : key);
+    });
+  });
+  document.querySelectorAll("[data-tsort]").forEach((control) => {
+    control.addEventListener("click", () => {
+      if (!state.data || state.todaySort === control.dataset.tsort) return;
+      state.todaySort = control.dataset.tsort;
+      renderToday({ resultsOnly: true });
+    });
   });
   byId("today-page-prev").addEventListener("click", () => {
     if (state.todayPage <= 1) return;
