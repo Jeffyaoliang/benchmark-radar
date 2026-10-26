@@ -2667,7 +2667,7 @@ function shareControl(image, label, linkLabel = t("Share image")) {
         href: image,
         target: "_blank",
         rel: "noopener noreferrer",
-        "aria-label": `${linkLabel}: ${label} (${t("opens in a new tab")})`,
+        "aria-label": `${linkLabel === label ? linkLabel : `${linkLabel}: ${label}`} (${t("opens in a new tab")})`,
       },
     }),
     copy,
