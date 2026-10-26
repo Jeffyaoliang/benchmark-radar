@@ -154,12 +154,12 @@ def _chip(
     draw.rounded_rectangle(
         [x, y, x + width, y + 26 * s],
         radius=13 * s,
-        fill=SITE_INK if strong else PANEL,
-        outline=SITE_INK if strong else EDGE,
+        fill=LIGHT if strong else PANEL,
+        outline=EDGE,
         width=s,
     )
     draw.text(
-        (x + 10 * s, y + 13 * s), text, font=face, fill=PANEL if strong else SITE_INK, anchor="lm"
+        (x + 10 * s, y + 13 * s), text, font=face, fill=SITE_INK, anchor="lm"
     )
     return round(x + width + 8 * s)
 
