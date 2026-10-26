@@ -3617,19 +3617,18 @@ def test_daily_briefing_share_control_appears_only_for_items_with_a_card():
     # The item stays listed; it only has no image to offer, so no dead link.
     assert uncarded == []
     copy_buttons = [n for n in _flatten(insights[0]) if n["className"] == "share-copy"]
-    assert [b["tag"] for b in copy_buttons] == ["button"]
+    assert copy_buttons == []
 
 
-def test_share_control_is_a_link_and_a_button_with_named_labels():
-    """A link and a button take focus natively; each label names its benchmark."""
+def test_share_control_is_only_a_link_with_a_named_label():
+    """The image link takes focus natively and names its benchmark."""
     source = Path("site/assets/app.js").read_text(encoding="utf-8")
     start = source.index("function shareControl(")
     block = source[start : source.index("function briefingShare(")]
     assert 'element("a"' in block
-    assert 'element("button"' in block
-    assert 'type: "button"' in block
-    assert block.count("aria-label") == 2
-    assert 'role: "status"' in block
+    assert 'element("button"' not in block
+    assert block.count("aria-label") == 1
+    assert "clipboard" not in block
     assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
     assert "shareCardFor(day, item.url)" in source
 

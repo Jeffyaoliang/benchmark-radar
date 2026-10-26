@@ -876,10 +876,6 @@ const I18N = {
     "Share the top 3 benchmark of the day": "分享今日前三个 benchmark",
     "Share the top 2 benchmarks of the day": "分享今日前两个 benchmark",
     "Share the top benchmark of the day": "分享今日第一 benchmark",
-    "Copy link": "复制链接",
-    "Copy image link": "复制图片链接",
-    "Link copied": "链接已复制",
-    "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
     "opens in a new tab": "在新标签页打开",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
@@ -2642,23 +2638,6 @@ function shareCardFor(day, url) {
 }
 
 function shareControl(image, label, linkLabel = t("Share image")) {
-  const status = element("span", {
-    className: "share-status",
-    attrs: { role: "status" },
-  });
-  const copy = element("button", {
-    className: "share-copy",
-    text: t("Copy link"),
-    attrs: { type: "button", "aria-label": `${t("Copy image link")}: ${label}` },
-  });
-  copy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(image);
-      status.textContent = t("Link copied");
-    } catch {
-      status.textContent = t("Could not copy. Open the image and copy its address.");
-    }
-  });
   return element("div", { className: "share-control" }, [
     element("a", {
       className: "share-link",
@@ -2670,8 +2649,6 @@ function shareControl(image, label, linkLabel = t("Share image")) {
         "aria-label": `${linkLabel === label ? linkLabel : `${linkLabel}: ${label}`} (${t("opens in a new tab")})`,
       },
     }),
-    copy,
-    status,
   ]);
 }
 
