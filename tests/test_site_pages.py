@@ -221,6 +221,7 @@ def test_visible_overview_is_complete_and_has_no_observation_count(tmp_path):
     )
     page = _page_text(output, "alpha-bench")
     assert f'<p class="lede">{description}</p>' in page
+    assert "<h2>About Alpha Bench</h2>" not in page
     assert len(page.split('name="description" content="')[1].split('"')[0]) <= 160
     overview = page.split('<p class="lede">')[1].split("</section>")[0]
     assert "Reported scores" not in overview

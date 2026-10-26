@@ -613,8 +613,8 @@ def _page_html(
             '<p class="caveat">No reported scores are on record for this benchmark yet.</p>'
         )
     body = (
-        f"<section><h2>About {_esc(name)}</h2>"
-        f'<p class="lede">{_esc(overview)}</p>'
+        # The h1 already names the benchmark, so the overview needs no heading.
+        f'<section><p class="lede">{_esc(overview)}</p>'
         f"<dl>{facts}</dl></section>"
         f"{_provenance_section(record)}"
         f"{_artifacts_section(name, artifacts)}"
