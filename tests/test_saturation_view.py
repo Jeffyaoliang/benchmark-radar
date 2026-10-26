@@ -334,7 +334,7 @@ def test_a_link_to_an_unscored_benchmark_uses_the_full_catalog():
     script = source("site/assets/app.js")
     render = script.split("function renderAdoptionFrontier(board)", 1)[1].split("\n// ---", 1)[0]
     assert "state.benchmarkIndex.find((row) => row.slug === state.lfrontier)" in render
-    assert "renderCatalogBenchmark(board, scored, record)" in render
+    assert "renderCatalogBenchmark(board, record)" in render
     assert "scoreRecord(" not in render
 
 
@@ -750,9 +750,9 @@ def test_issue_312_the_saturation_view_reveals_left_to_right():
     # before its cached shard settles would otherwise let the second paint
     # clear the entrance class before the browser drew a frame.
     assert "let catalogRenderSeq = 0;" in script
-    catalog_render = script.split("function renderCatalogBenchmark(board, scored, record)", 1)[
-        1
-    ].split("\nfunction ", 1)[0]
+    catalog_render = script.split("function renderCatalogBenchmark(board, record)", 1)[1].split(
+        "\nfunction ", 1
+    )[0]
     assert "const renderToken = ++catalogRenderSeq;" in catalog_render
     assert "if (renderToken !== catalogRenderSeq) return;" in catalog_render
 
