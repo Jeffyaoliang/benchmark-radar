@@ -99,6 +99,11 @@
   cursor: pointer;
 }
 
+.record-page .record-scores > summary h3 {
+  display: inline;
+  font-size: 1rem;
+}
+
 .record-page .record-scores > summary:focus-visible,
 .catalog-result-section > summary:focus-visible {
   outline: 2px solid currentColor;

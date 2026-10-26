@@ -5122,7 +5122,7 @@ footer {
 }
 
 .catalog-description {
-  color: white;
+  color: inherit;
   font-size: 1rem;
   line-height: 1.65;
 }
@@ -5292,9 +5292,17 @@ footer {
 
 .catalog-result-section > summary {
   padding: 0.5rem 0;
-  margin-bottom: 0.75rem;
   font-size: 1rem;
   cursor: pointer;
+}
+
+.catalog-result-section[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+.catalog-result-section > summary h3 {
+  display: inline;
+  font-size: inherit;
 }
 
 .catalog-result-list {

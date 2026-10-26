@@ -8156,7 +8156,9 @@ function catalogScoreResults(source, rows) {
     String(a.model_name || "").localeCompare(String(b.model_name || "")) ||
     String(a.obs_id || "").localeCompare(String(b.obs_id || "")));
   return element("details", { className: "catalog-result-section" }, [
-    element("summary", { text: `${t("Reported benchmark scores")} · ${t(meta.name)}` }),
+    element("summary", {}, [
+      element("h3", { text: `${t("Reported benchmark scores")} · ${t(meta.name)}` }),
+    ]),
     element("ol", { className: "catalog-result-list" }, ordered.map((row) =>
       element("li", { className: "catalog-result" }, [
         element("div", { className: "catalog-result-main" }, [

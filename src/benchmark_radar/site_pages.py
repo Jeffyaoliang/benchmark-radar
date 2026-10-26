@@ -420,8 +420,8 @@ def _scores_sections(scores_by_source: dict[str, Any]) -> str:
             continue
         sections.append(
             '<details class="record-scores">'
-            "<summary>Reported benchmark scores · "
-            f"{_esc(SOURCE_LABELS.get(source, source))}</summary>"
+            "<summary><h3>Reported benchmark scores · "
+            f"{_esc(SOURCE_LABELS.get(source, source))}</h3></summary>"
             f'<p class="caveat">Reported scores: {len(rows)}</p>'
             "<table><thead><tr><th>Model</th><th>Organization</th>"
             "<th>Reported value</th><th>Reported</th><th>Evidence</th></tr></thead>"
