@@ -7025,9 +7025,14 @@ dialog {
    rail, then the name, what it is, who made it, and its links. */
 .radar-card {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 150px;
+  grid-template-columns: 84px minmax(0, 1fr) 56px;
   gap: 1rem;
   padding: 1.1rem 0 1.1rem 0.75rem;
+}
+
+/* Nobody reads the score first, so it is a short number and a short bar. */
+.radar-card .score {
+  width: 56px;
 }
 
 .radar-rail {

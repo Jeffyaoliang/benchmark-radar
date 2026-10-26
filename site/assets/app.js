@@ -10985,8 +10985,9 @@ function railDate(value) {
 }
 
 // The source is the first thing a reader checks on a card, so it is a chip
-// that carries the organization's mark (issue #971). A source without a mark
-// keeps the same chip with its name alone; no card loses its source link.
+// (issue #971): the organization's mark and an arrow, nothing else. The name
+// stays in the label for screen readers, and "Release" is not part of a logo:
+// the rail already says "Released". A source without a mark shows its name.
 const SOURCE_BRAND = {
   GitHub: "github",
   "GitHub Release": "github",
@@ -11001,19 +11002,20 @@ const SOURCE_BRAND = {
 function sourceChip(item, href) {
   const brand = SOURCE_BRAND[item.source];
   const children = [
-    brand ? brandIcon(brand) : null,
-    element("span", { className: "radar-source-name", text: item.source }),
+    brand ? brandIcon(brand) : element("span", { className: "radar-source-name", text: item.source }),
+    element("span", { className: "radar-source-arrow", text: "↗", attrs: { "aria-hidden": "true" } }),
   ];
+  const attrs = brand ? { "aria-label": item.source, title: item.source } : {};
   return href
     ? element(
         "a",
         {
           className: "radar-source",
-          attrs: { href, target: "_blank", rel: "noopener noreferrer" },
+          attrs: { ...attrs, href, target: "_blank", rel: "noopener noreferrer" },
         },
         children,
       )
-    : element("span", { className: "radar-source" }, children);
+    : element("span", { className: "radar-source", attrs }, children);
 }
 
 function evidenceCard(item) {
