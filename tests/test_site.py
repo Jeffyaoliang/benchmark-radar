@@ -3522,3 +3522,29 @@ def test_share_control_is_a_link_and_a_button_with_named_labels():
     assert 'role: "status"' in block
     assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
     assert "shareCardFor(day, item.url)" in source
+
+
+def test_top_share_label_follows_the_number_of_cards_in_the_image():
+    """top3.png holds fewer than three cards on a thin day; the label must say so."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("function topShareLabel(")
+    helper = script[start : script.index("function renderTopShare(")]
+    program = (
+        "const t = (v) => v;"
+        + helper
+        + "console.log(JSON.stringify([1, 2, 3, 5].map(topShareLabel)));"
+    )
+    labels = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert labels == [
+        "Top benchmark of the day",
+        "Top 2 of the day",
+        "Top 3 of the day",
+        "Top 3 of the day",
+    ]

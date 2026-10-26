@@ -855,12 +855,13 @@ const I18N = {
     "Evidence cited by GPT": "GPT 引用的证据",
     "Share image": "分享图片",
     "Top 3 of the day": "今日前三",
+    "Top 2 of the day": "今日前二",
+    "Top benchmark of the day": "今日第一",
     "Copy link": "复制链接",
     "Copy image link": "复制图片链接",
     "Link copied": "链接已复制",
     "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
     "opens in a new tab": "在新标签页打开",
-    "top 3 benchmarks of the day": "今日前三个 benchmark",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
     "No observations match these filters. Clear one or more filters to widen the view.":
@@ -2663,17 +2664,25 @@ function briefingShare(parts, citations, day) {
   return card ? shareControl(card.image, citation.title) : null;
 }
 
+// top3.png holds the first three cards, or fewer when the day has fewer, so
+// the label follows the number of cards the picture really shows.
+function topShareLabel(count) {
+  if (count >= 3) return t("Top 3 of the day");
+  return count === 2 ? t("Top 2 of the day") : t("Top benchmark of the day");
+}
+
 function renderTopShare(day, visible) {
   const host = byId("today-share");
   if (!host) return;
+  const count = Math.min((day?.share?.cards || []).length, 3);
   const image = visible ? safeHttpUrl(day?.share?.top3_image) : "";
   host.hidden = !image;
   replaceChildren(
     host,
     image
       ? [
-          element("span", { className: "today-share-label", text: t("Top 3 of the day") }),
-          shareControl(image, t("top 3 benchmarks of the day")),
+          element("span", { className: "today-share-label", text: topShareLabel(count) }),
+          shareControl(image, topShareLabel(count)),
         ]
       : [],
   );

@@ -1199,3 +1199,11 @@ def test_share_commit_starts_a_pages_build():
     )
     assert "skip ci" not in commit
     assert '"data/snapshots/**"' in pages
+
+
+def test_share_block_is_committed_only_after_its_images_are_published():
+    """A failed image push must not leave site buttons pointing at missing images."""
+    workflow = Path(".github/workflows/daily-radar.yml").read_text(encoding="utf-8")
+    publish = workflow.index("- name: Render and publish the day's share images")
+    record = workflow.index("- name: Record the day's share cards in the snapshot")
+    assert publish < record
