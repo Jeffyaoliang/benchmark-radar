@@ -873,9 +873,9 @@ const I18N = {
     // --- Today / health ------------------------------------------------------
     "Evidence cited by GPT": "GPT 引用的证据",
     "Share image": "分享图片",
-    "Share the top 3 benchmark of the day": "分享今日前三个基准",
-    "Share the top 2 benchmarks of the day": "分享今日前两个基准",
-    "Share the top benchmark of the day": "分享今日第一个基准",
+    "Share the top 3 benchmark of the day": "分享今日前三个 benchmark",
+    "Share the top 2 benchmarks of the day": "分享今日前两个 benchmark",
+    "Share the top benchmark of the day": "分享今日第一 benchmark",
     "Copy link": "复制链接",
     "Copy image link": "复制图片链接",
     "Link copied": "链接已复制",
