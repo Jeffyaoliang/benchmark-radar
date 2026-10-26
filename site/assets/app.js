@@ -8090,7 +8090,7 @@ function catalogSourceTable(source, payload) {
   const meta = catalogSourceMeta(source);
   const rows = payload.rows || [];
   const series = payload.series || {};
-  const notes = [`${rows.length.toLocaleString()} ${t("Reported scores")}.`, t(meta.noteKey)];
+  const notes = [`${t("Reported scores")}: ${rows.length.toLocaleString()}.`, t(meta.noteKey)];
   // A declared maximum that observed values exceed is a fact about the source,
   // not a scale. Printed as a claim, used as nothing.
   if (series.max_score_contradicted) {
