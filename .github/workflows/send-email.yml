@@ -41,6 +41,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The write token stays out of .git/config, so `pip install` never
+          # runs next to it; only the tag step receives it.
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -87,27 +91,52 @@ jobs:
           echo "::error title=Brief not live::$url is not published, so nothing was sent"
           exit 1
 
-      - name: Skip a day that was already sent
+      - name: Render and check everything except the send
+        if: steps.plan.outputs.mode != 'off'
+        env:
+          DAY: ${{ steps.plan.outputs.day }}
+          MODE: ${{ steps.plan.outputs.mode }}
+          KIT_API_KEY: ${{ steps.plan.outputs.mode != 'preview' && secrets.KIT_API_KEY || '' }}
+          KIT_DAILY_SEGMENT_ID: ${{ vars.KIT_DAILY_SEGMENT_ID }}
+          KIT_WEEKLY_SEGMENT_ID: ${{ vars.KIT_WEEKLY_SEGMENT_ID }}
+        run: python -m benchmark_radar.email_brief --date "$DAY" --mode "$MODE" --out email.html --preflight
+
+      - name: Record the day, or skip a day already recorded
         if: steps.plan.outputs.mode == 'send'
         id: ledger
         env:
           DAY: ${{ steps.plan.outputs.day }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code --tags origin "refs/tags/email/${DAY}" >/dev/null; then
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          tag="refs/tags/email/${DAY}"
+          ls_code=0
+          git ls-remote --exit-code --tags "$remote" "$tag" >/dev/null || ls_code=$?
+          if [ "$ls_code" -eq 0 ]; then
             echo "email/${DAY} exists: this day was sent or its send is unresolved. Skipping."
             echo "sent=true" >> "$GITHUB_OUTPUT"
             exit 0
+          elif [ "$ls_code" -ne 2 ]; then
+            echo "::error::could not read the email tags (git exit $ls_code); nothing was sent"
+            exit 1
           fi
           # The tag goes up before Kit is called. If the call then fails or its
           # answer is lost, the day stays blocked until someone checks Kit and
           # deletes the tag, so one day can be missed but never mailed twice.
+          # Only a push that reports a new tag counts: "up to date" means
+          # another run got there first.
           git tag "email/${DAY}"
-          git push origin "refs/tags/email/${DAY}"
+          result="$(git push --porcelain "$remote" "${tag}:${tag}" 2>&1 || true)"
+          if ! grep -q "^\*[[:space:]]*${tag}:${tag}" <<< "$result"; then
+            echo "::error::email/${DAY} was not newly created; nothing was sent"
+            exit 1
+          fi
           echo "sent=false" >> "$GITHUB_OUTPUT"
 
-      - name: Render, and send or save to Kit
-        if: steps.plan.outputs.mode != 'off' && steps.ledger.outputs.sent != 'true'
+      - name: Send or save to Kit
+        if: (steps.plan.outputs.mode == 'draft') || (steps.plan.outputs.mode == 'send' && steps.ledger.outputs.sent == 'false')
         env:
           DAY: ${{ steps.plan.outputs.day }}
           MODE: ${{ steps.plan.outputs.mode }}

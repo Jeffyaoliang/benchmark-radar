@@ -113,6 +113,21 @@ def test_segment_lookup_follows_pagination(monkeypatch):
     assert calls[1][1].endswith("&after=abc")
 
 
+def test_a_cursor_with_base64_symbols_is_url_encoded(monkeypatch):
+    calls = _fake_kit(
+        monkeypatch,
+        [
+            {
+                "segments": [{"id": 11, "name": "Daily"}],
+                "pagination": {"has_next_page": True, "end_cursor": "Wzc+XQ=="},
+            },
+            {"segments": [{"id": 22, "name": "Weekly"}], "pagination": {"has_next_page": False}},
+        ],
+    )
+    check_segments("key", 11, 22)
+    assert calls[1][1].endswith("&after=Wzc%2BXQ%3D%3D")
+
+
 def test_a_scheduled_send_must_come_back_with_an_id_and_a_send_time(monkeypatch):
     brief = render_email(_snapshot())
     body = broadcast_body(brief, [11], send_at=datetime(2026, 10, 26, 8, 10, tzinfo=UTC))
@@ -164,13 +179,39 @@ def test_a_missing_snapshot_day_is_an_error(tmp_path):
 def test_the_workflow_records_the_day_before_it_calls_kit():
     """A lost Kit response must block a resend, so the tag push comes first."""
     workflow = WORKFLOW.read_text(encoding="utf-8")
-    assert workflow.index('git push origin "refs/tags/email/${DAY}"') < workflow.index(
-        "python -m benchmark_radar.email_brief"
-    )
+    preflight = workflow.index("--preflight")
+    tag_push = workflow.index('git push --porcelain "$remote"')
+    send = workflow.index("- name: Send or save to Kit")
+    # Checks that can fail run before the day is recorded; the POST runs after.
+    assert preflight < tag_push < send
+    # Only a git "absent" answer (exit 2) may lead to a send.
+    assert 'elif [ "$ls_code" -ne 2 ]; then' in workflow
+    assert "persist-credentials: false" in workflow
     assert re.search(r'^\s+- cron: "0 8 \* \* \*"$', workflow, re.M)
     assert "cancel-in-progress: false" in workflow
     assert "if: github.ref == 'refs/heads/main'" in workflow
-    # The key reaches only the step that calls Kit.
-    assert workflow.count("secrets.KIT_API_KEY") == 1
+    # The key reaches only the two steps that call Kit, and a preview gets none.
+    assert workflow.count("secrets.KIT_API_KEY") == 2
+    assert "steps.plan.outputs.mode != 'preview' && secrets.KIT_API_KEY || ''" in workflow
     # Manual runs default to a preview that touches nothing.
     assert re.search(r"options: \[preview, draft, send\]\n\s+default: preview", workflow)
+
+
+def test_preflight_checks_segments_but_never_creates_a_broadcast(tmp_path, monkeypatch):
+    snapshots = _write_snapshot(tmp_path)
+    day = json.loads(next(snapshots.glob("*.json")).read_text(encoding="utf-8"))["date"]
+    monkeypatch.setenv("KIT_API_KEY", "key")
+    monkeypatch.setenv("KIT_DAILY_SEGMENT_ID", "11")
+    monkeypatch.setenv("KIT_WEEKLY_SEGMENT_ID", "22")
+    calls = _fake_kit(
+        monkeypatch,
+        [
+            {
+                "segments": [{"id": 11, "name": "Daily"}, {"id": 22, "name": "Weekly"}],
+                "pagination": {"has_next_page": False},
+            }
+        ],
+    )
+    args = ["--date", day, "--snapshots", str(snapshots), "--out", str(tmp_path / "e.html")]
+    assert email_brief.main([*args, "--mode", "send", "--preflight"]) == 0
+    assert [method for method, _, _ in calls] == ["GET"]

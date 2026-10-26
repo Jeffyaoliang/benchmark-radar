@@ -15,10 +15,12 @@ option promises.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -123,8 +125,10 @@ def _kit(method: str, path: str, api_key: str, body: dict[str, Any] | None = Non
         # key, are never printed.
         detail = error.read().decode("utf-8", "replace")[:500]
         raise EmailError(f"Kit {method} {path} failed with HTTP {error.code}: {detail}") from None
-    except (urllib.error.URLError, TimeoutError) as error:
+    except (urllib.error.URLError, OSError, http.client.HTTPException) as error:
         raise EmailError(f"Kit {method} {path} did not answer: {error}") from None
+    except ValueError as error:
+        raise EmailError(f"Kit {method} {path} answered with invalid JSON: {error}") from None
 
 
 def check_segments(api_key: str, daily_id: int, weekly_id: int) -> None:
@@ -138,7 +142,7 @@ def check_segments(api_key: str, daily_id: int, weekly_id: int) -> None:
         pagination = page.get("pagination") or {}
         if not pagination.get("has_next_page"):
             break
-        after = f"&after={pagination['end_cursor']}"
+        after = "&after=" + urllib.parse.quote(str(pagination["end_cursor"]), safe="")
     for segment_id, expected in ((daily_id, DAILY_SEGMENT_NAME), (weekly_id, WEEKLY_SEGMENT_NAME)):
         if names.get(segment_id) != expected:
             raise EmailError(
@@ -186,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--snapshots", type=Path, default=Path("data/snapshots"))
     parser.add_argument("--mode", choices=("preview", "draft", "send"), default="preview")
     parser.add_argument("--out", type=Path, default=Path("email.html"))
+    # Every check a send makes, without the POST. The workflow runs this before
+    # it records the day, so a fault found here never blocks the day.
+    parser.add_argument("--preflight", action="store_true")
     args = parser.parse_args(argv)
     day = args.date.isoformat()
     try:
@@ -206,6 +213,9 @@ def main(argv: list[str] | None = None) -> int:
         daily_id, weekly_id = int(daily), int(weekly)
         check_segments(api_key, daily_id, weekly_id)
         segments = segment_ids_for(day, daily_id, weekly_id)
+        if args.preflight:
+            print(f"preflight passed: {args.mode} to segments {segments}")
+            return 0
         send_at = datetime.now(UTC) + SEND_DELAY if args.mode == "send" else None
         broadcast = create_broadcast(api_key, broadcast_body(brief, segments, send_at=send_at))
         state = f"scheduled for {broadcast['send_at']}" if send_at else "saved as a draft"
