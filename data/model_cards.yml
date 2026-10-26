@@ -45,6 +45,24 @@ schema_version: 1
 
 # Source documents for score extraction (non-card sources)
 source_documents:
+  - id: gobench_llm_results_2026_10_19
+    name: GoBench Track 1-3 LLM comparison tables (2026-10-19)
+    publisher: Roland Gao
+    document_type: benchmark_leaderboard
+    url: https://github.com/RolandGao/gobench/blob/ea88ed944c07dff5d063e7e2789a481818d0dc9c/log/summary/report.txt#L196-L255
+    benchmarks: [gobench]
+    # Publication date of the pinned results commit, not a model release date.
+    published: 2026-10-19
+    retrieved_at: 2026-10-25
+
+  - id: gobench_live_leaderboard
+    name: GoBench leaderboard and current track definitions
+    publisher: Roland Gao
+    document_type: benchmark_leaderboard
+    url: https://rolandgao.com/blog/gobench/
+    benchmarks: [gobench]
+    retrieved_at: 2026-10-25
+
   - id: frontier_challenge_leaderboard_2026_08_25
     name: FrontierChallenge leaderboard
     publisher: ApodexAI
@@ -109,6 +127,23 @@ source_documents:
 # vendor spellings ("SWE-bench-Verified", "SWE Bench Verified") onto one id
 # without changing the ids the leaderboard is built from.
 benchmarks:
+  - id: gobench
+    name: GoBench
+    aliases: ["GoBench", "GoBench 9x9 Go", "GoBench: Evaluating LLMs on the Game of Go"]
+    domain: reasoning
+    url: https://rolandgao.com/gobench.pdf
+    # The original publication date shown on the official live leaderboard.
+    released: 2026-09-15
+    caveat: >-
+      Elo is relative to this 9x9 Go KataGo ladder, with the random player fixed
+      at zero; it is not a percentage or a human Go rank. Track 1 uses APIs
+      without tools, Track 2 evaluates agent-built engines, and Track 3 evaluates
+      tutorial-assisted API play. Context mode, reasoning effort, learning time,
+      engine time limit, and the ladder snapshot affect comparisons. The cited
+      LLM tables have 14-30 games per API configuration or 300 per engine, with
+      95% confidence intervals reported in the source. Current Track 2 uses a
+      60-second engine clock, unlike the older agent-in-the-loop paper results.
+
   - id: hle
     name: Humanity's Last Exam
     aliases: ["HLE", "Humanity's Last Exam", "HLE-Full", "HLE-Verified"]
