@@ -857,3 +857,13 @@ def test_reported_result_lists_preserve_observations_sources_and_localization():
     if not node:
         pytest.skip("node is not installed")
     subprocess.run([node, "tests/catalog_score_results_harness.mjs"], check=True, timeout=60)
+
+
+def test_the_score_chart_leads_the_saturation_detail_panel():
+    # design.md, "A shared block follows the surface's job": the chart is
+    # Saturation's answer, and the explanation follows directly under it.
+    script = source("site/assets/app.js")
+    panel = script.split("function catalogBenchmarkDetail(shard)", 1)[1].split("\n}", 1)[0]
+    chart = panel.index("catalogScoresBlock(shard)")
+    explanation = panel.index("catalogIdentityBlock(detail)")
+    assert chart < explanation < panel.index("catalogDocumentsBlock(detail)")

@@ -8343,10 +8343,12 @@ function catalogDocumentsBlock(record) {
 
 function catalogBenchmarkDetail(shard) {
   const detail = shard.record || {};
-  // Explain the benchmark before asking the reader to interpret its scores.
+  // Saturation's job is the score chart, so it leads. The explanation sits
+  // directly under it, ahead of documents and the facts that are often
+  // "not established" (design.md, "A shared block follows the surface's job").
   return [
-    catalogIdentityBlock(detail),
     catalogScoresBlock(shard),
+    catalogIdentityBlock(detail),
     catalogDocumentsBlock(detail),
     catalogOpennessBlock(detail),
     catalogSizesBlock(detail),
