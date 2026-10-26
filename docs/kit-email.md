@@ -9,12 +9,20 @@ Readers subscribe on benchmark-radar.org. Each day, a GitHub workflow sends that
 | Kit account | Owned by the maintainer, `ktwu01`. Nobody else needs a login. |
 | Signup form | Kit form `10097391`. Both forms on the site post to `https://app.kit.com/forms/10097391/subscriptions`. |
 | Cadence | Custom field `frequency`, with the value `daily` or `weekly`. |
-| Audiences | Kit segments named exactly `Daily` (`frequency` is `daily`) and `Weekly` (`frequency` is `weekly`). |
-| Workflow | `.github/workflows/send-email.yml`. It runs every day at 08:00 UTC. |
+| Audiences | Kit segments named exactly `Daily` (ID `601632`, `frequency` is `daily`) and `Weekly` (ID `601633`, `frequency` is `weekly`). |
+| API key | Kit V4 key "benchmark-radar send-email.yml (2026-10-26)", stored only as the GitHub secret `KIT_API_KEY`. |
+| GitHub settings | Variables `KIT_DAILY_SEGMENT_ID=601632` and `KIT_WEEKLY_SEGMENT_ID=601633`. Optional variable `KIT_EMAIL_MODE`. |
+| Workflow | `.github/workflows/send-email.yml`. It is scheduled for 08:00 UTC each day. GitHub can start a scheduled run hours late, so the email can arrive late. It is never sent before the brief is live. |
 | Code | `src/benchmark_radar/email_brief.py`. It renders the email from `data/snapshots/<date>.json`. |
 | Send record | A git tag `email/<date>` for each day that was sent. |
 
 Weekly subscribers get Monday's daily brief until a weekly roundup exists (#979).
+
+## What subscribers and the public can see
+
+- Each subscriber receives the email. Nobody can see who else receives it.
+- Kit also posts each email as a public web page on the Kit newsletter site (`ktwu01.kit.com`). The page shows the email content only. That content is already public on benchmark-radar.org.
+- The subscriber list is visible only inside the Kit account.
 
 ## Set up
 
@@ -73,3 +81,10 @@ The tag goes up before the workflow calls Kit. A day can be missed, but the list
 - Keep double opt-in on in the form settings. It records when each subscriber confirmed.
 - Every email has an unsubscribe link and the postal address. Kit's account email template adds both under the brief. Keep a template that has them: Kit refuses to send a broadcast without an unsubscribe link, so a template without one makes the send fail visibly.
 - The privacy notice in the site footer says what Kit stores and how to ask for deletion. Update it if the provider changes.
+
+## History
+
+- 2026-10-26: Kit was set up, and the first email was sent. Broadcast 26620649 went to 1 recipient at 18:49 UTC, and the tag is `email/2026-10-26`.
+- 2026-10-26: Broadcast 26620303 is a test draft from the end-to-end test. Drafts never send, so it can stay.
+- 2026-10-26: The first scheduled run failed with "Brief not live" while the page was live. That was a bug in the live check, fixed in #993. A failed check sends nothing, so if that error appears again, first open the page in a browser.
+- 2026-10-26: The unsubscribe footer appeared twice, because the email body and Kit's template both added it. Fixed in #997. The footer now comes only from Kit's template.
