@@ -3573,3 +3573,50 @@ def test_card_links_skip_only_what_the_rail_already_opens():
     )
     assert release == []
     assert paper == ["Paper ↗", "Code ↗"]
+
+
+def test_card_source_is_a_chip_with_the_organization_mark():
+    # Issue #971: the source link is a chip with a logo and an arrow. A source
+    # without a mark keeps the chip with its name, so no card loses its source link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const SOURCE_BRAND")
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const element = (tag, props = {}, children = []) => "
+        "({ tag, props, children: children.filter(Boolean) });"
+        "const brandIcon = (name) => ({ tag: 'svg', brand: name, children: [] });"
+        + helpers
+        + "const chip = (source, href) => { const node = sourceChip({source}, href);"
+        + "return {tag: node.tag, href: node.props.attrs?.href, "
+        + "brand: node.children.find((c) => c.tag === 'svg')?.brand, "
+        + "name: node.children.find((c) => c.props?.className === 'radar-source-name')"
+        + "?.props.text, "
+        + "arrow: node.children.some((c) => c.props?.text === '↗'), "
+        + "label: node.props.attrs?.['aria-label']}; };"
+        + "console.log(JSON.stringify(['GitHub', 'GitHub Release', 'Hugging Face', "
+        + "'Hugging Face Papers', 'arXiv', 'Crossref'].map((s) => chip(s, 'https://x.test/'))"
+        + ".concat([chip('GitHub', null)])));"
+    )
+    chips = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [c.get("brand") for c in chips] == [
+        "github",
+        "github",
+        "huggingface",
+        "huggingface",
+        "arxiv",
+        None,
+        "github",
+    ]
+    # A mark replaces the name; the name stays as the accessible label, and
+    # "Release" is not part of a logo.
+    assert [c.get("name") for c in chips] == [None] * 5 + ["Crossref", None]
+    assert [c.get("label") for c in chips][:2] == ["GitHub", "GitHub Release"]
+    assert all(c["arrow"] for c in chips)
+    assert [c["tag"] for c in chips] == ["a"] * 6 + ["span"]
