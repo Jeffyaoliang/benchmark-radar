@@ -3354,11 +3354,14 @@ def test_both_signup_forms_post_to_the_same_kit_form():
         # A visible-only placeholder is not a label for screen readers.
         assert '<span class="visually-hidden" data-i18n="Email address">' in form
         # Consent and cadence live in the panel that opens once an address is
-        # typed; consent is required, and weekly is the default cadence.
+        # typed. Consent is required, and so is a cadence, with none chosen in
+        # advance; daily is listed first.
         more = form.split('class="email-signup-more"', 1)[1]
         assert '<input type="checkbox" required>' in more
-        assert 'name="fields[frequency]" value="weekly" checked' in more
-        assert 'name="fields[frequency]" value="daily"' in more
+        assert "checked" not in more
+        daily = more.index('name="fields[frequency]" value="daily" required')
+        weekly = more.index('name="fields[frequency]" value="weekly"')
+        assert daily < weekly
         assert 'href="#privacy-notice"' in more
     # Nothing but the title sits beside the resting form.
     assert "email-signup-note" not in html
@@ -3389,6 +3392,8 @@ def test_footer_and_signup_strings_are_translated():
         "How often?",
         "Weekly",
         "Daily",
+        "the latest each day",
+        "one roundup a week",
         "Email address",
         "Subscribe",
         "Contribute",

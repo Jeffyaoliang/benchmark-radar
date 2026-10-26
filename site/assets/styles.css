@@ -4661,6 +4661,10 @@ footer {
   padding: 0;
 }
 
+.email-signup-hint {
+  color: var(--muted);
+}
+
 .email-signup-frequency label {
   display: inline-flex;
   gap: 0.35rem;
