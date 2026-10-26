@@ -932,7 +932,7 @@
           <h1 id="saturation-heading" data-i18n="Saturation">Saturation</h1>
           <label class="score-filter" for="saturation-score-filter">
             <span data-i18n="Show benchmarks with highest reported score below:">Show benchmarks with highest reported score below:</span>
-            <input id="saturation-score-filter" name="lscore" type="range" min="10" max="100" step="10" value="70" list="score-filter-steps" data-score-filter aria-controls="benchmark-search-results frontier-benchmark">
+            <input id="saturation-score-filter" name="lscore" type="range" min="10" max="100" step="10" value="70" list="score-filter-steps" data-score-filter aria-controls="benchmark-search-results">
             <output id="saturation-score-value" for="saturation-score-filter">70</output>
           </label>
         </div>
@@ -958,7 +958,7 @@
                      class="benchmark-search-input benchmark-model-input"
                      data-i18n-placeholder="Filter by model, e.g. GPT-6 Sol"
                      placeholder="Filter by model, e.g. GPT-6 Sol"
-                     aria-controls="benchmark-search-results frontier-benchmark" />
+                     aria-controls="benchmark-search-results" />
               <p id="benchmark-search-status" class="benchmark-search-status"></p>
               <div id="benchmark-search-results"></div>
               <button id="benchmark-search-more" class="clear-button" type="button" data-i18n="Show more" hidden>Show more</button>
@@ -996,16 +996,7 @@
                 </div>
                 <p class="frontier-subline" id="frontier-subline" hidden></p>
               </div>
-              <div class="frontier-controls">
-                <span class="frontier-stage" id="frontier-stage"></span>
-                <label class="frontier-picker">
-                  All tracked benchmarks
-                  <select id="frontier-benchmark" name="lfrontier"></select>
-                </label>
-              </div>
             </div>
-            <p id="frontier-filter-note" class="section-note" role="status" hidden></p>
-            <p id="frontier-highest-score" class="section-note" hidden></p>
             <div class="frontier-catalog" id="frontier-catalog" hidden></div>
             <div class="frontier-chart" id="frontier-chart"></div>
             <!-- Legend below the figure it explains: above it, it pushed the

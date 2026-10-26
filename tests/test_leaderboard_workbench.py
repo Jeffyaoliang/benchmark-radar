@@ -82,10 +82,8 @@ def test_the_panel_prints_no_reporting_stage_verdict():
     assert 't("Saturated reporting")' not in script
     assert '"Saturated reporting":' not in script, "no zh entry for a badge nothing renders"
     assert "convention, not quality" not in script
-    # The element survives for the external path, which puts a source name in it,
-    # and the curated path hides it rather than leaving a bare outline.
-    assert 'id="frontier-stage"' in html
-    assert "stage.hidden = true;" in script or "stageBadge.hidden = true;" in script
+    # Every path left the badge empty, so the element is gone (issue #995).
+    assert 'id="frontier-stage"' not in html
 
 
 def test_frontier_svg_fits_the_viewport_without_horizontal_scrolling():
