@@ -3393,7 +3393,7 @@ def test_footer_and_signup_strings_are_translated():
         "Weekly",
         "Daily",
         "the latest each day",
-        "one roundup a week",
+        "every Monday",
         "Email address",
         "Subscribe",
         "Contribute",
