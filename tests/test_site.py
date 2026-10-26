@@ -3346,8 +3346,8 @@ def test_both_signup_forms_post_to_the_same_kit_form():
     actions = {re.search(r'action="([^"]+)"', form).group(1) for form in forms}
     assert len(actions) == 1
     (action,) = actions
-    assert action.startswith("https://app.convertkit.com/forms/")
-    assert action.endswith("/subscriptions")
+    # The action Kit's published form 10097391 posts to.
+    assert action == "https://app.kit.com/forms/10097391/subscriptions"
     for form in forms:
         assert 'method="post"' in form
         assert 'type="email" name="email_address" required' in form
