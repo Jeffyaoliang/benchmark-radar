@@ -158,9 +158,7 @@ def _chip(
         outline=EDGE,
         width=s,
     )
-    draw.text(
-        (x + 10 * s, y + 13 * s), text, font=face, fill=SITE_INK, anchor="lm"
-    )
+    draw.text((x + 10 * s, y + 13 * s), text, font=face, fill=SITE_INK, anchor="lm")
     return round(x + width + 8 * s)
 
 
