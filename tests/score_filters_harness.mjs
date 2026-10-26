@@ -18,7 +18,7 @@ const observation = (date, id = date) => ({
   title: 'agent benchmark', summary: '', categories: [],
 });
 let observations = [observation('2026-09-07'), observation('2026-09-06'), observation('2026-08-08', 'repeated'), observation('2026-08-09', 'repeated'), observation('2026-08-07'), observation('2026-07-09'), observation('2026-07-08')];
-const dateNames = ['todayDateRange', 'todayIsMultiDate', 'validTodayDate', 'filteredObservations', 'observationRecordKey', 'latestObservationsByRecord'];
+const dateNames = ['todayDateRange', 'todayIsMultiDate', 'validTodayDate', 'filteredObservations', 'observationRecordKey', 'latestObservationsByRecord', 'observationAttention', 'eventTimestamp'];
 const dates = new Function('state', 'allObservations', `${source.match(/const TODAY_WINDOWS = .*;/)[0]}\n${dateNames.map(fn).join('\n')}\nreturn {${dateNames.join(',')}};`)(state, () => observations);
 assert.deepEqual(dates.todayDateRange(), {start:'2026-08-08',end:'2026-09-06'});
 assert.equal(dates.validTodayDate(), true);
@@ -38,6 +38,37 @@ state.source = 'github';
 assert.equal(dates.filteredObservations().length, 2);
 state.data.latest_date = '2024-03-01';
 assert.deepEqual(dates.todayDateRange(), {start:'2024-02-01',end:'2024-03-01'});
+
+// Issue #978: ranges include both boundaries, activity and date sorts differ,
+// and missing measurements preserve records after measured zero activity.
+state.data.latest_date = '2026-09-06';
+state.todayDate = '90d';
+state.q = ''; state.source = '';
+assert.deepEqual(dates.todayDateRange(), {start:'2026-06-09',end:'2026-09-06'});
+observations = [
+  {...observation('2026-06-09', 'old'), metrics:{stars:10}},
+  {...observation('2026-09-06', 'new'), metrics:{points:2}, published_at:'2026-09-06T12:00:00Z'},
+  {...observation('2026-09-06', 'zero'), metrics:{likes:0}, published_at:'2026-09-06T13:00:00Z'},
+  observation('2026-09-06', 'unknown'),
+  observation('2026-06-08', 'outside'),
+];
+state.todaySort = 'attention';
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['old','new','zero','unknown']);
+state.todaySort = 'newest';
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['zero','new','unknown','old']);
+state.todayDate = '30d';
+assert.equal(dates.filteredObservations().length, 3);
+state.todayDate = '2026-09-06';
+state.todaySort = 'attention';
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['new','zero','unknown']);
+assert.equal(dates.observationAttention({metrics:{stars:'20', likes:null, downloads:NaN}}), -1);
+
+state.todaySort = 'newest';
+observations = [
+  {...observation('2026-09-06', 'offset'), published_at:'2026-09-06T12:00:00+08:00'},
+  {...observation('2026-09-06', 'utc'), published_at:'2026-09-06T05:00:00Z'},
+];
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['utc','offset']);
 
 const summary = (display_max, numeric_count=1) => ({display_max,numeric_count,display_multiplier:1,raw_min:display_max,raw_max:display_max});
 state.data.model_card_leaderboard = {entries:[{benchmark_id:'curated',name:'Curated'}]};

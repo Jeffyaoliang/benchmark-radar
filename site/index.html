@@ -390,10 +390,6 @@
         <h1 class="visually-hidden" data-i18n="Search AI, LLM, agent, multimodal, and AI-for-science benchmarks">
           Search AI, LLM, agent, multimodal, and AI-for-science benchmarks
         </h1>
-        <!-- The toolbar stays one compact row so the results below stay
-             above the fold: search, the scan date, a trigger that opens the
-             secondary filters, and a refresh control. The badge on the
-             trigger counts how many secondary filters are active. -->
         <form class="filter-panel today-filters" id="filters">
           <label class="search-field">
             <span class="visually-hidden" data-i18n="Search">Search</span>
@@ -405,10 +401,21 @@
               data-i18n-placeholder="Search benchmarks…"
             >
           </label>
-          <label class="date-field">
-            <span data-i18n="Date:">Date:</span>
-            <select id="today-date" name="date"></select>
-          </label>
+          <fieldset class="today-segments" id="today-window">
+            <legend data-i18n="Time window">Time window</legend>
+            <div>
+              <button type="button" data-today-window="latest" aria-pressed="true" data-i18n="Latest">Latest</button>
+              <button type="button" data-today-window="30d" aria-pressed="false" data-i18n="30 days">30 days</button>
+              <button type="button" data-today-window="90d" aria-pressed="false" data-i18n="90 days">90 days</button>
+            </div>
+          </fieldset>
+          <fieldset class="today-segments" id="today-order">
+            <legend data-i18n="Sort by">Sort by</legend>
+            <div>
+              <button type="button" data-today-sort="attention" aria-pressed="true" data-i18n="Attention">Attention</button>
+              <button type="button" data-today-sort="newest" aria-pressed="false" data-i18n="Newest">Newest</button>
+            </div>
+          </fieldset>
           <button
             type="button"
             class="filters-toggle"
@@ -442,6 +449,10 @@
             aria-label="More filters"
             data-i18n-aria="More filters"
           >
+            <label class="date-field">
+              <span data-i18n="Date:">Date:</span>
+              <select id="today-date" name="date"></select>
+            </label>
             <label>
               <span data-i18n="Kind">Kind</span>
               <select id="kind-filter" name="kind"></select>
