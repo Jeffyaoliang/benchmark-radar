@@ -38,11 +38,11 @@ _TITLE_BENCHMARK = re.compile(
     re.IGNORECASE,
 )
 
-# Benchmark, model, method, agent, and harness nouns share one pattern so that
-# the first one in the introduction sentence decides: "a benchmark framework" is
-# a benchmark, "a general training framework" is a method, and "a unified agent"
-# is an agent. A benchmark noun anywhere in the coordinated descriptor still
-# wins, so "an agent benchmark" stays a benchmark.
+# The first contribution noun decides: "a benchmark framework" is a benchmark,
+# "a general training framework" is a method, and "a unified agent" is an agent.
+# Agent/harness matches are limited to the descriptor, before its elaboration.
+# A benchmark noun anywhere in the coordinated descriptor still wins, so
+# "an agent benchmark" stays a benchmark.
 _BENCHMARK_NOUN = (
     r"evaluation (?:suite|framework|protocol|platform|harness)|benchmark\w*|dataset|corpus"
     r"|testbed|test suite|test set|leaderboard|\bgym\b|\barena\b"
@@ -58,8 +58,11 @@ _METHOD_NOUN = (
 _AGENT_NOUN = r"\bagents?\b"
 _HARNESS_NOUN = r"\bharness(?:es)?\b"
 _HEADLINE_NOUN = re.compile(
-    rf"(?P<benchmark>{_BENCHMARK_NOUN})|(?P<model>{_MODEL_NOUN})|(?P<method>{_METHOD_NOUN})"
-    rf"|(?P<agent>{_AGENT_NOUN})|(?P<harness>{_HARNESS_NOUN})",
+    rf"(?P<benchmark>{_BENCHMARK_NOUN})|(?P<model>{_MODEL_NOUN})|(?P<method>{_METHOD_NOUN})",
+    re.IGNORECASE,
+)
+_AGENT_OR_HARNESS = re.compile(
+    rf"(?P<agent>{_AGENT_NOUN})|(?P<harness>{_HARNESS_NOUN})",
     re.IGNORECASE,
 )
 _INTRODUCES = re.compile(
@@ -94,10 +97,15 @@ def _headline_kind(summary: str) -> str | None:
     if re.search(_BENCHMARK_NOUN, head, re.IGNORECASE):
         return BENCHMARK
     noun = _HEADLINE_NOUN.search(rest)
+    # Only the descriptor can identify an agent/harness contribution. Mentions
+    # in elaboration can instead name evaluation targets (e.g. CABRA).
+    introduced_agent = _AGENT_OR_HARNESS.search(head)
+    if introduced_agent is not None and (noun is None or introduced_agent.start() < noun.start()):
+        noun = introduced_agent
     if noun is None:
         return None
     for kind in (BENCHMARK, MODEL, METHOD, AGENT, HARNESS):
-        if noun.group(kind):
+        if noun.lastgroup == kind:
             return kind
     return None
 

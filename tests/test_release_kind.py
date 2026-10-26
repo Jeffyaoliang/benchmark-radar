@@ -283,3 +283,48 @@ def test_an_agent_benchmark_and_an_evaluation_harness_stay_benchmarks() -> None:
     }
     assert classify_release_record(agent_benchmark) == BENCHMARK
     assert classify_release_record(evaluation_harness) == BENCHMARK
+
+
+# Introducing sentences from the committed snapshots cited in PR #962's review.
+# CABRA: 2026-10-09; WideSWE: 2026-09-29; ReproBAIT: 2026-10-16;
+# BACKDROP: 2026-10-01. The final case covers the same shape for a harness.
+@pytest.mark.parametrize(
+    ("title", "summary"),
+    [
+        (
+            "Code Understanding is a Bottleneck for Coding Agents",
+            "We present CABRA: a Coding Ability Blueprint for Rigorous Agent evaluation.",
+        ),
+        (
+            "WideSWE: Can Coding Agents Coordinate Changes Across Repositories?",
+            "We introduce WideSWE to evaluate coding agents on such cross-repository tasks.",
+        ),
+        (
+            "ReproBAIT: Can coding agents build their own biological AI tools?",
+            "We introduce an evaluation titled ReproBAIT (Reproducing Biological AI Tools), "
+            "which measures the ability of coding agents to design, implement, and train "
+            "biological AI tools taken from published research across a range of "
+            "information access conditions.",
+        ),
+        (
+            "The Backdrop Exposes What the World Around an Agent Costs It",
+            "We present BACKDROP, which asks how much of an agent's capability in a clean "
+            "world survives in such a world.",
+        ),
+        (
+            "ToolScope",
+            "We present ToolScope, a diagnostic for tool harnesses.",
+        ),
+    ],
+    ids=("CABRA", "WideSWE", "ReproBAIT", "BACKDROP", "harness-target"),
+)
+def test_evaluation_targets_do_not_exclude_benchmark_releases(title: str, summary: str) -> None:
+    item = _item({"title": title, "summary": summary, "source": "arXiv", "arxiv": "2610.10610"})
+    assert classify_release_record(item) == UNCLEAR
+    assert is_benchmark_release(item)
+    snapshot = {"date": "2026-10-24", "generated_at": AS_OF.isoformat(), "evidence_items": [item]}
+    cohort = filter_release_cohort(
+        [snapshot], window_days=30, as_of=AS_OF, include_unconfirmed=True
+    )
+    assert [entry["name"] for entry in cohort] == [title]
+    assert snapshot["evidence_items"] == [item]
