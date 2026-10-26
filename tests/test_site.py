@@ -3133,24 +3133,11 @@ def test_issue_332_a_release_outranks_a_same_day_update():
     assert "releaseRank(a) - releaseRank(b)" in sort_body
     assert "Number(b.recency_score || 0) - Number(a.recency_score || 0)" in sort_body
 
-    # The caption names the order the reader is looking at, and only claims the
-    # release tie-break when the result set actually contains both kinds.
-    assert 't("Sort: New releases first, then Recency ↓, then Priority ↓")' in script
-    assert 't("Sort: Date, then new releases, then Recency ↓, then Priority ↓")' in script
-    # "Is a release" is its own predicate now that releaseRank grades by age:
-    # reading it as `=== 0` would have counted only the freshest tier.
-    assert "const releases = observations.filter(isRelease).length;" in script
+    # Issue #978: the visible feed now follows the explicit ordering control.
+    assert 't("Sort: Newest")' in script
+    assert 't("Sort: Recorded stars + likes + downloads + points; missing signals last")' in script
+    assert 'state.todaySort === "newest"' in script
     assert 'return item.event_kind === "released";' in script
-    assert "releases > 0 && releases < observations.length" in script
-    # The caption stops at "new releases first" rather than claiming a strict
-    # timestamp sort across release tiers; it then names the scored-recency
-    # order that v5 applies inside a tier.
-    assert "Sort: Newest releases first" not in script
-
-    # Both captions are translated; an untranslated string would render as
-    # English inside an otherwise Chinese page.
-    assert "排序:新发布优先,再按新鲜度 ↓,再按优先度 ↓" in script
-    assert "排序:日期,再新发布优先,再按新鲜度 ↓,再按优先度 ↓" in script
 
 
 def test_issue_333_the_page_never_scrolls_sideways():

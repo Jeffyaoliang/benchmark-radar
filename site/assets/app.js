@@ -676,6 +676,12 @@ const I18N = {
     Filters: "筛选",
     "More filters": "更多筛选",
     "Date:": "日期:",
+    "Latest": "最新",
+    "Past 90 days": "近 90 天",
+    "Time window": "时间范围",
+    "Sort by": "排序方式",
+    "Sort: Newest": "排序：最新",
+    "Sort: Recorded stars + likes + downloads + points; missing signals last": "排序：已记录的星标、点赞、下载和积分总数；缺少数据的记录排在最后",
     "Search benchmarks…": "搜索benchmark…",
     "Refresh data": "刷新数据",
     "Today's radar": "今日雷达",
@@ -1423,6 +1429,7 @@ const state = {
   data: null,
   view: "today",
   todayDate: "",
+  todaySort: "attention",
   q: "",
   kind: "",
   category: "",
@@ -1718,6 +1725,7 @@ function readUrl() {
   // A bare search permalink has archive-wide intent. An explicit date remains
   // a deliberate narrow search, including the "today" link in the scope banner.
   state.todayDate = params.get("date") || (state.q ? "all" : "");
+  state.todaySort = params.get("sort") === "newest" ? "newest" : "attention";
   state.kind = params.get("kind") || "";
   state.category = params.get("category") || "";
   state.source = params.get("source") || "";
@@ -1819,6 +1827,7 @@ function writeUrl(mode = "replace") {
       // on reload after the reader clicked "Search today" in the scope banner.
       params.set("date", state.todayDate);
     }
+    if (state.todaySort === "newest") params.set("sort", "newest");
     if (state.q) params.set("q", state.q);
     if (state.kind) params.set("kind", state.kind);
     if (state.category) params.set("category", state.category);
@@ -2993,7 +3002,7 @@ function renderDailyQuestions(day) {
   );
 }
 
-const TODAY_WINDOWS = { "30d": 30, "60d": 60 };
+const TODAY_WINDOWS = { "30d": 30, "60d": 60, "90d": 90 };
 
 function todayDateRange(date = state.todayDate) {
   const days = TODAY_WINDOWS[date];
@@ -3020,6 +3029,7 @@ function renderTodayDateOptions() {
       option("all", t("All dates"), state.todayDate === "all"),
       option("30d", t("Past 30 days"), state.todayDate === "30d"),
       option("60d", t("Past 60 days"), state.todayDate === "60d"),
+      option("90d", t("Past 90 days"), state.todayDate === "90d"),
       ...[...state.data.facets.dates].reverse().map((date) =>
         option(date, formatDate(date, { dateStyle: "medium" }), date === state.todayDate),
       ),
@@ -3203,6 +3213,13 @@ function renderToday({ resultsOnly = false } = {}) {
   }
   state.todayRenderedDate = state.todayDate;
   byId("today-date").value = state.todayDate;
+  document.querySelectorAll("[data-today-window]").forEach((button) => {
+    const value = button.dataset.todayWindow === "latest" ? state.data.latest_date : button.dataset.todayWindow;
+    button.setAttribute("aria-pressed", String(value === state.todayDate));
+  });
+  document.querySelectorAll("[data-today-sort]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.todaySort === state.todaySort));
+  });
   const range = todayDateRange();
   const heading = range ? `Past ${TODAY_WINDOWS[state.todayDate]} days`
     : showingAllDates ? "All dates" : "Today's radar";
@@ -3233,6 +3250,7 @@ function renderToday({ resultsOnly = false } = {}) {
   renderSearchScopeBanner(observations.length, benchmarkMatches);
   const resultsKey = [
     state.todayDate,
+    state.todaySort,
     state.q,
     state.kind,
     state.category,
@@ -3262,35 +3280,9 @@ function renderToday({ resultsOnly = false } = {}) {
   const attentionCount = observations.length - evidenceCount;
   byId("today-breakdown").textContent =
     `${evidenceCount} ${t("normal")} · ${attentionCount} ${t("attention")}`;
-  // The list is sorted by priority within a day; say so at the point of use
-  // rather than making the reader infer it. Attention rows carry no priority,
-  // so a kind-filtered attention set falls back to date order, and in All
-  // dates mode the archive is ordered by date first and priority second
-  // (issue #248).
-  //
-  // Releases lead each day ahead of priority (issue #332), so the caption says
-  // that too whenever the result set actually mixes releases with anything
-  // else. A set that is all releases, or has none, is ordered by priority
-  // alone, and naming a tie-break that changed nothing would misdescribe it.
-  // Read off the whole result set rather than the current page: the caption
-  // describes the ordering the reader is paging through, and page one of a
-  // release-led day is all releases even when later pages are not.
-  //
-  // The caption stops at "new releases first" rather than claiming a strict
-  // timestamp order across release tiers. Inside each tier, scored recency now
-  // leads priority so v5's event-kind discount changes the visible order.
-  const priorityScored = visibleObservations.some((item) => Number(item.total_score) > 0);
-  const releases = observations.filter(isRelease).length;
-  const releasesLead = releases > 0 && releases < observations.length;
-  byId("today-sort").textContent = !priorityScored
-    ? t("Sort: Date ↓")
-    : showingAllDates
-      ? releasesLead
-        ? t("Sort: Date, then new releases, then Recency ↓, then Priority ↓")
-        : t("Sort: Date, then Recency ↓, then Priority ↓")
-      : releasesLead
-        ? t("Sort: New releases first, then Recency ↓, then Priority ↓")
-        : t("Sort: Recency ↓, then Priority ↓");
+  byId("today-sort").textContent = state.todaySort === "newest"
+    ? t("Sort: Newest")
+    : t("Sort: Recorded stars + likes + downloads + points; missing signals last");
   renderTopShare(day, !showingAllDates && !range);
   const listHost = byId("today-list");
   replaceChildren(
@@ -4179,6 +4171,8 @@ function updateFiltersCount() {
     state.source,
     state.organization,
     state.event,
+    state.todayDate && state.todayDate !== state.data?.latest_date
+      && !["30d", "90d"].includes(state.todayDate),
   ].filter(Boolean).length;
   byId("filters-count").textContent = `(${active})`;
 }
@@ -4189,6 +4183,14 @@ function closeFiltersDrawer() {
     drawer.hidden = true;
     byId("filters-toggle").setAttribute("aria-expanded", "false");
   }
+}
+
+// Missing activity stays inspectable, after records with measured signals.
+function observationAttention(item) {
+  const values = ["stars", "likes", "downloads", "points"]
+    .map((key) => item.metrics?.[key])
+    .filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : -1;
 }
 
 function filteredObservations() {
@@ -4209,7 +4211,15 @@ function filteredObservations() {
       (!query || haystack.includes(query))
     );
   });
-  return todayIsMultiDate() ? latestObservationsByRecord(matches) : matches;
+  const records = todayIsMultiDate() ? latestObservationsByRecord(matches) : matches;
+  return records.sort((a, b) => {
+    if (state.todaySort !== "newest") {
+      const attentionOrder = observationAttention(b) - observationAttention(a);
+      if (attentionOrder) return attentionOrder;
+    }
+    const timestamp = (item) => Date.parse(eventTimestamp(item)) || Date.parse(item.snapshot_date) || 0;
+    return timestamp(b) - timestamp(a);
+  });
 }
 
 // Generated utility pages ship their sheet already open so it is useful before
@@ -11794,6 +11804,20 @@ function bindEvents() {
     selectFrontier(event.target.value);
     renderAdoptionFrontier(catalogDocumentBoard());
     writeUrl("push");
+  });
+  document.querySelectorAll("[data-today-window]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!state.data) return;
+      const select = byId("today-date");
+      select.value = button.dataset.todayWindow === "latest" ? state.data.latest_date : button.dataset.todayWindow;
+      select.dispatchEvent(new Event("change"));
+    });
+  });
+  document.querySelectorAll("[data-today-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.todaySort = button.dataset.todaySort;
+      renderToday({ resultsOnly: true });
+    });
   });
   byId("today-date").addEventListener("change", async (event) => {
     // A newer date or range must also supersede a pending Trends-day load.
