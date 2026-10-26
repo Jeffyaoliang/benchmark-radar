@@ -18,7 +18,6 @@ connector, a first-party feed, or the Hacker News attention source. -->
 
 <p align="center">
   <a href="https://benchmark-radar.org/"><img alt="Benchmarks collected" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fbenchmark-radar.org%2Fdata%2Frecords-badge.json&amp;style=for-the-badge"></a>
-  <a href="https://github.com/ktwu01/benchmark-radar/releases/download/cli-data/benchmark-radar-data.zip"><img alt="Download data" src="https://img.shields.io/badge/%E2%86%93%20DOWNLOAD%20DATA-2f81f7?style=for-the-badge"></a>
   <a href="https://huggingface.co/datasets/ktwu01/benchmark-radar"><img alt="Hugging Face Dataset" src="https://img.shields.io/badge/Hugging%20Face-Dataset-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=000"></a>
   <a href="https://arxiv.org/abs/2609.11115"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge&logo=arxiv" alt="arXiv"></a>
   <a href="https://huggingface.co/papers/2609.11115"><img src="https://img.shields.io/badge/Hugging%20Face-Upvote%20us-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=000" alt="Upvote Benchmark Radar on Hugging Face"></a>
@@ -31,7 +30,9 @@ connector, a first-party feed, or the Hacker News attention source. -->
 Researchers and evaluation engineers from these institutions use Benchmark
 Radar for benchmark discovery and score tracking:
 
-<img src="assets/researchers.svg" alt="Institutions whose researchers use Benchmark Radar: Google, Amazon, AWS, IBM, ByteDance, Carnegie Mellon, Harvard, MIT, NUS, Auckland, Alibaba, Tencent, Tencent Hunyuan, Qwen, StepFun, Kuaishou, Zhihu, Tsinghua, SJTU" />
+<p align="center">
+  <img src="assets/researchers.svg" alt="Institutions whose researchers use Benchmark Radar: Google, Amazon, AWS, IBM, ByteDance, Carnegie Mellon, Harvard, MIT, NUS, Auckland, Xtracta, Alibaba, Tencent, Tencent Hunyuan, Qwen, StepFun, Kuaishou, Zhihu, Tsinghua, SJTU" />
+</p>
 
 I kept running into new benchmarks while doing benchmark research, so I built a
 crawler that continuously collects benchmark-related signals from across the
@@ -68,7 +69,7 @@ catalog. Each record keeps its scores, test conditions and citations.
 - **[Open the dashboard](https://benchmark-radar.org/)** — today's findings, benchmark trends, scores and model coverage
 - **[Query it locally](https://benchmark-radar.org/cli/)** — install and use the offline CLI
 - **[Subscribe via RSS](https://benchmark-radar.org/feed.xml)** — get new benchmark signals every day
-- **[Download the complete dataset](https://github.com/ktwu01/benchmark-radar/releases/download/cli-data/benchmark-radar-data.zip)** — the benchmark catalog, detail records and daily discovery snapshots in one ZIP
+- **[Download the complete dataset](https://huggingface.co/datasets/ktwu01/benchmark-radar)** — the benchmark catalog, scores and daily discovery records
 - **[Contribute](CONTRIBUTING.md)** — add benchmarks, model cards, sources, or fixes
 
 If Benchmark Radar saves you research time, **[star the repository](https://github.com/ktwu01/benchmark-radar)**. It helps other eval builders find it.
@@ -114,7 +115,9 @@ Scan the QR code to join the WeChat group for daily benchmark updates and eval d
 
 <img src="assets/wechat-group-qr.jpg" alt="WeChat group QR code" width="280" />
 
-<img src="assets/discord-group-qr.jpg" alt="Permanent QR code to join the Benchmark Radar Discord group" width="360" />
+<a href="https://discord.com/invite/JX9Caj4fMF">
+  <img src="assets/discord-group-qr.jpg" alt="Join the Benchmark Radar Discord via the permanent invitation link: https://discord.com/invite/JX9Caj4fMF" width="360" />
+</a>
 
 ## Contributors
 
@@ -130,13 +133,13 @@ If Benchmark Radar supports your research or evaluation work, please cite the
 technical report:
 
 ```text
-Wu, K., Zhou, J., Shang, E., Wang, J., Han, P., Wang, J., & Xu, W. (2026). Benchmark Radar: A living database and search engine for AI benchmarks and evaluation. arXiv:2609.11115. https://arxiv.org/abs/2609.11115
+Wu, K., Zhang, W., Zhou, J., Han, P., Shang, E., Wang, J., Wang, J., Xu, W., Lu, S., Li, Y., Mizrahi Celekli, R., Ravshanov, L., Bian, Y., Han, X., & Shi, L. (2026). Benchmark Radar: A living database and search engine for AI benchmarks and evaluation. arXiv:2609.11115. https://arxiv.org/abs/2609.11115
 ```
 
 ```bibtex
 @misc{wu2026benchmarkradarlivingdatabase,
       title={Benchmark Radar: A Living Database and Search Engine for AI Benchmarks and Evaluation},
-      author={Koutian Wu and Junjie Zhou and Ergan Shang and Jiayu Wang and Pengqian Han and Junkai Wang and Wanghan Xu},
+      author={Koutian Wu and Wenjun Zhang and Junjie Zhou and Pengqian Han and Ergan Shang and Jiayu Wang and Junkai Wang and Wanghan Xu and Songyuanyi Lu and Yixuan Li and Rudy {Mizrahi Celekli} and Lazizbek Ravshanov and Yaoliang Bian and Xudong Han and Lin Shi},
       year={2026},
       eprint={2609.11115},
       archivePrefix={arXiv},
@@ -234,4 +237,4 @@ daily builder brief, [BuilderPulse](https://github.com/BuilderPulse/BuilderPulse
 
 </details>
 
-© 2026 Koutian Wu and contributors
+© 2026 Benchmark Radar contributors

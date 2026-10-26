@@ -7,6 +7,7 @@ and fail loudly rather than silently writing an empty directory.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -92,6 +93,15 @@ def test_writes_one_page_per_shard_plus_directory(tmp_path):
     assert (output / "alpha-bench" / "index.html").exists()
     assert (output / "beta-bench" / "index.html").exists()
     assert (output / "index.html").exists()
+
+
+def test_pages_build_when_invoked_outside_repository(tmp_path, monkeypatch):
+    # Callers selecting a custom shard/output directory cannot rely on the shell's cwd.
+    shard_dir = _write_shards(tmp_path, _shard("alpha-bench", "Alpha Bench"))
+    output = tmp_path / "pages"
+    monkeypatch.chdir(tmp_path)
+    write_benchmark_pages(shard_dir, output)
+    assert "Alpha Bench" in _page_text(output, "alpha-bench")
 
 
 def test_output_is_byte_deterministic(tmp_path):
@@ -198,6 +208,48 @@ def test_description_is_present_and_derived_from_the_shard(tmp_path):
     assert len(beta.split('content="', 1)[1].split('"', 1)[0]) <= 160
 
 
+def test_visible_overview_is_complete_and_has_no_observation_count(tmp_path):
+    description = (
+        "A benchmark of scientific reasoning across biology, chemistry and physics. "
+        "Each question requires specialist knowledge and has been checked by independent experts. "
+        "The final sentence explains the evaluation task in full."
+    )
+    output = _generated_pages(
+        tmp_path,
+        _shard("alpha-bench", "Alpha Bench", description=description, scores=[{"value": 0}]),
+        _shard("beta-bench", "Beta Bench", scores=[{"value": 0}]),
+    )
+    page = _page_text(output, "alpha-bench")
+    assert f'<p class="lede">{description}</p>' in page
+    assert "<h2>About Alpha Bench</h2>" not in page
+    assert len(page.split('name="description" content="')[1].split('"')[0]) <= 160
+    overview = page.split('<p class="lede">')[1].split("</section>")[0]
+    assert "Reported scores" not in overview
+    fallback = _page_text(output, "beta-bench").split('<p class="lede">')[1].split("</p>")[0]
+    assert fallback == "Beta Bench is an AI benchmark in the Benchmark Radar catalog."
+
+
+def test_score_evidence_is_complete_inside_closed_source_disclosures(tmp_path):
+    shard = _shard("alpha-bench", "Alpha Bench", scores=[{"model_name": "Zero", "value": 0}])
+    shard["scores_by_source"]["llm_stats"] = {
+        "rows": [{"model_name": "Other model", "value": 42}],
+        "series": {},
+    }
+    page = _page_text(_generated_pages(tmp_path, shard), "alpha-bench")
+    disclosures = re.findall(r'<details class="record-scores">(.*?)</details>', page, re.S)
+    assert len(disclosures) == 2
+    for disclosure in disclosures:
+        summary = disclosure.split("</summary>")[0]
+        assert "Reported benchmark scores · " in summary
+        assert "Reported scores: 1" not in summary
+        assert "Reported scores: 1" in disclosure
+        assert "<table>" in disclosure
+        assert disclosure.count("<tbody><tr>") == 1
+    assert any("Zero</td>" in part and "<td>0</td>" in part for part in disclosures)
+    assert any("Other model</td>" in part for part in disclosures)
+    assert 'record-scores" open' not in page
+
+
 def test_jsonld_blocks_are_single_objects_with_expected_types(tmp_path):
     output = _generated_pages(tmp_path, _shard("alpha-bench", "Alpha Bench"))
     blocks = _jsonld_blocks(_page_text(output, "alpha-bench"))
@@ -208,6 +260,45 @@ def test_jsonld_blocks_are_single_objects_with_expected_types(tmp_path):
     assert webpage["about"]["name"] == "Alpha Bench"
     crumbs = [item["name"] for item in blocks[1]["itemListElement"]]
     assert crumbs == ["Benchmark Radar", "Benchmark directory", "Alpha Bench"]
+
+
+def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
+    """Answer engines cite the paper and the publisher, so both reach the markup."""
+    shard = _shard(
+        "alpha-bench",
+        "Alpha Bench",
+        description="A tough reasoning test.",
+        categories=["math", "Official"],
+        released="2025-03-04",
+    )
+    shard["record"]["publisher"] = {"name": "Alpha Lab", "role": "hub_publisher"}
+    shard["record"]["artifacts"] = [
+        {"kind": "repo", "url": "https://github.com/alpha/bench"},
+        {"kind": "paper", "url": "https://arxiv.org/abs/2501.00001"},
+    ]
+    output = _generated_pages(tmp_path, shard, _shard("beta-bench", "Beta Bench"))
+    alpha_text = _page_text(output, "alpha-bench")
+    webpage = _jsonld_blocks(alpha_text)[0]
+    entity = webpage["about"]
+    assert entity["@type"] == "Dataset"
+    assert entity["@id"] == "https://benchmark-radar.org/benchmarks/alpha-bench/#benchmark"
+    assert webpage["mainEntity"] == {"@type": "Dataset", "@id": entity["@id"]}
+    assert entity["citation"] == ["https://arxiv.org/abs/2501.00001"]
+    assert entity["sameAs"] == ["https://github.com/alpha/bench"]
+    assert entity["publisher"] == {"@type": "Organization", "name": "Alpha Lab"}
+    assert entity["datePublished"] == "2025-03-04"
+    assert entity["keywords"] == ["math"]
+    # Score dates are evidence dates, not when the page changed, so no
+    # modification time is claimed.
+    assert "dateModified" not in webpage
+    assert (
+        '<link rel="alternate" type="application/json" '
+        'href="https://benchmark-radar.org/data/benchmarks/alpha-bench.json">'
+    ) in alpha_text
+
+    beta = _jsonld_blocks(_page_text(output, "beta-bench"))[0]
+    for missing in ("citation", "sameAs", "publisher", "datePublished", "keywords"):
+        assert missing not in beta["about"]
 
 
 def test_node_references_carry_their_own_type_so_they_resolve_off_the_homepage(tmp_path):
@@ -236,7 +327,7 @@ def test_values_are_escaped_and_cannot_inject_markup(tmp_path):
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page
     assert "<img src=x onerror" not in page
     assert "payload</script>" not in page
-    assert page.count("</script>") == 2  # one per JSON-LD block, no injected markup
+    assert page.count("</script>") == 4  # two JSON-LD blocks, chrome data and behavior
 
 
 def test_no_placeholder_text_for_missing_fields(tmp_path):
@@ -278,7 +369,9 @@ def test_scores_are_partitioned_by_source(tmp_path):
     assert "LLM Stats" in page
     assert "llm_stats" not in page
     assert "never merged into a single cross-source ranking" in page
-    assert "<dt>Reported scores</dt><dd>2</dd>" in page
+    evidence = page.split('<details class="record-scores">', 1)[1].split("</details>")[0]
+    assert '<p class="caveat">Reported scores: 2</p>' in evidence
+    assert "<dt>Reported scores</dt>" not in page
 
 
 def test_directory_page_lists_every_benchmark(tmp_path):
@@ -322,9 +415,11 @@ def test_sitemap_includes_benchmark_pages_when_entries_are_passed(tmp_path):
     ]
     assert urls == [
         f"{SITE_URL}/",
-        f"{SITE_URL}/leaderboard/",
-        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/library/",
+        f"{SITE_URL}/models/",
         f"{SITE_URL}/trends/",
+        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/leaderboard/",
         f"{SITE_URL}/explore/",
         f"{SITE_URL}/cli/",
         f"{SITE_URL}/cite/",
@@ -339,8 +434,8 @@ def test_sitemap_includes_benchmark_pages_when_entries_are_passed(tmp_path):
             "sm:url/sm:lastmod", {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         )
     ]
-    # Nine site-wide dates, then the benchmark's own; the undated page gets none.
-    assert lastmods == ["2026-08-21"] * 9 + ["2025-05-22"]
+    # Eleven site-wide dates, then the benchmark's own; the undated page gets none.
+    assert lastmods == ["2026-08-21"] * 11 + ["2025-05-22"]
 
 
 def test_benchmark_lastmod_comes_from_the_pages_own_evidence(tmp_path):
@@ -449,6 +544,30 @@ def test_artifact_links_are_published_instead_of_staying_in_the_shard(tmp_path):
         assert f'href="https://example.org/alpha-bench/{kind}"' in page
 
 
+def test_resource_chips_share_marks_and_only_remove_repeated_destinations(tmp_path):
+    shard = _shard("alpha-bench", "Alpha Bench")
+    shard["record"]["artifacts"] = [
+        {"kind": "repo", "url": "https://github.com/example/bench"},
+        {"kind": "repo", "url": " https://github.com/example/bench "},
+        {"kind": "repo", "url": "https://www.github.com/example/other"},
+        {"kind": "paper", "url": "https://arxiv.org/abs/example"},
+        {"kind": "dataset", "url": "https://huggingface.co/datasets/example/bench"},
+        {"kind": "paper", "url": "ftp://example.org/paper"},
+        {"kind": "website", "url": "https://github.com.example.org/bench"},
+    ]
+    shard["record"]["provenance"] = {"source_url": "https://github.com/example/bench"}
+    page = _page_text(_generated_pages(tmp_path, shard), "alpha-bench")
+    assert page.count('href="https://github.com/example/bench"') == 1
+    assert 'href="https://www.github.com/example/other"' in page
+    for brand in ("github", "arxiv", "huggingface"):
+        assert f'href="/assets/source-icons.svg#{brand}"' in page
+    assert 'aria-label="Code · https://github.com/example/bench · GitHub"' in page
+    assert 'aria-label="Code · https://www.github.com/example/other · GitHub"' in page
+    assert 'aria-label="Website · github.com.example.org"' in page
+    assert "Original evidence" not in page
+    assert 'href="ftp://example.org/paper"' not in page
+
+
 def test_related_benchmarks_link_siblings_in_the_same_category(tmp_path):
     output = _generated_pages(
         tmp_path,
@@ -463,6 +582,50 @@ def test_related_benchmarks_link_siblings_in_the_same_category(tmp_path):
     # A page never lists itself as its own neighbour: the only self-reference
     # left is the canonical URL in the head.
     assert alpha.count(f'href="{SITE_URL}/benchmarks/alpha-bench/"') == 1
+
+
+def _related_targets(page: str) -> list[str]:
+    section = page.split("<h2>Related", 1)[1].split("</ul>", 1)[0]
+    return [chunk.split("/", 1)[0] for chunk in section.split(f"{SITE_URL}/benchmarks/")[1:]]
+
+
+def test_related_links_spread_across_a_category_instead_of_its_alphabetical_head(tmp_path):
+    """Issue #673: name order sent every page's links to the same eight pages."""
+    shards = [
+        _shard(f"bench-{index:02d}", f"Bench {index:02d}", categories=["coding_agent"])
+        for index in range(20)
+    ]
+    output = _generated_pages(tmp_path, *shards)
+    linked = {
+        target
+        for shard in shards
+        for target in _related_targets(_page_text(output, shard["record"]["slug"]))
+    }
+    # Name order reached 9 of 20 pages; equal candidates must now spread.
+    assert len(linked) >= 15
+
+
+def test_a_shared_artifact_outranks_alphabetically_earlier_category_siblings(tmp_path):
+    siblings = [
+        _shard(f"a-bench-{index}", f"A Bench {index}", categories=["coding_agent"])
+        for index in range(10)
+    ]
+    alpha = _shard("alpha-tasks", "Alpha Tasks", categories=["coding_agent"])
+    zeta = _shard("zeta-bench", "Zeta Bench", categories=["coding_agent"])
+    shared = [{"kind": "paper", "url": "https://arxiv.org/abs/2601.00001"}]
+    alpha["record"]["artifacts"] = shared
+    zeta["record"]["artifacts"] = shared
+    output = _generated_pages(tmp_path, *siblings, alpha, zeta)
+    assert _related_targets(_page_text(output, "alpha-tasks"))[0] == "zeta-bench"
+
+
+def test_status_tags_do_not_relate_benchmarks(tmp_path):
+    output = _generated_pages(
+        tmp_path,
+        _shard("alpha-bench", "Alpha Bench", categories=["Unsupported", "不支持"]),
+        _shard("beta-bench", "Beta Bench", categories=["Unsupported", "不支持"]),
+    )
+    assert "beta-bench" not in _page_text(output, "alpha-bench")
 
 
 def test_citing_documents_are_listed_with_their_sources(tmp_path):

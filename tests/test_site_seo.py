@@ -23,9 +23,11 @@ def test_sitemap_covers_every_indexable_view():
     urls = [node.text for node in root.findall("sm:url/sm:loc", NS)]
     assert urls == [
         f"{SITE_URL}/",
-        f"{SITE_URL}/leaderboard/",
-        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/library/",
+        f"{SITE_URL}/models/",
         f"{SITE_URL}/trends/",
+        f"{SITE_URL}/saturation/",
+        f"{SITE_URL}/leaderboard/",
         f"{SITE_URL}/explore/",
         f"{SITE_URL}/cli/",
         f"{SITE_URL}/cite/",
@@ -154,6 +156,10 @@ def test_structured_data_describes_a_searchable_site_and_a_dataset():
     distributions = [entry["contentUrl"] for entry in dataset["distribution"]]
     assert dataset["url"] in distributions
     assert dataset["license"].endswith("/MIT")
+    # Google's Dataset feature reads isPartOf as membership in a larger dataset;
+    # a WebSite parent triggers `Invalid object type for field "isPartOf"` (#944).
+    assert "isPartOf" not in dataset
+    assert dataset["includedInDataCatalog"]["@type"] == "DataCatalog"
 
 
 def test_sitemap_lists_the_blog_with_a_per_brief_lastmod():

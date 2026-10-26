@@ -33,6 +33,12 @@
   --display: var(--body);
   --utility: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
   --shadow: 0 3px 16px rgb(27 48 56 / 5%);
+  /* Spacing steps and the minimum touch-target height for controls. */
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --control-height: 44px;
 }
 
 [hidden] {
@@ -124,7 +130,6 @@ footer {
   justify-content: space-between;
   gap: 1.25rem;
   min-height: 80px;
-  border-bottom: 1px solid var(--edge);
   background: color-mix(in srgb, var(--canvas) 96%, transparent);
   backdrop-filter: blur(12px);
 }
@@ -208,6 +213,59 @@ th {
   color: inherit;
 }
 
+.privacy-choice {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.analytics-consent {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 70;
+  display: grid;
+  gap: var(--space-3);
+  max-width: min(420px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-4);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.analytics-consent p {
+  margin: 0;
+}
+
+.analytics-consent a {
+  color: inherit;
+}
+
+.analytics-consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.analytics-consent-actions button {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
 .brand-mark {
   position: relative;
   width: 42px;
@@ -258,6 +316,9 @@ th {
   background: #fffbeb;
 }
 
+/* One slim line (#420): the badge read as a second header that pushed every
+   page's content down, the "bangs over the face" problem the merge set out to
+   fix. The badge and the upvote link stay; only their height shrinks. */
 .hf-upvote-banner-inner {
   display: flex;
   width: min(1680px, calc(100% - 48px));
@@ -265,11 +326,11 @@ th {
   align-items: center;
   justify-content: center;
   margin-inline: auto;
-  padding-block: 0.25rem;
+  padding-block: 0;
 }
 
 .hf-paper-award {
-  width: 200px;
+  width: 128px;
   min-width: 0;
   max-width: 100%;
   border-radius: 8px;
@@ -551,6 +612,8 @@ main {
 
 /* Primary page titles stay close to the shared masthead so switching sections
    does not make the heading jump down the page. */
+#library-view,
+#models-view,
 #leaderboard-view,
 #saturation-view,
 #trends-view {
@@ -847,6 +910,35 @@ a.briefing-chip-sources:focus-visible {
   color: white;
 }
 
+/* Several sources open as a list of links; a native disclosure keeps Tab and
+   Enter/Space working without script. */
+.briefing-sources summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.briefing-sources summary::-webkit-details-marker {
+  display: none;
+}
+
+.briefing-sources summary:hover,
+.briefing-sources summary:focus-visible,
+.briefing-sources[open] summary {
+  background: var(--ink);
+  color: white;
+}
+
+.briefing-sources-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+}
+
+.briefing-sources-list a {
+  color: var(--blue-deep);
+  text-decoration: underline;
+}
+
 .briefing-evidence-link {
   color: var(--blue-deep);
   font-weight: 500;
@@ -987,6 +1079,16 @@ a.briefing-chip-sources:focus-visible {
   font-family: var(--utility);
   font-size: 0.7rem;
   letter-spacing: 0.06em;
+}
+
+a.answer-source-count,
+.briefing-sources summary.answer-source-count {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.answer-meta .briefing-sources-list {
+  position: static;
 }
 
 .answer-plain {
@@ -1196,6 +1298,59 @@ a.briefing-chip-sources:focus-visible {
   margin-top: 1.5rem;
 }
 
+/* An opened card adds a few short facts under its own header. Compact rows
+   keep them next to the header they explain instead of spreading five
+   numbers across a page of empty cells. */
+.record-card .record-detail {
+  padding: 0.25rem 0 1rem;
+}
+
+.record-card .record-detail .detail-summary {
+  margin: 0 0 0.6rem;
+}
+
+.record-card .detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.25rem;
+  margin: 0 0 0.6rem;
+  border: 0;
+}
+
+.record-card .detail-grid div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+}
+
+.record-card .detail-grid dt {
+  font-size: 0.75rem;
+}
+
+.record-card .detail-grid dd {
+  margin: 0;
+  font-family: var(--utility);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.record-card .detail-grid .value-zero dd {
+  font-weight: 400;
+}
+
+.record-card .record-detail > h3 {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.8rem;
+}
+
+.record-card .rationale-list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
 .record-detail .detail-summary {
   white-space: pre-line;
 }
@@ -1295,9 +1450,10 @@ a.briefing-chip-sources:focus-visible {
   color: var(--line);
 }
 
+/* A source name is a label, not information to find (design.md, "Bold
+   values, never labels"). */
 .record-meta .meta-source {
   color: var(--ink);
-  font-weight: 600;
 }
 
 .record-meta .meta-event {
@@ -2828,24 +2984,6 @@ td a {
   font-size: clamp(1.55rem, 3vw, 2.35rem);
 }
 
-.frontier-stage {
-  display: block;
-  width: 100%;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid #536168;
-  color: #d8e2e5;
-  font-family: var(--utility);
-  font-size: 0.64rem;
-  letter-spacing: 0.06em;
-  text-align: right;
-}
-
-.frontier-controls {
-  display: grid;
-  flex: 0 0 270px;
-  gap: 0.65rem;
-}
-
 .frontier-panel .eyebrow {
   color: #7fc7bc;
 }
@@ -2854,24 +2992,6 @@ td a {
   max-width: 900px;
   margin: 1rem 0 1.25rem;
   color: #aebcc1;
-}
-
-.frontier-picker {
-  display: grid;
-  gap: 0.35rem;
-  color: #aebcc1;
-  font-family: var(--utility);
-  font-size: 0.68rem;
-  letter-spacing: 0.07em;
-}
-
-.frontier-picker select {
-  width: 100%;
-  padding: 0.7rem 2.2rem 0.7rem 0.75rem;
-  border: 1px solid #536168;
-  border-radius: var(--radius-sm);
-  background: #162228;
-  color: #f3f6f7;
 }
 
 .frontier-chart {
@@ -4017,6 +4137,36 @@ dialog::backdrop {
   text-decoration: underline;
 }
 
+.cite-media {
+  margin-top: 1.6rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.cite-media-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.95rem;
+}
+
+.cite-media-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.cite-media-list a {
+  color: var(--ink);
+}
+
+.cite-media-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .copy-label {
   margin: 0 0 0.5rem;
   color: var(--muted);
@@ -4198,8 +4348,7 @@ dialog::backdrop {
   font-size: 1.05rem;
 }
 
-.adoption-actions,
-.footer-dataset-actions {
+.adoption-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -4209,25 +4358,6 @@ dialog::backdrop {
 .adoption-actions button {
   background: transparent;
   cursor: pointer;
-}
-
-.footer-dataset {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0.7rem 0 0;
-  padding: 0.9rem;
-  border-left: 3px solid var(--orange);
-  background: #fff4d6;
-  color: var(--ink);
-  font-family: var(--utility);
-  font-size: 0.75rem;
-}
-
-.footer-dataset a {
-  color: var(--ink);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .stale-banner {
@@ -4302,39 +4432,373 @@ button.stale-banner-action {
 }
 
 footer {
-  /* One left-aligned column: document links, updated stamp, then the dataset
-     card underneath them. */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.9rem;
-  padding: 1.5rem 0 3rem;
+  /* Three bands, read top to bottom: the email signup, the link columns,
+     then legal and contact. */
+  display: grid;
+  gap: 2rem;
+  padding: 2rem 0 3rem;
   border-top: 1px solid var(--edge);
   color: var(--muted);
 }
 
 .copyright {
+  margin: 0;
   font-size: 0.72rem;
 }
 
-.footer-nav {
+.email-signup {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.email-signup-card {
+  margin-bottom: 1.25rem;
+}
+
+.email-signup-title {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
+.email-signup-form {
+  display: grid;
+}
+
+.email-signup-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.email-signup-row label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.email-signup-row input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 0.9rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+}
+
+.email-signup-row button {
+  flex: 0 0 auto;
+  min-height: var(--control-height);
+  padding: 0 1.2rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.email-signup-row button:hover,
+.email-signup-row button:focus-visible {
+  background: var(--blue-deep);
+  border-color: var(--blue-deep);
+}
+
+.email-signup-form input:focus-visible,
+.email-signup-row button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Collapsed until the reader types an address. Animating the row track from
+   0fr to 1fr opens the panel to its natural height; visibility keeps the
+   hidden checkbox and radios out of the tab order while it is closed. */
+.email-signup-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.3s ease,
+    opacity 0.2s ease,
+    visibility 0s linear 0.3s;
+}
+
+.email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    grid-template-rows 0.3s ease,
+    opacity 0.25s ease 0.05s,
+    visibility 0s;
+}
+
+/* Without :has() the panel could never open, and its required checkbox would
+   block every submission, so those browsers get it open. */
+@supports not selector(:has(*)) {
+  .email-signup-more {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .email-signup-more,
+  .email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {
+    transition: none;
+  }
+}
+
+.email-signup-more-inner {
+  display: grid;
+  gap: 0.65rem;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--body);
+  font-size: 13px;
+  letter-spacing: normal;
+  line-height: 1.5;
+}
+
+/* Spacing sits on the first child, not as padding on the clipped wrapper,
+   because padding would keep the closed panel 0.85rem tall. */
+.email-signup-consent {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.15rem 0.55rem;
+  align-items: start;
+  cursor: pointer;
+}
+
+.email-signup-consent input {
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  margin: 0.15rem 0 0;
+  padding: 0;
+}
+
+.email-signup-consent a {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.email-signup-consent a,
+.email-signup-frequency {
+  color: var(--ink);
+}
+
+.email-signup-frequency {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 1.25rem;
-  font-family: var(--utility);
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
+  gap: 0.4rem 1.1rem;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.footer-nav a {
+.email-signup-frequency legend {
+  float: left;
+  margin-right: 0.2rem;
+  padding: 0;
+  color: var(--muted);
+}
+
+.email-signup-frequency input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.email-signup-hint {
+  color: var(--muted);
+}
+
+.email-signup-frequency label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* The footer copy is wide, so the band puts the pitch beside the form;
+   the sidebar card above the briefing keeps the stacked layout. */
+.footer-signup {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 30rem);
+  align-items: start;
+  padding: 1.75rem 2rem;
+}
+
+.footer-signup .email-signup-title {
+  /* Centred on the input row, which is one control-height tall. */
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  font-size: 1.35rem;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.4fr) repeat(4, minmax(9rem, 1fr));
+  gap: 2rem;
+  align-items: start;
+}
+
+.footer-columns .adoption-cta {
+  margin-top: 0;
+}
+
+.footer-links {
+  display: grid;
+  gap: 0.55rem;
+  font-family: var(--body);
+  font-size: 14px;
+  letter-spacing: normal;
+}
+
+.footer-links h2 {
+  margin: 0 0 0.25rem;
   color: var(--ink);
+  font-family: var(--utility);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+
+.footer-links a {
+  color: var(--muted);
   text-decoration: none;
 }
 
-.footer-nav a:hover,
-.footer-nav .nav-active {
+.footer-links a:hover,
+.footer-links a:focus-visible,
+.footer-links .nav-active {
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.25em;
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: baseline;
+}
+
+.footer-lang {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.footer-lang:hover,
+.footer-lang:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.footer-contact {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.footer-contact a {
+  color: var(--ink);
+}
+
+.footer-contact svg.brand-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+  fill-rule: evenodd;
+  vertical-align: middle;
+}
+
+.footer-wechat {
+  position: relative;
+}
+
+.footer-wechat summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+}
+
+.footer-wechat summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The ID is a popover, so opening it never moves the other contact icons. */
+.footer-wechat-id {
+  position: absolute;
+  right: 0;
+  bottom: 1.5rem;
+  display: none;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  white-space: nowrap;
+  user-select: all;
+}
+
+.footer-wechat:hover .footer-wechat-id,
+.footer-wechat[open] .footer-wechat-id {
+  display: block;
+}
+
+@media (max-width: 1050px) {
+  .footer-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footer-columns .adoption-cta {
+    grid-column: 1 / -1;
+  }
+
+  .footer-signup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .email-signup-row {
+    flex-direction: column;
+  }
+
+  .footer-signup {
+    padding: 1.25rem;
+  }
 }
 
 @media (max-width: 1050px) {
@@ -4490,14 +4954,6 @@ footer {
   .frontier-heading-row {
     display: grid;
     align-items: start;
-  }
-
-  .frontier-stage {
-    text-align: left;
-  }
-
-  .frontier-controls {
-    width: 100%;
   }
 
   h1 {
@@ -4965,6 +5421,12 @@ footer {
   font-size: 0.85rem;
 }
 
+.catalog-description {
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
 /* The #262 inheritance note: a borrowed identity is flagged, never silent. A
    left rule and muted panel set it apart from the record's own description. */
 .catalog-inherited {
@@ -5024,6 +5486,17 @@ footer {
 .catalog-artifacts a:hover,
 .catalog-artifacts a:focus-visible {
   text-decoration: underline;
+}
+
+.catalog-resources {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 0.8rem;
+}
+
+.catalog-artifacts .benchmark-resource-link {
+  color: var(--blue-deep);
 }
 
 .catalog-sizes li {
@@ -5128,9 +5601,19 @@ footer {
   margin-top: 1.5rem;
 }
 
-.catalog-result-section h3 {
-  margin-bottom: 0.75rem;
+.catalog-result-section > summary {
+  padding: 0.5rem 0;
   font-size: 1rem;
+  cursor: pointer;
+}
+
+.catalog-result-section[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+.catalog-result-section > summary h3 {
+  display: inline;
+  font-size: inherit;
 }
 
 .catalog-result-list {
@@ -5503,8 +5986,6 @@ dialog {
 .score-browse-result { align-items: flex-start; flex-direction: column; gap: .25rem; }
 .score-browse-result .benchmark-result-facts { white-space: normal; }
 #benchmark-search-results { max-height: 62vh; overflow-y: auto; }
-#frontier-highest-score { font-weight: 600; }
-#frontier-filter-note { color: var(--muted); }
 @media (max-width: 640px) {
   .score-filter { width: 100%; }
   .score-filter input[type="range"] { max-width: none; }
@@ -5582,6 +6063,13 @@ dialog {
   border-color: var(--blue);
 }
 
+@media (min-width: 761px) {
+  .latest-releases .leaderboard-top-row,
+  .latest-releases .leaderboard-top-columns {
+    grid-template-columns: 2rem minmax(0, 1.4fr) minmax(0, 1fr) 7.5rem;
+  }
+}
+
 .latest-releases-window {
   color: var(--muted);
   font-weight: 400;
@@ -5635,8 +6123,28 @@ dialog {
   opacity: 0.45;
 }
 
-.leaderboard-top-count .pill-confidence {
-  margin-left: 0.35rem;
+/* The tag sits under the score, not beside it, so it no longer reads as a
+   second number and the score column stays narrow (issue #921). */
+.latest-release-summary .leaderboard-top-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  white-space: normal;
+}
+
+.latest-release-summary .leaderboard-top-count .pill-confidence {
+  margin-left: 0;
+  align-self: flex-end;
+  white-space: nowrap;
+}
+
+.latest-releases .leaderboard-top-bar {
+  max-width: 28rem;
+}
+
+.latest-releases .leaderboard-top-name {
+  max-width: none;
 }
 
 .latest-release-body {
@@ -5718,4 +6226,1355 @@ dialog {
     grid-template-columns: 1fr;
     gap: 0.15rem;
   }
+}
+
+/* Responsive navigation and Today controls share the canonical site chrome. */
+/* Keep every destination visible when the wordmark and utilities compete for space. */
+.view-nav {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  overflow: visible;
+}
+
+.view-nav button,
+.view-nav a {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  height: var(--control-height);
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-3);
+  white-space: nowrap;
+  letter-spacing: normal;
+}
+
+.brand-mark {
+  flex-shrink: 0;
+}
+
+.masthead-end {
+  grid-template-columns: repeat(4, var(--control-height));
+  gap: var(--space-2);
+}
+
+.repo-badge {
+  width: var(--control-height);
+  height: var(--control-height);
+}
+
+.repo-badge svg,
+.today-filters .refresh-button svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+#today-view {
+  padding-top: var(--space-4);
+}
+
+.today-filters {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.today-filters .filters-toggle {
+  align-items: center;
+  justify-content: center;
+  letter-spacing: normal;
+}
+
+/* A stable two-line caption keeps metadata from pushing the list down unevenly. */
+#today-view .section-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+  margin-bottom: var(--space-3);
+}
+
+#today-view .results-meta {
+  display: contents;
+}
+
+#today-view .section-title h2 {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 13px;
+  font-family: var(--body);
+  letter-spacing: normal;
+}
+
+#today-breakdown,
+#today-sort {
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+#today-breakdown {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+}
+
+#today-sort {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  white-space: normal;
+  text-align: left;
+}
+
+/* An SVG chevron has a geometric center independent of the platform's mono font. */
+.record-summary::before {
+  content: "";
+  margin-top: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23173e71' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E");
+  background-position: center;
+  background-size: 14px;
+  background-repeat: no-repeat;
+}
+
+.record-card[open] > .record-summary::before {
+  background: var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+
+.record-card h3 {
+  margin-top: 0;
+}
+
+@media (max-width: 1280px) {
+  .masthead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-3);
+    padding-block: var(--space-3);
+  }
+
+  .masthead-main {
+    display: contents;
+  }
+
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .masthead-end {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .view-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    padding-block: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .brand {
+    gap: var(--space-2);
+  }
+
+  .brand strong {
+    font-size: 13px;
+    line-height: 1.4;
+    letter-spacing: normal;
+  }
+
+  .view-nav button,
+  .view-nav a {
+    min-width: var(--control-height);
+    font-family: var(--body);
+    font-size: 13px;
+    padding-inline: 6px;
+  }
+
+  .today-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto var(--control-height);
+  }
+
+  .today-filters .search-field {
+    grid-column: 1 / -1;
+  }
+
+  .today-filters .date-field {
+    min-width: 0;
+  }
+
+  .today-filters .date-field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .today-filters .date-field select {
+    min-width: 0;
+    width: 100%;
+    padding-inline: var(--space-2);
+    font-size: 13px;
+  }
+
+  .today-filters .filters-toggle {
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 360px) {
+  .brand {
+    grid-column: 1 / -1;
+  }
+
+  .masthead-end {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: start;
+  }
+
+  .view-nav {
+    grid-row: 3;
+  }
+}
+
+/* Library (#420). One control row, then the directions beside the rows:
+   the first screen is benchmarks, not a header. */
+.library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+.library-heading {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.library-search {
+  flex: 1 1 16rem;
+  min-width: 0;
+  max-width: 34rem;
+}
+
+.library-sort,
+.library-saved-toggle {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+}
+
+.library-saved-toggle[aria-pressed="true"] {
+  border-color: var(--blue);
+  color: var(--blue-deep);
+}
+
+.library-status {
+  margin: 0 0 0 auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.library-layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.library-layout > *,
+.library-row-name,
+.library-row-description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.library-directions {
+  position: sticky;
+  top: 0.5rem;
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.library-direction-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.5rem;
+}
+
+.library-direction-heading {
+  margin: 0;
+  padding: 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.library-direction {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.library-direction:hover,
+.library-direction[aria-pressed="true"] {
+  background: var(--canvas);
+}
+
+.library-direction[aria-pressed="true"] {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+.library-direction-count {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.library-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.library-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.55rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.library-save {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: none;
+  color: var(--gold);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.library-row-body {
+  min-width: 0;
+}
+
+.library-row-name {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.library-row-name:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
+.library-row-description {
+  display: -webkit-box;
+  margin: 0.15rem 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.9rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.library-row-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.library-chip {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+.library-artifact {
+  padding: 0 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 760px) {
+  .library-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* On a phone the directions (and Models' labs) become one scrolling row of
+     chips, so the first screen reaches the list instead of 37 stacked rows. */
+  .library-directions {
+    position: static;
+    flex-direction: row;
+    gap: 0.35rem;
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .library-direction-group {
+    display: contents;
+  }
+
+  .library-direction-heading {
+    display: none;
+  }
+
+  .library-direction {
+    flex: none;
+    width: auto;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  .library-status {
+    margin-left: 0;
+  }
+}
+
+/* Models (#420): .com's model x benchmark matrix, its side panel, and each
+   lab's own model documents. */
+.models-note {
+  flex: 1 1 20rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.models-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.models-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.models-control input,
+.models-control select {
+  min-width: 10rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+/* The lab list is the sidebar on wide screens; under 720px it becomes this menu. */
+.models-lab-menu {
+  display: none;
+}
+
+.models-shared-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.models-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.models-paging button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.models-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+}
+
+.models-matrix-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.models-matrix {
+  width: 100%;
+  /* As wide as its six columns need, not the site-wide 1100px table minimum,
+     so a phone scrolls only as far as there are models. */
+  min-width: 0;
+  border-collapse: collapse;
+  font-family: var(--body);
+  font-size: 0.85rem;
+}
+
+.models-matrix th {
+  font-family: var(--body);
+  letter-spacing: normal;
+}
+
+.models-matrix th,
+.models-matrix td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.models-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-width: 8.5rem;
+  background: var(--panel);
+  font-weight: 400;
+}
+
+.models-matrix tbody th {
+  min-width: 11rem;
+  font-weight: 400;
+}
+
+/* The benchmark column stays in view while the models scroll sideways. */
+.models-matrix thead th:first-child,
+.models-matrix tbody th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--panel);
+}
+
+.models-average th[scope="row"] {
+  background: var(--canvas);
+}
+
+.models-col-name {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.models-col-config {
+  display: block;
+  color: var(--blue-deep);
+  font-size: 0.8rem;
+}
+
+.models-col-facts {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.models-average th,
+.models-average td {
+  background: var(--canvas);
+}
+
+.models-group th {
+  padding-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.models-group .models-col-facts {
+  display: inline;
+}
+
+.models-record-name {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.models-record-name:hover {
+  text-decoration: underline;
+}
+
+.models-source {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.models-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.models-cell:hover,
+.models-cell[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: rgb(37 94 168 / 8%);
+}
+
+.models-cell-unscaled > span:first-child {
+  color: var(--muted);
+}
+
+.models-cell-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.models-cell-missing {
+  color: var(--edge);
+}
+
+.models-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Above the sticky site header, so its heading and Close stay visible. */
+  z-index: 60;
+  width: min(30rem, 100vw);
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  border-left: 1px solid var(--edge);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.models-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.models-panel-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.models-panel h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.models-panel-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.models-panel-scores li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+}
+
+.models-panel-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.models-panel-chart li {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 4.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.models-panel-chart li.is-selected {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+.models-panel-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-panel-bar {
+  height: 0.7rem;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--sea) calc(var(--share) * 100%), var(--canvas) 0);
+}
+
+.is-selected .models-panel-bar {
+  background: linear-gradient(to right, var(--blue) calc(var(--share) * 100%), var(--canvas) 0);
+}
+
+.models-panel-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.model-document,
+.model-summary {
+  padding: 0.6rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.model-document-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.model-document-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.model-document-facts {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.model-summary-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.model-benchmarks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.4rem 0 0;
+}
+
+.model-benchmark {
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.model-benchmark:hover {
+  border-color: var(--blue);
+}
+
+.model-benchmark-new {
+  border-color: var(--blue);
+  background: rgb(37 94 168 / 10%);
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+.model-benchmark-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.models-unscored {
+  margin: 0;
+  padding: 0.6rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  /* The matrix first: the lab list folds into the menu above it. */
+  /* Only once the page has loaded: until then the seeded lab links are the
+     way to switch labs. */
+  #models-view[data-hydrated] .library-directions {
+    display: none;
+  }
+
+  #models-view[data-hydrated] .models-lab-menu {
+    display: flex;
+  }
+
+  /* One row of menus under the search, then the page row, so the matrix
+     starts on the first screen; the menus' own labels name them. */
+  #models-view .models-note {
+    display: none;
+  }
+
+  .models-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem 0.4rem;
+  }
+
+  .models-control:first-child,
+  .models-shared-toggle,
+  .models-paging {
+    grid-column: 1 / -1;
+  }
+
+  .models-control > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .models-control,
+  .models-control input,
+  .models-control select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .models-control input,
+  .models-control select {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  .models-paging {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    margin-left: 0;
+    font-size: 0.75rem;
+  }
+
+  .models-paging button {
+    white-space: nowrap;
+  }
+
+  .models-matrix tbody th,
+  .models-matrix thead th {
+    min-width: 7.5rem;
+  }
+
+  .models-panel {
+    top: auto;
+    max-height: 75vh;
+    width: 100vw;
+    border-top: 1px solid var(--edge);
+    border-left: 0;
+  }
+}
+
+/* Trends: new benchmarks by research direction (#420). */
+.direction-trends {
+  margin-bottom: 1.25rem;
+}
+
+.direction-trends-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.direction-trends-frame {
+  overflow-x: auto;
+}
+
+.direction-trends-table {
+  width: 100%;
+  /* Not the site-wide 1100px table minimum: this table fits a phone. */
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.direction-trends-table th,
+.direction-trends-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-family: var(--body);
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
+.direction-trends-table thead th {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.direction-trends-table a {
+  color: var(--ink);
+  font-family: var(--body);
+  letter-spacing: normal;
+}
+
+.direction-trends-table .direction-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.direction-spark {
+  width: 96px;
+  height: 20px;
+  fill: var(--blue);
+}
+
+/* benchmark-radar.com's layout: the table beside a focus panel for one
+   direction. */
+.direction-trends-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.direction-trends-table .direction-group th {
+  padding-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.direction-group-count {
+  font-weight: normal;
+}
+
+.direction-trends-table tr.is-focused th,
+.direction-trends-table tr.is-focused td {
+  background: rgb(37 94 168 / 8%);
+}
+
+.direction-trends-table tr.is-focused a {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+/* Not sticky: the site header is, and a sticky panel would slide under it. */
+.direction-focus {
+  padding: 1rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.direction-focus-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.direction-focus-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.direction-focus h3 {
+  margin: 0.1rem 0 0;
+  font-size: 1.1rem;
+}
+
+.direction-focus h4 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.88rem;
+}
+
+.direction-focus-close {
+  display: none;
+}
+
+.direction-focus-facts,
+.direction-focus figcaption {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.direction-focus-figure {
+  margin: 0.75rem 0 0;
+}
+
+.direction-focus-chart {
+  width: 100%;
+  height: auto;
+  fill: var(--blue);
+}
+
+.direction-focus-chart text {
+  fill: var(--muted);
+  font-family: var(--body);
+  font-size: 8px;
+}
+
+.direction-focus-records {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.direction-focus-records li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.direction-focus-records span {
+  flex: none;
+  color: var(--muted);
+}
+
+.direction-focus-library {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+/* On a phone the counts and bars fit beside the names: names wrap, and the
+   previous-period count (the change column carries the comparison) is left
+   for wider screens. */
+@media (max-width: 720px) {
+  .direction-trends-table {
+    font-size: 0.8rem;
+  }
+
+  .direction-trends-table th,
+  .direction-trends-table td {
+    padding: 0.3rem 0.25rem;
+  }
+
+  /* Undated stays: without it a direction whose records have no release
+     date would read as zero. */
+  .direction-trends-table tr > :nth-child(3) {
+    display: none;
+  }
+
+  .direction-spark {
+    width: 64px;
+  }
+
+  /* The table takes the screen; a direction's focus opens as a sheet. */
+  .direction-trends-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .direction-focus {
+    display: none;
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    max-height: 75vh;
+    overflow-y: auto;
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: var(--shadow);
+  }
+
+  .direction-focus.is-open {
+    display: block;
+  }
+
+  .direction-focus-close {
+    display: inline-block;
+  }
+}
+
+.library-signal {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Evidence cards on Today (issue #908, after benchmark-radar.com): a date
+   rail, then the name, what it is, who made it, and its links. */
+.radar-card {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 56px;
+  gap: 1rem;
+  padding: 1.1rem 0 1.1rem 0.75rem;
+}
+
+/* Nobody reads the score first, so it is a short number and a short bar. */
+.radar-card .score {
+  width: 56px;
+}
+
+.radar-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-top: 0.2rem;
+  font-family: var(--utility);
+  font-size: 0.72rem;
+}
+
+/* The source is a chip with the organization's mark, so a reader sees where a
+   record came from before reading a word (issue #971). */
+.radar-source {
+  align-self: flex-start;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--blue-deep);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+a.radar-source:hover {
+  border-color: var(--blue-deep);
+}
+
+.radar-source svg.brand-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 0.95rem;
+  fill: currentColor;
+}
+
+.radar-event {
+  color: var(--muted);
+}
+
+.radar-date {
+  margin-top: -0.25rem;
+  color: var(--ink);
+}
+
+/* GitHub stars above 100 and above 1,000 (see evidenceCard). */
+.radar-card.stars-100 {
+  border-left: 3px solid #e2c56b;
+  background: #fdf8e9;
+}
+
+.radar-card.stars-1000 {
+  border-left: 3px solid #c99a17;
+  background: #f8ebc2;
+}
+
+.radar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.radar-chips span {
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--line) 45%, transparent);
+  color: var(--ink);
+  font-family: var(--utility);
+  font-size: 0.68rem;
+}
+
+.radar-card .radar-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.radar-subtitle {
+  margin: 0.15rem 0 0.35rem;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.radar-card .record-facts {
+  margin: 0.35rem 0;
+}
+
+.radar-summary {
+  display: -webkit-box;
+  margin: 0 0 0.4rem;
+  overflow: hidden;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The links are the card's next step: what a reader opens. */
+.radar-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.98rem;
+}
+
+.radar-links a {
+  color: var(--blue-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.radar-links a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .radar-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .radar-rail {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+}
+
+/* Touch targets (design.md, "Controls and theme"): the source and card links
+   are 44px tall to a finger, while negative margins keep the row compact. */
+.radar-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -12px;
+}
+
+/* The chip keeps its compact look; an invisible layer extends the tap area to
+   44px. */
+.radar-source {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+a.radar-source::after {
+  content: "";
+  position: absolute;
+  inset: -9px 0;
+}
+
+.radar-links {
+  margin-top: 0.4rem;
+}
+
+/* Share control (issue #671): opens the day's pre-rendered image for
+   one benchmark. It reads as a quiet text action like the card links, with 44px
+   touch targets and negative margins so the card does not grow. */
+.share-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  font-size: 0.98rem;
+}
+
+.share-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue-deep);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.share-link:hover {
+  text-decoration: underline;
+}
+
+.briefing-insight .share-control {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.today-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.today-share[hidden] {
+  display: none;
+}
+
+/* Primary discovery controls remain visible at every viewport width. */
+.today-filters { align-items: end; }
+.today-segments { border: 0; padding: 0; margin: 0; min-width: 0; }
+.today-segments legend { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.today-segments > div { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+.today-segments button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 5px; background: white; color: #171717; white-space: nowrap; font: inherit; font-size: 14px; }
+.today-segments button[aria-pressed="true"] { background: #e2e6e9; color: #171717; }
+.today-segments button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .today-filters { grid-template-columns: minmax(0, 1fr) auto; }
+  .today-segments { grid-column: 1 / -1; }
+  .today-segments button { flex: 1; min-height: 40px; }
 }

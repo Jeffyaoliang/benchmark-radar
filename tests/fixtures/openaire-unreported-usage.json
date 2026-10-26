@@ -1,0 +1,239 @@
+{
+  "authors": [
+    {
+      "id": "orcid_______::4ac4262a723490301c9b7bd4a7bf302a",
+      "fullName": "Marc Miltenberger",
+      "name": null,
+      "surname": null,
+      "rank": 1,
+      "pid": {
+        "id": {
+          "scheme": "orcid",
+          "value": "0000-0002-3806-0522"
+        },
+        "provenance": null
+      }
+    },
+    {
+      "id": "orcid_______::60a7cd37ada4783653e0e0bf09abfda4",
+      "fullName": "Steven Arzt",
+      "name": null,
+      "surname": null,
+      "rank": 2,
+      "pid": {
+        "id": {
+          "scheme": "orcid",
+          "value": "0000-0002-5807-9431"
+        },
+        "provenance": null
+      }
+    },
+    {
+      "id": "orcid_______::16fcca7e6e2faadfa3092a4157882ca7",
+      "fullName": "Philipp Holzinger",
+      "name": null,
+      "surname": null,
+      "rank": 3,
+      "pid": {
+        "id": {
+          "scheme": "orcid",
+          "value": "0000-0003-4422-8579"
+        },
+        "provenance": null
+      }
+    },
+    {
+      "id": null,
+      "fullName": "Julius Näumann",
+      "name": null,
+      "surname": null,
+      "rank": 4,
+      "pid": {
+        "id": {
+          "scheme": "orcid_pending",
+          "value": "0000-0002-5162-3334"
+        },
+        "provenance": null
+      }
+    }
+  ],
+  "openAccessColor": "hybrid",
+  "publiclyFunded": false,
+  "eoscIfGuidelines": null,
+  "type": "publication",
+  "language": {
+    "code": "und",
+    "label": "Undetermined"
+  },
+  "countries": null,
+  "subjects": null,
+  "mainTitle": "Benchmarking the Benchmarks",
+  "subTitle": null,
+  "descriptions": null,
+  "publicationDate": "2023-07-10",
+  "publisher": "ACM",
+  "embargoEndDate": null,
+  "sources": [
+    "Crossref"
+  ],
+  "formats": null,
+  "contributors": null,
+  "coverages": null,
+  "bestAccessRight": {
+    "code": "c_abf2",
+    "label": "OPEN",
+    "scheme": "http://vocabularies.coar-repositories.org/documentation/access_rights/"
+  },
+  "container": {
+    "name": "Proceedings of the ACM Asia Conference on Computer and Communications Security",
+    "issnPrinted": null,
+    "issnOnline": null,
+    "issnLinking": null,
+    "ep": "400",
+    "iss": null,
+    "sp": "387",
+    "vol": null,
+    "edition": null,
+    "conferencePlace": null,
+    "conferenceDate": null
+  },
+  "documentationUrls": null,
+  "codeRepositoryUrl": null,
+  "programmingLanguage": null,
+  "contactPeople": null,
+  "contactGroups": null,
+  "tools": null,
+  "size": null,
+  "version": null,
+  "geoLocations": null,
+  "id": "doi_dedup___::2924d64d0c171a94293c438843180d3f",
+  "originalIds": [
+    "10.1145/3579856.3582830",
+    "10.1145/3579856",
+    "50|doiboost____|2924d64d0c171a94293c438843180d3f",
+    "50|dblp________::d3a5e18ea37a5f18127567d62a25d623"
+  ],
+  "pids": [
+    {
+      "scheme": "doi",
+      "value": "10.1145/3579856.3582830"
+    }
+  ],
+  "dateOfCollection": null,
+  "lastUpdateTimeStamp": null,
+  "indicators": {
+    "citationImpact": {
+      "citationCount": 4.0,
+      "influence": 2.4628484e-09,
+      "popularity": 4.362285e-09,
+      "impulse": 4.0,
+      "citationClass": "C5",
+      "influenceClass": "C5",
+      "impulseClass": "C4",
+      "popularityClass": "C4"
+    }
+  },
+  "projects": null,
+  "organizations": [
+    {
+      "legalName": "Center for Research in Security and Privacy",
+      "acronym": "CRISP",
+      "id": "openorgs____::d88be41af68bdc09e8d1926300f765d8",
+      "pids": [
+        {
+          "scheme": "GRID",
+          "value": "grid.500069.a"
+        },
+        {
+          "scheme": "ROR",
+          "value": "https://ror.org/0378v2g76"
+        },
+        {
+          "scheme": "wikidata",
+          "value": "Q59536537"
+        },
+        {
+          "scheme": "Wikidata",
+          "value": "Q59536537"
+        }
+      ],
+      "countries": [
+        {
+          "code": "DE",
+          "label": "Germany"
+        }
+      ],
+      "websiteurl": "https://www.crisp-da.de/en/"
+    }
+  ],
+  "communities": null,
+  "collectedFrom": [
+    {
+      "key": "openaire____::081b82f96300b6a6e3d282bad31cb6e2",
+      "value": "Crossref"
+    },
+    {
+      "key": "openaire____::d8b68cc0a53121f6f896883a7d60c1db",
+      "value": "DBLP"
+    }
+  ],
+  "instances": [
+    {
+      "pids": [
+        {
+          "scheme": "doi",
+          "value": "10.1145/3579856.3582830"
+        }
+      ],
+      "license": "CC BY",
+      "accessRight": {
+        "code": "c_abf2",
+        "label": "OPEN",
+        "scheme": "http://vocabularies.coar-repositories.org/documentation/access_rights/",
+        "openAccessRoute": "hybrid"
+      },
+      "type": "Article",
+      "urls": [
+        "https://doi.org/10.1145/3579856.3582830"
+      ],
+      "publicationDate": "2023-07-10",
+      "refereed": "peerReviewed",
+      "hostedBy": {
+        "key": "openaire____::55045bd2a65019fd8e6741a755395c8c",
+        "value": "Unknown Repository"
+      },
+      "collectedFrom": {
+        "key": "openaire____::081b82f96300b6a6e3d282bad31cb6e2",
+        "value": "Crossref"
+      }
+    },
+    {
+      "alternateIdentifiers": [
+        {
+          "scheme": "doi",
+          "value": "10.1145/3579856.3582830"
+        }
+      ],
+      "type": "Conference object",
+      "urls": [
+        "https://dblp.org/rec/conf/asiaccs/MiltenbergerAHN23.html",
+        "https://doi.org/10.1145/3579856.3582830"
+      ],
+      "refereed": "nonPeerReviewed",
+      "hostedBy": {
+        "key": "openaire____::d8b68cc0a53121f6f896883a7d60c1db",
+        "value": "DBLP"
+      },
+      "collectedFrom": {
+        "key": "openaire____::d8b68cc0a53121f6f896883a7d60c1db",
+        "value": "DBLP"
+      }
+    }
+  ],
+  "links": [],
+  "otherTitles": null,
+  "green": false,
+  "inDiamondJournal": false,
+  "isGreen": false,
+  "isInDiamondJournal": false
+}

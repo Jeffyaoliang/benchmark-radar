@@ -28,7 +28,6 @@ from benchmark_radar.snapshots import (
     validate_snapshot,
     write_snapshot,
 )
-from benchmark_radar.sources import GITHUB_RELEASE_PARSER_VERSION
 
 
 def radar_run(day: int = 27, *, title: str = "A New Evaluation Benchmark") -> RadarRun:
@@ -368,7 +367,7 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     sitemap_output = tmp_path / "site" / "sitemap.xml"
     assert sitemap_output.exists()
     assert not (data_output.parent / "sitemap.xml").exists()
-    for slug in ("leaderboard", "trends", "explore", "cli", "cite", "rubric", "about"):
+    for slug in ("leaderboard", "trends", "explore", "cli", "cite", "rubric", "about", "media"):
         assert (tmp_path / "site" / slug / "index.html").exists()
     # The alias paths ship beside /about/ but stay out of the sitemap: they
     # immediately become /cite/, and a crawler asked to index both gets two
@@ -379,8 +378,8 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
     urls = [node.text for node in root.findall("sm:url/sm:loc", ns)]
     assert urls == [
         f"{SITE_URL}/",
-        f"{SITE_URL}/leaderboard/",
         f"{SITE_URL}/trends/",
+        f"{SITE_URL}/leaderboard/",
         f"{SITE_URL}/explore/",
         f"{SITE_URL}/cli/",
         f"{SITE_URL}/cite/",
@@ -392,6 +391,7 @@ def test_rebuild_writes_the_sitemap_at_the_site_root(tmp_path, site_shell):
         f"{SITE_URL}/blog/archive/",
         f"{SITE_URL}/blog/2026-07-27/",
         f"{SITE_URL}/about/",
+        f"{SITE_URL}/media/",
     ]
     lastmods = [node.text for node in root.findall("sm:url/sm:lastmod", ns)]
     # The two shards carry no dated evidence, so their pages claim no lastmod
@@ -923,7 +923,8 @@ def test_migrate_backfills_bare_github_release_titles_idempotently(tmp_path):
 
     migrated = json.loads(first_pass)["evidence_items"][0]
     assert migrated["title"] == "modelscope/evalscope v1.11.0"
-    assert migrated["parser_version"] == GITHUB_RELEASE_PARSER_VERSION
+    assert migrated["parser_version"] == "github-releases/3"
+    assert migrated["metrics"] == record["metrics"]
     assert migrated["raw_payload_hash"] == original_hash
     assert dashboard["days"][0]["evidence_items"][0]["title"] == ("modelscope/evalscope v1.11.0")
     artifact = next(
@@ -1835,3 +1836,34 @@ def test_primary_revision_retains_previously_merged_digest_evidence(reverse):
     score_item(revision, taxonomy, now=revision_run.generated_at)
     assert record["total_score"] == revision.total_score
     assert record["recommended"] is True
+
+
+def test_dashboard_day_maps_each_share_card_to_its_published_image(tmp_path):
+    """Issue #671: the site reads image URLs from radar.json, never builds them."""
+    snapshot_dir = tmp_path / "snapshots"
+    write_snapshot(radar_run(26), snapshot_dir)
+    write_snapshot(radar_run(27), snapshot_dir)
+    path = snapshot_dir / "2026-07-27.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["share"] = {
+        "date": "2026-07-27",
+        "cards": [
+            {"url": "https://example.org/a", "title": "A"},
+            {"url": "https://example.org/b", "title": "B"},
+        ],
+    }
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    dashboard = rebuild_dashboard(snapshot_dir, tmp_path / "radar.json")
+
+    base = (
+        "https://raw.githubusercontent.com/ktwu01/benchmark-radar-cards/refs/heads/daily/2026-07-27"
+    )
+    share = dashboard["days"][1]["share"]
+    assert share["top3_image"] == f"{base}/top3.png"
+    assert [(c["url"], c["image"]) for c in share["cards"]] == [
+        ("https://example.org/a", f"{base}/card-01.png"),
+        ("https://example.org/b", f"{base}/card-02.png"),
+    ]
+    # A day the share step never ran on has no images to offer.
+    assert dashboard["days"][0]["share"] == {}

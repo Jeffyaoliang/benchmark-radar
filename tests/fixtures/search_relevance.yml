@@ -42,11 +42,12 @@ cases:
     minimum_candidates: 1
     must_include_candidates: [StructTokenBench]
 
+  # RESCAST-100K was re-judged in #710: weather is an input, not the target.
   - id: weather-forecasting
     query: weather forecasting
     scope: catalog
     kind: topical
-    must_include: [RealBench, RESCAST-100K]
+    must_include: [RealBench]
 
   - id: stock-prediction
     query: stock prediction

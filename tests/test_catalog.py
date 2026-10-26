@@ -17,6 +17,7 @@ import yaml
 from benchmark_radar.catalog import (
     CatalogError,
     assign_slugs,
+    https_url,
     normalize_snapshot,
     slugify,
     write_catalog,
@@ -1369,3 +1370,13 @@ def test_deepresearch_bench_pending_identity_does_not_inherit_metadata(full_reco
     assert resolved[recipient_key] == original[recipient_key]
     assert resolved[donor_key] == original[donor_key]
     assert "identity_inheritance" not in resolved[recipient_key]
+
+
+def test_https_url_upgrades_only_hosts_that_redirect_to_https():
+    assert https_url("http://arxiv.org/abs/2608.23390v1") == "https://arxiv.org/abs/2608.23390v1"
+    assert https_url("HTTP://github.com/a/b") == "https://github.com/a/b"
+    assert https_url("https://arxiv.org/abs/1") == "https://arxiv.org/abs/1"
+    # A host not known to serve https keeps its scheme: rewriting it could break the link.
+    assert https_url("http://example.org/bench") == "http://example.org/bench"
+    assert https_url("http://arxiv.org.evil.example/x") == "http://arxiv.org.evil.example/x"
+    assert https_url("") == ""

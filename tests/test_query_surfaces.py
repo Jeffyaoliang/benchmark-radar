@@ -668,17 +668,28 @@ def test_cli_and_http_return_the_same_search_contract(tmp_path: Path, capsys) ->
     assert cli_payload == http_payload
 
 
-def test_cli_labels_partial_candidates_without_hiding_them(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize(
+    ("scope", "query", "count", "name"),
+    [
+        ("catalog", "protein agent prediction", 2, "Agent Workbench"),
+        ("radar", "agent workbench", 1, "New Agent Memory Benchmark"),
+    ],
+)
+def test_cli_labels_partial_candidates_without_hiding_them(
+    tmp_path: Path, capsys, scope: str, query: str, count: int, name: str
+) -> None:
     # Regression: the terminal rendered weak one-token evidence as ordinary
     # matches, so an agent had no top-level signal that no full lexical match existed.
     paths = _catalog(tmp_path)
+    if scope == "radar":
+        assert QueryService(paths).search(query, scope="catalog")["full_match_count"] == 2
 
     exit_code = run_query_cli(
         [
             "search",
-            "protein agent prediction",
+            query,
             "--scope",
-            "catalog",
+            scope,
             "--limit",
             "2",
             "--index",
@@ -692,9 +703,11 @@ def test_cli_labels_partial_candidates_without_hiding_them(tmp_path: Path, capsy
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "2 of 2 partial lexical candidates" in output
-    assert "none matched every query token" in output
-    assert "Agent Workbench" in output
+    assert "No record in the searched scope matched every query token" in output
+    assert f"(scope={scope})" in output
+    assert "partial candidates are not answers" in output
+    assert f"Showing {count} of {count} partial lexical candidates" in output
+    assert name in output
 
 
 def test_cli_and_http_return_the_same_non_search_contracts(tmp_path: Path, capsys) -> None:
@@ -866,7 +879,8 @@ def test_cli_ends_human_output_with_citation_reminder(tmp_path: Path, capsys) ->
     assert exit_code == 0
     assert "please cite it" in output
     assert (
-        "Wu, K., Zhou, J., Shang, E., Wang, J., Han, P., Wang, J., & Xu, W. (2026). "
+        "Wu, K., Zhang, W., Zhou, J., Han, P., Shang, E., Wang, J., Wang, J., Xu, W., "
+        "Lu, S., Li, Y., Mizrahi Celekli, R., Ravshanov, L., Bian, Y., Han, X., & Shi, L. (2026). "
         "Benchmark Radar: A living database and search engine for AI benchmarks and evaluation. "
         "arXiv:2609.11115. https://arxiv.org/abs/2609.11115"
     ) in output

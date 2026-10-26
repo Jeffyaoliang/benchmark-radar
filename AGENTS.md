@@ -20,6 +20,7 @@ the constraint that holds whether or not you open it.
 | [`docs/query-surfaces.md`](docs/query-surfaces.md) | Changing search, detail lookup, the CLI or HTTP query surface, or the consumer Skill | `QueryService` is the single source of truth. No interface-specific ranking, and no silent network fallback. |
 | [`principle.md`](principle.md) | Changing any benchmark-facing surface | Start from the full corpus across all sources. |
 | [`docs/agent-gotchas.md`](docs/agent-gotchas.md) | Verifying locally, merging, or answering a literature question | A local result counts only from a clean worktree with its own venv. |
+| [`maintainer-review.md`](maintainer-review.md) | Reviewing or merging a contributor PR | The human contributor answers the four questions, and the change takes the least resource-intensive route. |
 
 ## Glob rule: showcase and UI communication
 
@@ -65,6 +66,9 @@ Applies to `README*`, `docs/**`, `.github/ISSUE_TEMPLATE/**`, `site/**`,
 
 ## Working rules
 
+- When the contributor is not `ktwu01`, ask the four questions in
+  [`CONTRIBUTING.md`](CONTRIBUTING.md#before-you-start-a-pr) before
+  substantive work.
 - Finish the task without nudges. Stop only for a merge, a credential, or a
   destructive action.
 - If a request has two opposite readings, state your reading in one line, then
@@ -72,20 +76,25 @@ Applies to `README*`, `docs/**`, `.github/ISSUE_TEMPLATE/**`, `site/**`,
 - Keep each fix minimal. File each follow-up as its own issue.
 - End with a link to the rendered result, after you open it yourself.
 
+## Writing rules
+
+- Add a rule only when you can name the harm. Agents read a rule more broadly
+  than it was meant. In #862, "no ranking presented as a quality judgement"
+  became "scores from different sources are not comparable". A reason that
+  reads like a general truth spreads furthest.
+- Forbid only what must not happen and does real harm: legal risk (scraping
+  behind authentication), silent data damage (fuzzy merges), or work the build
+  overwrites (hand-edited generated files). Do not list what is allowed.
+- Benchmark Radar provides data and makes no quality judgements. Leave how to
+  rank or compare to the people who use the data.
+
 ## Branches and pull requests
 
 - Never push to `main`. Every change goes through a pull request.
-- Start each task from the latest `main`:
-
-      git fetch origin main:main
-      git switch --no-track -c <branch> main
-      git push -u origin <branch>
-
-  The first command updates local `main` without a checkout. If it fails,
-  local `main` has diverged: stop and report it. Keep `--no-track` so a bare
-  `git push` never targets `main`.
-- To update an existing branch, run `git fetch origin main:main`, then
-  `git rebase main`. Re-read the diff before you push.
+- Start each branch from the latest `main`, and keep it on the latest `main`
+  until it merges. Re-read the diff before you push.
+- Every pull request links an existing issue with `Closes #N` or `Related to #N`
+  and fills in the pull request template. Automation closes a PR with no link.
 - Never merge a pull request unless the user asks. When asked, use a merge
   commit. Do not squash.
 - Agents: comment `330226 <model-id>` on every pull request you open, for

@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import HTTPError
@@ -1046,7 +1047,7 @@ def test_crossref_preserves_doi_metadata_and_bounds_the_query(monkeypatch):
     assert items[0].organizations == ["Radar Lab"]
     assert items[0].artifact_urls == ["https://doi.org/10.1000/radar"]
     assert items[0].metrics == {"citations": 3.0}
-    assert items[0].parser_version == "crossref-works/1"
+    assert items[0].parser_version == "crossref-works/2"
     assert calls[0][0] == "https://api.crossref.org/works"
     assert calls[0][1]["params"]["query.title"] == "agent benchmark"
     assert calls[0][1]["params"]["filter"] == ("from-pub-date:2026-07-26,until-pub-date:2026-07-28")
@@ -1161,7 +1162,7 @@ def test_openaire_preserves_upstream_metadata_and_bounds_the_query(monkeypatch):
     assert item.updated_at == datetime(2026, 7, 27, tzinfo=UTC)
     assert item.raw["dateOfCollection"] == "2026-08-30T00:00:00Z"
     assert item.event_kind == "released"
-    assert item.parser_version == "openaire-graph-v3/1"
+    assert item.parser_version == "openaire-graph-v3/2"
     assert calls[0][0] == "https://api.openaire.eu/graph/v3/research-products"
     assert calls[0][1]["params"] == {
         "mainTitle": '"agent benchmark"',
@@ -1627,7 +1628,7 @@ def test_openaire_stops_at_the_configured_request_budget(monkeypatch):
 
 
 def test_openaire_preserves_a_product_that_carries_almost_nothing(monkeypatch):
-    # An absent public counter is a real zero rather than a missing metric.
+    # Missing public counters stay unknown; the sparse record remains included.
     monkeypatch.setattr(
         "benchmark_radar.sources.get_json",
         lambda url, **kwargs: _openaire_rows_payload(
@@ -1645,7 +1646,7 @@ def test_openaire_preserves_a_product_that_carries_almost_nothing(monkeypatch):
     item = items[0]
     assert item.url == "https://doi.org/10.1000/sparse"
     assert item.artifact_urls == ["https://doi.org/10.1000/sparse"]
-    assert item.metrics == {"citations": 0.0, "downloads": 0.0, "views": 0.0}
+    assert item.metrics == {}
     assert item.authors == []
     assert item.organizations == []
     assert item.summary == ""
@@ -1787,7 +1788,7 @@ def test_datacite_preserves_doi_metadata_and_bounds_the_query(monkeypatch):
     assert item.updated_at == datetime(2026, 7, 27, 9, tzinfo=UTC)
     assert item.raw["attributes"]["updated"] == "2026-07-27T09:00:05.000Z"
     assert item.event_kind == "released"
-    assert item.parser_version == "datacite-dois/1"
+    assert item.parser_version == "datacite-dois/2"
     assert calls[0][0] == "https://api.datacite.org/dois"
     params = calls[0][1]["params"]
     # Both ends of the window travel with the query, second-precise and in UTC.
@@ -2025,7 +2026,7 @@ def test_datacite_truncates_to_the_per_source_limit(monkeypatch):
 
 def test_datacite_preserves_a_deposit_that_carries_almost_nothing(monkeypatch):
     # A DOI, a title and a registration date are all DataCite requires. An
-    # absent public counter is a real zero rather than a missing metric, and a
+    # absent public counter stays unknown, and a
     # deposit whose landing page is its own DOI must not list that URL twice.
     monkeypatch.setattr(
         "benchmark_radar.sources.get_json",
@@ -2046,7 +2047,7 @@ def test_datacite_preserves_a_deposit_that_carries_almost_nothing(monkeypatch):
 
     item = items[0]
     assert item.artifact_urls == ["https://doi.org/10.5281/zenodo.1"]
-    assert item.metrics == {"citations": 0.0, "downloads": 0.0, "views": 0.0}
+    assert item.metrics == {}
     assert item.authors == []
     assert item.organizations == []
     assert item.summary == ""
@@ -2343,7 +2344,7 @@ def test_semantic_scholar_success_preserves_external_ids(monkeypatch):
     assert items[0].summary == "The upstream scholarly abstract."
     assert "https://doi.org/10.1000/radar" in items[0].artifact_urls
     assert "https://arxiv.org/abs/2607.12345" in items[0].artifact_urls
-    assert items[0].parser_version == "semantic-scholar-graph/1"
+    assert items[0].parser_version == "semantic-scholar-graph/2"
 
 
 def test_semantic_scholar_paces_an_individual_api_key(monkeypatch):
@@ -3930,3 +3931,248 @@ def test_xbsleepy_skips_invalid_urls_before_snapshotting(monkeypatch, url):
     monkeypatch.setattr("benchmark_radar.sources.get_json", lambda *a, **kw: {"papers": [invalid]})
     with pytest.raises(ConnectorPayloadError, match="no valid paper rows"):
         fetch_xbsleepy(config, datetime(2026, 9, 8, tzinfo=UTC), 10)
+
+
+_COUNTER_CONNECTORS = [
+    "huggingface",
+    "github",
+    "github_organizations",
+    "kaggle_datasets",
+    "huggingface_papers",
+    "zenodo_records",
+    "crossref",
+    "openaire",
+    "datacite",
+    "semantic_scholar",
+    "openalex",
+]
+
+
+def _counter_connector_case(connector):
+    """Minimal valid source records, retaining each API's native counter names."""
+    row = {"title": "A benchmark", "publicationDate": "2026-07-27"}
+    config = {
+        "searches": ["benchmark"],
+        "max_requests": 1,
+        "_collection_now": datetime(2026, 7, 28, tzinfo=UTC),
+    }
+    if connector == "huggingface":
+        row = {"id": "lab/benchmark", "lastModified": "2026-07-27T12:00:00Z"}
+        return (
+            fetch_huggingface,
+            config,
+            [row],
+            [(row, {"downloads": "downloads", "likes": "likes"})],
+        )
+    if connector in ("github", "github_organizations"):
+        row = _github_organization_row(1)
+        row.pop("stargazers_count")
+        row.pop("forks_count")
+        config.update(queries=["benchmark"], request_delay_seconds=0, registry_path="ignored.yml")
+        fetcher = fetch_github if connector == "github" else fetch_github_organizations
+        payload = {"items": [row]} if connector == "github" else [row]
+        return (
+            fetcher,
+            config,
+            payload,
+            [(row, {"stars": "stargazers_count", "forks": "forks_count"})],
+        )
+    if connector == "kaggle_datasets":
+        row = {
+            "ref": "lab/benchmark",
+            "url": "https://www.kaggle.com/datasets/lab/benchmark",
+            "title": "A benchmark",
+            "lastUpdated": "2026-07-27T12:00:00Z",
+        }
+        return (
+            fetch_kaggle_datasets,
+            config,
+            [row],
+            [(row, {"downloads": "downloadCount", "votes": "voteCount", "views": "viewCount"})],
+        )
+    if connector == "huggingface_papers":
+        row.update(
+            id="2607.12345",
+            publishedAt="2026-07-27T12:00:00Z",
+            submittedOnDailyAt="2026-07-27T12:00:00Z",
+        )
+        return fetch_huggingface_papers, config, [{"paper": row}], [(row, {"upvotes": "upvotes"})]
+    if connector == "zenodo_records":
+        row = _deposit("1", "A benchmark", "Evaluation", [], 27)
+        row["stats"] = {}
+        return (
+            fetch_zenodo_records,
+            config,
+            {"hits": {"hits": [row]}},
+            [(row["stats"], {"downloads": "downloads", "views": "views"})],
+        )
+    if connector == "crossref":
+        row = {
+            "DOI": "10.1000/benchmark",
+            "title": ["A benchmark"],
+            "published": {"date-parts": [[2026, 7, 27]]},
+        }
+        return (
+            fetch_crossref,
+            config,
+            {"message": {"items": [row]}},
+            [(row, {"citations": "is-referenced-by-count"})],
+        )
+    if connector == "openaire":
+        row = _openaire_row(indicators={"citationImpact": {}, "usageCounts": {}})
+        indicators = row["indicators"]
+        return (
+            fetch_openaire,
+            config,
+            _openaire_rows_payload(row),
+            [
+                (indicators["citationImpact"], {"citations": "citationCount"}),
+                (indicators["usageCounts"], {"downloads": "downloads", "views": "views"}),
+            ],
+        )
+    if connector == "datacite":
+        row = _datacite_row()
+        counters = row["attributes"]
+        for key in ("citationCount", "downloadCount", "viewCount"):
+            counters.pop(key)
+        return (
+            fetch_datacite,
+            config,
+            _datacite_rows_payload(row),
+            [
+                (
+                    counters,
+                    {
+                        "citations": "citationCount",
+                        "downloads": "downloadCount",
+                        "views": "viewCount",
+                    },
+                )
+            ],
+        )
+    if connector == "semantic_scholar":
+        row.update(paperId="s2-benchmark", url="https://example.test/paper")
+        return (
+            fetch_semantic_scholar,
+            config,
+            {"data": [row]},
+            [
+                (
+                    row,
+                    {
+                        "citations": "citationCount",
+                        "influential_citations": "influentialCitationCount",
+                    },
+                )
+            ],
+        )
+    row = {
+        "id": "https://openalex.org/W1",
+        "display_name": "A benchmark",
+        "publication_date": "2026-07-27",
+    }
+    return fetch_openalex, config, {"results": [row]}, [(row, {"citations": "cited_by_count"})]
+
+
+@pytest.mark.parametrize("connector", _COUNTER_CONNECTORS)
+@pytest.mark.parametrize("case", ["missing", "null", "blank", "zero", "positive", "mixed"])
+def test_connectors_preserve_unknown_vs_reported_counters(monkeypatch, connector, case):
+    monkeypatch.setenv("OPENALEX_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "benchmark_radar.sources.load_priority_github_organizations",
+        lambda path: [
+            {"login": "lab", "tier": "priority", "display_name": "Lab"},
+        ],
+    )
+    fetcher, config, payload, counter_groups = _counter_connector_case(connector)
+    expected = {}
+    for counters, fields in counter_groups:
+        for index, (metric, field) in enumerate(fields.items()):
+            if case == "missing":
+                continue
+            value = {
+                "null": None,
+                "blank": "  ",
+                "zero": 0,
+                "positive": "7",
+                "mixed": 0 if index == 0 else None,
+            }[case]
+            counters[field] = value
+            if value in (0, "7"):
+                expected[metric] = float(value)
+    monkeypatch.setattr("benchmark_radar.sources.get_json", lambda *a, **kw: payload)
+    items = fetcher(config, datetime(2026, 7, 26, tzinfo=UTC), 10)
+    assert len(items) == 1  # Missing measurements never discard the source record.
+    item = items[0]
+    assert item.metrics == expected
+    assert item.parser_version.endswith("/2")
+    score_item(item, {"benchmark": ["benchmark"]}, datetime(2026, 7, 28, tzinfo=UTC))
+    assert item.to_dict()["metrics"] == expected
+
+
+@pytest.mark.parametrize(
+    "assets, expected",
+    [
+        ("missing", {}),
+        (None, {}),
+        ([], {"downloads": 0.0}),
+        ([{}], {}),
+        ([{"download_count": None}], {}),
+        ([{"download_count": ""}], {}),
+        ([{"download_count": 0}], {"downloads": 0.0}),
+        ([{"download_count": 3}, {}], {}),
+        ([{"download_count": 3}, {"download_count": 0}], {"downloads": 3.0}),
+    ],
+)
+@pytest.mark.parametrize(
+    "metadata",
+    [{}, {"stargazers_count": 0, "forks_count": None}, {"stargazers_count": 7, "forks_count": 2}],
+)
+def test_github_release_requires_complete_download_counts(monkeypatch, assets, expected, metadata):
+    release = {
+        "tag_name": "v1",
+        "html_url": "https://github.com/lab/benchmark/releases/tag/v1",
+        "published_at": "2026-07-27T12:00:00Z",
+    }
+    if assets != "missing":
+        release["assets"] = assets
+    monkeypatch.setattr(
+        "benchmark_radar.sources.get_json",
+        lambda url, **kw: [release] if url.endswith("/releases") else metadata,
+    )
+    items = fetch_github_releases(
+        {"repositories": ["lab/benchmark"], "max_requests": 1},
+        datetime(2026, 7, 26, tzinfo=UTC),
+        10,
+    )
+    assert len(items) == 1
+    repository_metrics = {
+        metric: float(metadata[field])
+        for metric, field in [("stars", "stargazers_count"), ("forks", "forks_count")]
+        if metadata.get(field) is not None
+    }
+    assert items[0].metrics == {**expected, **repository_metrics}
+    assert items[0].parser_version == "github-releases/4"
+
+
+def test_openaire_real_response_does_not_fabricate_usage_counts(monkeypatch):
+    # Captured 2026-10-11 from Graph v3 /research-products?mainTitle=benchmark&pageSize=3.
+    # This real row reports citations but supplies no usageCounts object.
+    row = json.loads(Path("tests/fixtures/openaire-unreported-usage.json").read_text())
+    assert "usageCounts" not in row["indicators"]
+    monkeypatch.setattr(
+        "benchmark_radar.sources.get_json", lambda *a, **kw: _openaire_rows_payload(row)
+    )
+    items = fetch_openaire(
+        {
+            "searches": ["benchmark"],
+            "max_requests": 1,
+            "_collection_now": datetime(2026, 10, 11, tzinfo=UTC),
+        },
+        datetime(2023, 7, 10, tzinfo=UTC),
+        10,
+    )
+    assert [item.source_id for item in items] == [row["id"]]
+    assert items[0].metrics == {"citations": 4.0}
+    score_item(items[0], {"benchmark": ["benchmark"]}, datetime(2026, 10, 11, tzinfo=UTC))
+    assert items[0].to_dict()["metrics"] == {"citations": 4.0}

@@ -10,6 +10,7 @@ Produces four subsets (configs) aligning with the Benchmark Radar paper:
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -40,9 +41,14 @@ def generate_dataset_card(
     scores_count: int,
     artifacts_count: int,
     observations_count: int,
+    catalog_sources: Iterable[str],
 ) -> str:
     """Generate Hugging Face Dataset Card README.md with YAML frontmatter."""
+    # Rendered from the exported rows so the card names every catalog source,
+    # including ones added after REQUIRED_CATALOG_SOURCES was written.
+    source_list = ", ".join(f"`{source}`" for source in sorted(catalog_sources))
     card = f"""---
+pretty_name: "Benchmark Radar: AI Benchmarks and Evaluation Scores"
 license: other
 license_name: benchmark-radar-mixed-terms
 license_link: https://github.com/ktwu01/benchmark-radar/blob/main/LICENSE-CONTENT.md
@@ -60,6 +66,14 @@ tags:
   - leaderboard
   - ai-evaluation
   - benchmark-radar
+  - ai-benchmark
+  - benchmark-datasets
+  - llm-evaluation
+  - model-evaluation
+  - agent-benchmark
+  - multimodal
+  - model-cards
+  - benchmark-discovery
 size_categories:
   - 10K<n<100K
 configs:
@@ -74,7 +88,7 @@ configs:
     data_files: "data/radar_observations.jsonl"
 ---
 
-# Benchmark Radar Dataset
+# Benchmark Radar: AI Benchmarks and Evaluation Scores
 
 <p align="center">
   <a href="https://huggingface.co/papers/2609.11115"><img alt="Paper" src="https://img.shields.io/badge/Paper-arXiv%3A2609.11115-B31B1B.svg"></a>
@@ -83,19 +97,28 @@ configs:
   <a href="https://huggingface.co/datasets/ktwu01/benchmark-radar"><img alt="HF Dataset" src="https://img.shields.io/badge/Hugging%20Face-Datasets-yellow.svg"></a>
 </p>
 
+Find AI benchmarks for LLMs, agents, and multimodal models. Benchmark Radar
+brings benchmark metadata, reported model scores, and daily discoveries
+together, with links to original sources where available.
+[Search benchmarks](https://benchmark-radar.org/) or load the four dataset
+subsets below.
+
 ## Overview
 
-**Benchmark Radar** is a living registry, search engine, and discovery pipeline
-for AI evaluation benchmarks. This dataset mirrors the full-corpus findings of the
-Benchmark Radar technical report (*"Benchmark Radar: Daily Discovery and
-Full-Corpus Search Across the AI Evaluation Landscape"*, arXiv:2609.11115).
+**Benchmark Radar** is a living database and search engine for AI benchmarks
+and evaluation, described in the technical report
+*"Benchmark Radar: A Living Database and Search Engine for AI Benchmarks and
+Evaluation"* ([arXiv:2609.11115](https://arxiv.org/abs/2609.11115)). This
+dataset is the live export, refreshed as sources change. The paper's analyses
+use the frozen v0.11.0 catalog, so counts here differ from the paper.
 
 As described in the paper's *Two Input Paths* framework, Benchmark Radar
 combines two complementary systems:
 1. **Catalog & Scores**: A curated, normalized cross-registry archive of
    **{catalog_count:,}** benchmark suites and **{scores_count:,}** reported
-   model score observations across LLM Stats, OpenCompass Hub,
-   Artificial Analysis, and premier model technical reports.
+   model score observations from catalog source providers including
+   LLM Stats, OpenCompass Hub, Artificial Analysis, Claire Radar, and model
+   technical reports.
 2. **Radar Discoveries**: A 24/7 automated intelligence pipeline tracking emerging
    papers, code repositories, datasets, and community attention across 37+ sources,
    capturing **{artifacts_count:,}** research artifacts and **{observations_count:,}**
@@ -129,7 +152,7 @@ Contains {catalog_count:,} normalized benchmark records.
 - `benchmark_id`: Canonical unique identifier (e.g. `llm-stats:mmlu-pro`, `opencompass:1580`)
 - `slug`: URL-safe unique identifier
 - `name`: Benchmark display name
-- `source`: Source provider (`llm_stats`, `opencompass_hub`, `artificial_analysis`, `model_reports`)
+- `source`: Catalog source provider ({source_list})
 - `source_url`: URL to original source entry
 - `description`: Plaintext description and task summary
 - `categories`: Assigned category tags (e.g. `Reasoning`, `Code`, `Multimodal`)
@@ -166,7 +189,7 @@ Contains {scores_count:,} reported evaluation score observations across 870+ fro
 
 ### 3. `radar_artifacts`
 Contains {artifacts_count:,} academic artifacts surfaced by daily radar.
-- `id`: Artifact identifier (e.g. `artifact:arxiv:2203.17257`)
+- `id`: Artifact identifier (e.g. `artifact:github:ktwu01/benchmark-radar`)
 - `type`: Entity type (`artifact`)
 - `label`: Title or repository name
 - `url`: Primary external URL
@@ -215,12 +238,19 @@ before reuse, especially for commercial dataset packaging.
 ## Citation
 
 ```bibtex
-@article{{benchmark_radar_2026,
-  title={{Benchmark Radar: Daily Discovery and Full-Corpus Search
-          Across the AI Evaluation Landscape}},
-  author={{Wu, Koutian and Contributors}},
-  journal={{arXiv preprint arXiv:2609.11115}},
-  year={{2026}}
+@misc{{wu2026benchmarkradarlivingdatabase,
+  title={{Benchmark Radar: A Living Database and Search Engine
+         for AI Benchmarks and Evaluation}},
+  author={{Wu, Koutian and Zhang, Wenjun and Zhou, Junjie and Han, Pengqian
+          and Shang, Ergan and Wang, Jiayu and Wang, Junkai and Xu, Wanghan
+          and Lu, Songyuanyi and Li, Yixuan and Mizrahi Celekli, Rudy
+          and Ravshanov, Lazizbek and Bian, Yaoliang and Han, Xudong
+          and Shi, Lin}},
+  year={{2026}},
+  eprint={{2609.11115}},
+  archivePrefix={{arXiv}},
+  primaryClass={{cs.AI}},
+  url={{https://arxiv.org/abs/2609.11115}},
 }}
 ```
 """
@@ -447,6 +477,7 @@ def export_hf_dataset(
         scores_count=len(score_rows),
         artifacts_count=len(artifact_rows),
         observations_count=len(observation_rows),
+        catalog_sources=sources,
     )
     (output_dir / "README.md").write_text(readme_content, encoding="utf-8")
 

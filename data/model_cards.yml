@@ -45,6 +45,24 @@ schema_version: 1
 
 # Source documents for score extraction (non-card sources)
 source_documents:
+  - id: gobench_llm_results_2026_10_19
+    name: GoBench Track 1-3 LLM comparison tables (2026-10-19)
+    publisher: Roland Gao
+    document_type: benchmark_leaderboard
+    url: https://github.com/RolandGao/gobench/blob/ea88ed944c07dff5d063e7e2789a481818d0dc9c/log/summary/report.txt#L196-L255
+    benchmarks: [gobench]
+    # Publication date of the pinned results commit, not a model release date.
+    published: 2026-10-19
+    retrieved_at: 2026-10-25
+
+  - id: gobench_live_leaderboard
+    name: GoBench leaderboard and current track definitions
+    publisher: Roland Gao
+    document_type: benchmark_leaderboard
+    url: https://rolandgao.com/blog/gobench/
+    benchmarks: [gobench]
+    retrieved_at: 2026-10-25
+
   - id: frontier_challenge_leaderboard_2026_08_25
     name: FrontierChallenge leaderboard
     publisher: ApodexAI
@@ -57,6 +75,22 @@ source_documents:
   # the leaderboard each benchmark's authors publish. Each reports a results
   # table read directly out of the paper (no model card passes through it), so
   # the rows they feed are benchmark_publisher_run measurements.
+  - id: brain_to_text_24_evalai_leaderboard
+    name: Brain-to-Text Benchmark '24 leaderboard
+    publisher: Stanford Neural Prosthetics Translational Laboratory
+    document_type: benchmark_leaderboard
+    url: https://eval.ai/web/challenges/challenge-page/2099/overview
+    benchmarks: [brain_to_text_24]
+    retrieved_at: 2026-09-19
+
+  - id: brain_to_text_25_kaggle_leaderboard
+    name: Brain-to-Text '25 private leaderboard (2026-09-19 public snapshot)
+    publisher: UC Davis Neuroprosthetics Lab
+    document_type: benchmark_leaderboard
+    url: https://www.kaggle.com/competitions/brain-to-text-25/leaderboard
+    benchmarks: [brain_to_text_25]
+    retrieved_at: 2026-09-19
+
   - id: jointavbench_v2_results_table
     name: JointAVBench v2 results table
     publisher: Renmin University of China
@@ -93,6 +127,23 @@ source_documents:
 # vendor spellings ("SWE-bench-Verified", "SWE Bench Verified") onto one id
 # without changing the ids the leaderboard is built from.
 benchmarks:
+  - id: gobench
+    name: GoBench
+    aliases: ["GoBench", "GoBench 9x9 Go", "GoBench: Evaluating LLMs on the Game of Go"]
+    domain: reasoning
+    url: https://rolandgao.com/gobench.pdf
+    # The original publication date shown on the official live leaderboard.
+    released: 2026-09-15
+    caveat: >-
+      Elo is relative to this 9x9 Go KataGo ladder, with the random player fixed
+      at zero; it is not a percentage or a human Go rank. Track 1 uses APIs
+      without tools, Track 2 evaluates agent-built engines, and Track 3 evaluates
+      tutorial-assisted API play. Context mode, reasoning effort, learning time,
+      engine time limit, and the ladder snapshot affect comparisons. The cited
+      LLM tables have 14-30 games per API configuration or 300 per engine, with
+      95% confidence intervals reported in the source. Current Track 2 uses a
+      60-second engine clock, unlike the older agent-in-the-loop paper results.
+
   - id: hle
     name: Humanity's Last Exam
     aliases: ["HLE", "Humanity's Last Exam", "HLE-Full", "HLE-Verified"]
@@ -1687,6 +1738,30 @@ benchmarks:
       It measures refusal of valid requests, not the Absolute Safety score;
       no score is inferred from a bar's height.
 
+  - id: brain_to_text_24
+    name: Brain-to-Text Benchmark '24
+    aliases: ["Brain-to-Text '24", "BtoT24"]
+    domain: science
+    url: https://eval.ai/web/challenges/challenge-page/2099/overview
+    released: 2023-06-01
+    caveat: >-
+      Evaluates 1,200 held-out sentences from one participant (T12). Language
+      model post-processing is part of each system, and results do not establish
+      transfer to another participant or to the different Brain-to-Text '25
+      dataset.
+
+  - id: brain_to_text_25
+    name: Brain-to-Text '25
+    aliases: ["Brain-to-text '25", "BtoT25"]
+    domain: science
+    url: https://www.kaggle.com/competitions/brain-to-text-25
+    released: 2025-07-07
+    caveat: >-
+      Evaluates one participant (T15), with about two thirds of 1,450 held-out
+      sentences used for the private leaderboard. Speaking strategy, language
+      model and corpus mix affect word error rate, so these scores are not
+      directly comparable to Brain-to-Text '24.
+
 # Model cards, technical reports and release posts.
 #
 # `organization` is the publisher of the document. `benchmarks` is the set of
@@ -2635,3 +2710,17 @@ model_cards:
     - cohere_north_multihop_search
     - cohere_absolute_safety
     - cohere_over_refusal
+
+  - id: microsoft_phi_4_mini_reasoning_model_card
+    organization: Microsoft
+    model: Phi-4-mini-reasoning (3.8B)
+    document_type: model_card
+    # Earliest confirmed public date, not the preceding upload timestamp:
+    # https://azure.microsoft.com/en-us/blog/one-year-of-phi-small-language-models-making-big-leaps-in-ai/
+    published: '2025-04-30'
+    retrieved_at: '2026-10-10'
+    url: https://huggingface.co/microsoft/Phi-4-mini-reasoning/blob/661e72224c678e7360429603fd898712ee0c74b9/README.md
+    benchmarks:
+    - aime
+    - math_500
+    - gpqa_diamond

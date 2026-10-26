@@ -88,6 +88,10 @@ schema_version: 1
 # improves upward: an edit-distance metric inverts the axis, and a chart that
 # assumed higher-is-better would draw its progression upside down.
 benchmarks:
+  - benchmark_id: gobench
+    metric: elo
+    direction: higher_is_better
+    unit: elo
   - benchmark_id: mmlu
     metric: accuracy
     direction: higher_is_better
@@ -547,7 +551,133 @@ benchmarks:
     direction: higher_is_better
     unit: percent
 
+  - benchmark_id: brain_to_text_24
+    metric: word_error_rate
+    direction: lower_is_better
+    unit: percent
+  - benchmark_id: brain_to_text_25
+    metric: word_error_rate
+    direction: lower_is_better
+    unit: ratio
+
 results:
+  # Brain-to-Text '24's official challenge summary names the top three final
+  # submissions and the PyTorch baseline. The challenge used 1,200 held-out
+  # sentences from participant T12 and prints word error rate as a percentage.
+  - benchmark_id: brain_to_text_24
+    instrument: brain_to_text_24_t12_1200_holdout_sentences
+    protocol: 1,200 competitionHoldOut sentences; aggregate word error rate
+    model: DCoND-LIFT
+    organization: Shlizerman Lab
+    source_id: brain_to_text_24_evalai_leaderboard
+    reported_at: 2024-06-01
+    value: 5.81
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_24
+    instrument: brain_to_text_24_t12_1200_holdout_sentences
+    protocol: 1,200 competitionHoldOut sentences; aggregate word error rate
+    model: TeamCyber submission
+    organization: Okubo Lab at CIBR
+    source_id: brain_to_text_24_evalai_leaderboard
+    reported_at: 2024-06-01
+    value: 8.26
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_24
+    instrument: brain_to_text_24_t12_1200_holdout_sentences
+    protocol: 1,200 competitionHoldOut sentences; aggregate word error rate
+    model: Tyler Benster et al. submission
+    organization: Tyler Benster et al.
+    source_id: brain_to_text_24_evalai_leaderboard
+    reported_at: 2024-06-01
+    value: 8.93
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_24
+    instrument: brain_to_text_24_t12_1200_holdout_sentences
+    protocol: 1,200 competitionHoldOut sentences; aggregate word error rate
+    model: PyTorch baseline
+    organization: Stanford NPTL
+    source_id: brain_to_text_24_evalai_leaderboard
+    reported_at: 2024-06-01
+    value: 9.76
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  # Brain-to-Text '25's final Kaggle private leaderboard uses about two thirds
+  # of 1,450 held-out T15 sentences. WER ratios come from the final leaderboard
+  # inspected on 2026-09-19. This is one public snapshot, not six dated reports;
+  # submission timestamps do not establish historical public score availability.
+  - benchmark_id: brain_to_text_25
+    instrument: brain_to_text_25_t15_private_leaderboard
+    protocol: approximately 67% of 1,450 held-out test sentences; aggregate word error rate
+    model: Infera-Neuro submission
+    organization: Infera-Neuro
+    source_id: brain_to_text_25_kaggle_leaderboard
+    reported_at: 2026-09-19
+    value: 0.01537
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_25
+    instrument: brain_to_text_25_t15_private_leaderboard
+    protocol: approximately 67% of 1,450 held-out test sentences; aggregate word error rate
+    model: EPFL-INL submission
+    organization: EPFL-INL
+    source_id: brain_to_text_25_kaggle_leaderboard
+    reported_at: 2026-09-19
+    value: 0.01663
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_25
+    instrument: brain_to_text_25_t15_private_leaderboard
+    protocol: approximately 67% of 1,450 held-out test sentences; aggregate word error rate
+    model: BIT submission
+    organization: BIT
+    source_id: brain_to_text_25_kaggle_leaderboard
+    reported_at: 2026-09-19
+    value: 0.01773
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_25
+    instrument: brain_to_text_25_t15_private_leaderboard
+    protocol: approximately 67% of 1,450 held-out test sentences; aggregate word error rate
+    model: Stanford-NPTL causal RNN Ensemble + 5gram
+    organization: Stanford NPTL
+    source_id: brain_to_text_25_kaggle_leaderboard
+    reported_at: 2026-09-19
+    value: 0.03892
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_25
+    instrument: brain_to_text_25_t15_private_leaderboard
+    protocol: approximately 67% of 1,450 held-out test sentences; aggregate word error rate
+    model: Stanford-NPTL causal RNN TTA-Ensemble + 5gram
+    organization: Stanford NPTL
+    source_id: brain_to_text_25_kaggle_leaderboard
+    reported_at: 2026-09-19
+    value: 0.04817
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  - benchmark_id: brain_to_text_25
+    instrument: brain_to_text_25_t15_private_leaderboard
+    protocol: approximately 67% of 1,450 held-out test sentences; aggregate word error rate
+    model: UCD-NPL causal RNN + 5gram
+    organization: UC Davis Neuroprosthetics Lab
+    source_id: brain_to_text_25_kaggle_leaderboard
+    reported_at: 2026-09-19
+    value: 0.06999
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
   # FrontierChallenge's official leaderboard reports model-scaffold systems,
   # not model-only measurements. Preserve the scaffold in every protocol so
   # changing the agent harness never looks like a comparable model update.
@@ -5846,3 +5976,861 @@ results:
     value: 23.4
     read_from: table_image
     reported_by: Cohere
+
+# Phi-4-mini-reasoning: every certainty-readable Model Quality table cell.
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      o1-mini; starred source row with unexplained asterisk
+    model: o1-mini
+    organization: OpenAI
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 63.6
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      o1-mini; starred source row with unexplained asterisk
+    model: o1-mini
+    organization: OpenAI
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 90.0
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      o1-mini; starred source row with unexplained asterisk
+    model: o1-mini
+    organization: OpenAI
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 60.0
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      DeepSeek-R1-Distill-Qwen-7B; unstarred source row
+    model: DeepSeek-R1-Distill-Qwen-7B
+    organization: DeepSeek
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 53.3
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      DeepSeek-R1-Distill-Qwen-7B; unstarred source row
+    model: DeepSeek-R1-Distill-Qwen-7B
+    organization: DeepSeek
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 91.4
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      DeepSeek-R1-Distill-Qwen-7B; unstarred source row
+    model: DeepSeek-R1-Distill-Qwen-7B
+    organization: DeepSeek
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 49.5
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      DeepSeek-R1-Distill-Llama-8B; unstarred source row
+    model: DeepSeek-R1-Distill-Llama-8B
+    organization: DeepSeek
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 43.3
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      DeepSeek-R1-Distill-Llama-8B; unstarred source row
+    model: DeepSeek-R1-Distill-Llama-8B
+    organization: DeepSeek
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 86.9
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      DeepSeek-R1-Distill-Llama-8B; unstarred source row
+    model: DeepSeek-R1-Distill-Llama-8B
+    organization: DeepSeek
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 47.3
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Bespoke-Stratos-7B; starred source row with unexplained asterisk
+    model: Bespoke-Stratos-7B
+    organization: Bespoke Labs
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 20.0
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Bespoke-Stratos-7B; starred source row with unexplained asterisk
+    model: Bespoke-Stratos-7B
+    organization: Bespoke Labs
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 82.0
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Bespoke-Stratos-7B; starred source row with unexplained asterisk
+    model: Bespoke-Stratos-7B
+    organization: Bespoke Labs
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 37.8
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      OpenThinker-7B; starred source row with unexplained asterisk
+    model: OpenThinker-7B
+    organization: OpenThoughts
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 31.3
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      OpenThinker-7B; starred source row with unexplained asterisk
+    model: OpenThinker-7B
+    organization: OpenThoughts
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 83.0
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      OpenThinker-7B; starred source row with unexplained asterisk
+    model: OpenThinker-7B
+    organization: OpenThoughts
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 42.4
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Llama-3.2-3B-Instruct; unstarred source row
+    model: Llama-3.2-3B-Instruct
+    organization: Meta
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 6.7
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Llama-3.2-3B-Instruct; unstarred source row
+    model: Llama-3.2-3B-Instruct
+    organization: Meta
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 44.4
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Llama-3.2-3B-Instruct; unstarred source row
+    model: Llama-3.2-3B-Instruct
+    organization: Meta
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 25.3
+    read_from: html_text
+    reported_by: Microsoft
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-Mini (base model, 3.8B); unstarred source row
+    model: Phi-4-Mini (base model, 3.8B)
+    organization: Microsoft
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 10.0
+    read_from: html_text
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-Mini (base model, 3.8B); unstarred source row
+    model: Phi-4-Mini (base model, 3.8B)
+    organization: Microsoft
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 71.8
+    read_from: html_text
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-Mini (base model, 3.8B); unstarred source row
+    model: Phi-4-Mini (base model, 3.8B)
+    organization: Microsoft
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 36.9
+    read_from: html_text
+  - benchmark_id: aime
+    instrument: aime_2024
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-mini-reasoning (3.8B); unstarred source row
+    model: Phi-4-mini-reasoning (3.8B)
+    organization: Microsoft
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 57.5
+    read_from: html_text
+  - benchmark_id: math_500
+    instrument: math_500
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-mini-reasoning (3.8B); unstarred source row
+    model: Phi-4-mini-reasoning (3.8B)
+    organization: Microsoft
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 94.6
+    read_from: html_text
+  - benchmark_id: gpqa_diamond
+    instrument: gpqa_diamond
+    protocol: Phi-4-mini-reasoning model card comparison table; Appendix A discusses AIME 2024, maximum
+      sequence length 32768 and common temperature without specifying its value; matching
+      per-row sampling and prompts not established; row-specific unknown setup for
+      Phi-4-mini-reasoning (3.8B); unstarred source row
+    model: Phi-4-mini-reasoning (3.8B)
+    organization: Microsoft
+    source_id: microsoft_phi_4_mini_reasoning_model_card
+    reported_at: '2025-04-30'
+    value: 52.0
+    read_from: html_text
+
+  # GoBench: all 47 entries in the pinned report's three LLM comparison tables.
+  # The KataGo calibration ladder is not an LLM comparison table. Costs, timing,
+  # and error rates use other metrics and are not entered as Elo observations.
+  # Model labels identify the evaluated model; protocol retains effort, harness,
+  # context mode and learning duration. Comments retain exact upstream player IDs,
+  # game counts and confidence intervals for transcription review.
+  # The snapshot date in instrument prevents a future refit of the relative Elo
+  # ladder from silently joining these measurements as an unchanged instrument.
+
+  # Track 1
+  # gpt6-astra-max-api-multi; 30 games; 95% CI +/- 140 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2568
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6.1-sol-max-api-multi; 20 games; 95% CI +/- 202 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: GPT-6.1 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2379
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gemini-4-argon-high-api-multi; 20 games; 95% CI +/- 172 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: gemini-4-argon
+    organization: Google
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2353
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-low-api-multi; 30 games; 95% CI +/- 139 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort low; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2301
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # claude-opus-5-5-high-api-multi; 30 games; 95% CI +/- 134 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Claude Opus 5.5
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2276
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # fable-5.1-max-api-multi; 14 games; 95% CI +/- 219 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: Claude Fable 5.1
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2269
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # opus-5-max-api-multi; 30 games; 95% CI +/- 132 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: Claude Opus 5
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2256
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-api-multi; 30 games; 95% CI +/- 138 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2227
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6.1-sol-high-api-multi; 20 games; 95% CI +/- 175 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-6.1 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2172
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # fable-5.1-high-api-multi; 30 games; 95% CI +/- 134 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Claude Fable 5.1
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2122
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # claude-sonnet-5-5-high-api-multi; 20 games; 95% CI +/- 174 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Claude Sonnet 5.5
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2087
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # opus-5-high-api-multi2; 30 games; 95% CI +/- 139 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Claude Opus 5
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2076
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-api; 14 games; 95% CI +/- 217 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; single-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2011
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-sol-max-api-multi; 14 games; 95% CI +/- 222 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: GPT-6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2006
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-sol-max-api-multi; 14 games; 95% CI +/- 207 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: GPT-5.6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1929
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-sol-high-api-multi4; 14 games; 95% CI +/- 207 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-5.6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1846
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gemini-3.1-pro-high-api-multi; 20 games; 95% CI +/- 178 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Gemini 3.1 Pro
+    organization: Google
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1797
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # DeepSeek-V4.1-Flash-max-api-multi; 14 games; 95% CI +/- 206 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: DeepSeek-V4.1-Flash
+    organization: DeepSeek
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1707
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # DeepSeek-V4.1-Flash-1017-max-api-multi; 14 games; 95% CI +/- 195 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: DeepSeek-V4.1-Flash-1017
+    organization: DeepSeek
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1634
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gemini-3.8-flash-high-api-multi; 14 games; 95% CI +/- 206 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Gemini 3.8 Flash
+    organization: Google
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1616
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-sol-high-api-multi2; 14 games; 95% CI +/- 213 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1499
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # DeepSeek-V4-Flash-0731-max-api-multi; 14 games; 95% CI +/- 227 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: DeepSeek-V4-Flash-0731
+    organization: DeepSeek
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1449
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # muse-spark-1.3-contributor-high-api-multi; 14 games; 95% CI +/- 227 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Muse Spark 1.3 Contributor
+    organization: Meta
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1449
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # muse-spark-1.3-contributor-xhigh-api-multi; 14 games; 95% CI +/- 217 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort xhigh; 7 komi; random-player Elo 0
+    model: Muse Spark 1.3 Contributor
+    organization: Meta
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1415
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # DeepSeek-V4.1-Flash-high-api-multi; 14 games; 95% CI +/- 205 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: DeepSeek-V4.1-Flash
+    organization: DeepSeek
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1381
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gemini-3.6-flash-high-api-multi; 14 games; 95% CI +/- 223 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Gemini 3.6 Flash
+    organization: Google
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1336
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # DeepSeek-V4-Flash-0731-high-api-multi2; 14 games; 95% CI +/- 197 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: DeepSeek-V4-Flash-0731
+    organization: DeepSeek
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1189
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-luna-max-api-multi; 14 games; 95% CI +/- 191 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: GPT-6 Luna
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1120
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-luna-high-api-multi; 14 games; 95% CI +/- 190 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-5.6 Luna
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1091
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-luna-max-api-multi; 14 games; 95% CI +/- 189 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
+    model: GPT-5.6 Luna
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1058
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # grok-4.6-xhigh-api-multi; 14 games; 95% CI +/- 189 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort xhigh; 7 komi; random-player Elo 0
+    model: Grok 4.6
+    organization: xAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 1045
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # grok-4.6-high-api-multi2; 14 games; 95% CI +/- 263 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: Grok 4.6
+    organization: xAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 916
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-luna-high-api-multi2; 14 games; 95% CI +/- 212 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track1_api_2026_10_19
+    protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
+    model: GPT-6 Luna
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 830
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  # Track 2
+  # claude-opus-5-5-high-claude-code-engine-60s-2h; 300 games; 95% CI +/- 51 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Claude Code; reasoning effort high; 2h engine development; no internet or KataGo
+      during development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: Claude Opus 5.5
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 3389
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-codex-engine-60s-4h; 300 games; 95% CI +/- 50 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 4h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 3313
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-codex-engine-60s-8h; 300 games; 95% CI +/- 50 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 8h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 3264
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-codex-engine-60s-2h; 300 games; 95% CI +/- 50 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 2h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 3230
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # claude-opus-5-5-high-claude-code-engine-60s-1h; 300 games; 95% CI +/- 50 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Claude Code; reasoning effort high; 1h engine development; no internet or KataGo
+      during development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: Claude Opus 5.5
+    organization: Anthropic
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 3211
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-codex-engine-60s-1h; 300 games; 95% CI +/- 50 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 1h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 3063
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-sol-high-codex-engine-60s-1h; 300 games; 95% CI +/- 51 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 1h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-5.6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2609
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-sol-high-codex-engine-60s-8h; 300 games; 95% CI +/- 51 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 8h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-5.6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2492
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-sol-high-codex-engine-60s-2h; 300 games; 95% CI +/- 51 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 2h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-5.6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2472
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt5.6-sol-high-codex-engine-60s-4h; 300 games; 95% CI +/- 51 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track2_engine60s_2026_10_19
+    protocol: Track 2; Codex; reasoning effort high; 4h engine development; no internet or KataGo during
+      development; code-only evaluation; 60s per game; 7 komi; random-player Elo 0
+    model: GPT-5.6 Sol
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2388
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+
+  # Track 3
+  # gpt6-astra-high-api-multi-tutorial3.3-gpt6-astra-high-codex-2h; 20 games; 95% CI +/- 181 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track3_tutorial3_3_2026_10_19
+    protocol: Track 3; multi-turn API; no evaluation tools; reasoning effort high; tutorial3.3 by GPT-6
+      Astra high in Codex; 2h tutorial development with KataGo; 5000-token tutorial; 7 komi; random-player
+      Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2550
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-api-multi-tutorial3.3-gpt6-astra-high-codex-4h; 20 games; 95% CI +/- 175 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track3_tutorial3_3_2026_10_19
+    protocol: Track 3; multi-turn API; no evaluation tools; reasoning effort high; tutorial3.3 by GPT-6
+      Astra high in Codex; 4h tutorial development with KataGo; 5000-token tutorial; 7 komi; random-player
+      Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2386
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-api-multi-tutorial3.3-gpt6-astra-high-codex-8h; 20 games; 95% CI +/- 170 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track3_tutorial3_3_2026_10_19
+    protocol: Track 3; multi-turn API; no evaluation tools; reasoning effort high; tutorial3.3 by GPT-6
+      Astra high in Codex; 8h tutorial development with KataGo; 5000-token tutorial; 7 komi; random-player
+      Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2375
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run
+  # gpt6-astra-high-api-multi-tutorial3.3-gpt6-astra-high-codex-1h; 20 games; 95% CI +/- 173 Elo.
+  - benchmark_id: gobench
+    instrument: gobench_9x9_track3_tutorial3_3_2026_10_19
+    protocol: Track 3; multi-turn API; no evaluation tools; reasoning effort high; tutorial3.3 by GPT-6
+      Astra high in Codex; 1h tutorial development with KataGo; 5000-token tutorial; 7 komi; random-player
+      Elo 0
+    model: GPT-6 Astra
+    organization: OpenAI
+    source_id: gobench_llm_results_2026_10_19
+    reported_at: '2026-10-19'
+    value: 2341
+    read_from: html_text
+    measurement_kind: benchmark_publisher_run

@@ -1,0 +1,31 @@
+name: Require linked issue
+
+# Check intake only. Edits must not close contributions already being revised.
+# PRs with maintainer engagement and bot-authored PRs are exempt.
+# pull_request_target is safe here because the job never checks out or runs
+# code from the pull request: it reads the current description through the
+# GitHub API.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  issues: read
+  pull-requests: write
+
+jobs:
+  linked-issue:
+    # The PR author, not the sender: a human reopening a Dependabot PR is the sender.
+    if: github.event.pull_request.user.type != 'Bot' && github.event.pull_request.state == 'open'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts
+      - name: Close the pull request if it links no issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/require-linked-issue.sh

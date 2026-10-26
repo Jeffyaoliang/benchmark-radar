@@ -31,11 +31,19 @@ guessed from a name.
 
 Search has three explicit stages:
 
-1. Any shared token creates an observable candidate.
+1. Any shared token creates an observable candidate. The last query word is also
+   treated as a word still being typed (at least two ASCII characters): a record
+   whose words start with it is a candidate, so `saf` finds safety benchmarks
+   instead of an empty page. Only the last word is expanded; CJK tokens are
+   character pairs and are never prefix-expanded.
 2. BM25F over weighted fields is the primary score. Exact, prefix, and contiguous
    name matches receive bounded query-IDF-scaled boosts. A contiguous query phrase
    in a non-name field receives a smaller query-IDF-scaled boost. Name phrases are
-   not counted twice.
+   not counted twice. When the last query word is not a whole word anywhere in
+   the corpus (`saf`), the words that start with it supply its term frequency;
+   a word that exists keeps its whole-word scores. A name whose word at that position starts with it is a name
+   prefix match, so `human` ranks Humanity's Last Exam on the first page. A partial
+   word counts as a matched token and no record leaves the corpus.
 3. Candidates are returned with the evidence an agent needs to make the final
    relevance and suitability judgment. Weighted query coverage is a tie-breaker and
    explanation, never an eligibility gate or an additive score component.
@@ -112,6 +120,7 @@ The versioned relevance suite covers:
 - known Catalog-gap queries whose partial evidence must remain inspectable;
 - source-metadata survival for opaque names such as ClimateViz;
 - token-boundary safety;
+- partly typed words (`saf`, `hu`, `human`), checked on the site and QueryService;
 - Catalog/Radar identity separation;
 - CLI/HTTP JSON equality.
 

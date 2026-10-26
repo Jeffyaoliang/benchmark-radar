@@ -79,6 +79,11 @@ history.
 
 ### Every PR we merge does these things
 
+- **Links an issue.** Write `Closes #N` in the description, or `Related to #N`
+  when the PR is one step of a larger issue. A PR with no link to an existing
+  issue is closed automatically: it is a change nobody asked for. The template
+  asks you to list what the issue requires and which items the PR does. A PR
+  that does a small part of an issue says `Related to`, not `Closes`.
 - **Starts from the full corpus.** Every benchmark-facing chart, search, table,
   count and export covers all records across all sources (1,259+ records across
   4+ sources at minimum). Missing measurements never remove a record. If your
@@ -132,11 +137,6 @@ history.
 
 Stated up front so nobody writes work that has to be turned down.
 
-- **Scores in the adoption registry.** Vendors differ on prompt, scaffold, tool
-  access, reasoning budget, pass@k and evaluator. A mention survives all of
-  those caveats, which is why it is the unit the ranking publishes.
-- **Any ranking presented as a quality judgement.** Adoption measures vendor
-  attention, not benchmark quality.
 - **Fuzzy matching that silently merges records.** Entities resolve on exact
   identifiers (DOI, arXiv, OpenReview, GitHub, Hugging Face).
 - **Synthesized summaries.** A missing upstream description stays empty.

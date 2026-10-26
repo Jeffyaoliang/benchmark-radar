@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SKYLINE_START_DATE, benchmarkDate, benchmarkDateLabel, skylineModel as buildSkylineModel, skylineGeometry, skylineDateLanes, skylineScoreLanes, skylineCapPositions, skylineFrontierSteps, scorePopulation, matchesScoreCutoff } from '../site/assets/skyline.js';
+import { searchCatalog } from '../site/assets/catalog-search.js';
 const source = readFileSync('site/assets/app.js', 'utf8');
 function fn(name) {
   const start = source.indexOf(`function ${name}(`);
@@ -17,7 +18,7 @@ const observation = (date, id = date) => ({
   title: 'agent benchmark', summary: '', categories: [],
 });
 let observations = [observation('2026-09-07'), observation('2026-09-06'), observation('2026-08-08', 'repeated'), observation('2026-08-09', 'repeated'), observation('2026-08-07'), observation('2026-07-09'), observation('2026-07-08')];
-const dateNames = ['todayDateRange', 'todayIsMultiDate', 'validTodayDate', 'filteredObservations', 'observationRecordKey', 'latestObservationsByRecord'];
+const dateNames = ['todayDateRange', 'todayIsMultiDate', 'validTodayDate', 'filteredObservations', 'observationRecordKey', 'latestObservationsByRecord', 'observationAttention', 'eventTimestamp'];
 const dates = new Function('state', 'allObservations', `${source.match(/const TODAY_WINDOWS = .*;/)[0]}\n${dateNames.map(fn).join('\n')}\nreturn {${dateNames.join(',')}};`)(state, () => observations);
 assert.deepEqual(dates.todayDateRange(), {start:'2026-08-08',end:'2026-09-06'});
 assert.equal(dates.validTodayDate(), true);
@@ -38,6 +39,37 @@ assert.equal(dates.filteredObservations().length, 2);
 state.data.latest_date = '2024-03-01';
 assert.deepEqual(dates.todayDateRange(), {start:'2024-02-01',end:'2024-03-01'});
 
+// Issue #978: ranges include both boundaries, activity and date sorts differ,
+// and missing measurements preserve records after measured zero activity.
+state.data.latest_date = '2026-09-06';
+state.todayDate = '90d';
+state.q = ''; state.source = '';
+assert.deepEqual(dates.todayDateRange(), {start:'2026-06-09',end:'2026-09-06'});
+observations = [
+  {...observation('2026-06-09', 'old'), metrics:{stars:10}},
+  {...observation('2026-09-06', 'new'), metrics:{points:2}, published_at:'2026-09-06T12:00:00Z'},
+  {...observation('2026-09-06', 'zero'), metrics:{likes:0}, published_at:'2026-09-06T13:00:00Z'},
+  observation('2026-09-06', 'unknown'),
+  observation('2026-06-08', 'outside'),
+];
+state.todaySort = 'attention';
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['old','new','zero','unknown']);
+state.todaySort = 'newest';
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['zero','new','unknown','old']);
+state.todayDate = '30d';
+assert.equal(dates.filteredObservations().length, 3);
+state.todayDate = '2026-09-06';
+state.todaySort = 'attention';
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['new','zero','unknown']);
+assert.equal(dates.observationAttention({metrics:{stars:'20', likes:null, downloads:NaN}}), -1);
+
+state.todaySort = 'newest';
+observations = [
+  {...observation('2026-09-06', 'offset'), published_at:'2026-09-06T12:00:00+08:00'},
+  {...observation('2026-09-06', 'utc'), published_at:'2026-09-06T05:00:00Z'},
+];
+assert.deepEqual(dates.filteredObservations().map(r=>r.source_id), ['utc','offset']);
+
 const summary = (display_max, numeric_count=1) => ({display_max,numeric_count,display_multiplier:1,raw_min:display_max,raw_max:display_max});
 state.data.model_card_leaderboard = {entries:[{benchmark_id:'curated',name:'Curated'}]};
 state.data.benchmark_score_progression = {benchmarks:{curated:{score_summary:summary(60,2)}}};
@@ -51,7 +83,7 @@ state.benchmarkIndex = [
 state.lscore = 70;
 const scoreNames = ['scoreRecord','matchesScoreFilter','scoreBrowseRows','saturationRows','latestMatchingModel','scoreRankingRows','benchmarkQueryIds','searchBenchmarkIndex','foldName','frontierDefaultEntry','catalogDisplayFactor'];
 state.benchmarkQuery = '';
-const scores = new Function('state', 'scorePopulation', 'matchesScoreCutoff', 'SKYLINE_START_DATE', `${scoreNames.map(fn).join('\n')}\nreturn {${scoreNames.join(',')}};`)(state, scorePopulation, matchesScoreCutoff, SKYLINE_START_DATE);
+const scores = new Function('state', 'scorePopulation', 'matchesScoreCutoff', 'SKYLINE_START_DATE', 'searchCatalog', `${scoreNames.map(fn).join('\n')}\nreturn {${scoreNames.join(',')}};`)(state, scorePopulation, matchesScoreCutoff, SKYLINE_START_DATE, searchCatalog);
 assert.deepEqual(scores.scoreBrowseRows().map(r=>r.id), ['external','curated','missing']);
 state.benchmarkIndex[0].scored_models = [{name:'GPT-5.6 Sol',date:'2026-06-01',date_precision:'document_publication'}];
 state.benchmarkIndex[1].scored_models = [{name:'GPT-5.6 Sol (high)',date:'2026-09-01',date_precision:'model_announcement'}];
@@ -93,12 +125,14 @@ const browsing = scores.saturationRows().map(row=>row.id);
 assert(!browsing.includes('old95'));
 assert(browsing.includes('unscored'));
 state.benchmarkQuery='NeedleBench';
-assert.deepEqual(scores.saturationRows().map(row=>row.id),['old95','unscored']);
+assert.deepEqual(scores.saturationRows().map(row=>row.id),['unscored','old95'],'a query lists rows in QueryService search rank');
 assert.equal(state.lscore,70,'search must not reset the shared slider');
 state.benchmarkQuery='lookup';
 assert.equal(scores.saturationRows().length,fixtureRecords.length);
 assert.equal(new Set(scores.saturationRows().map(row=>row.source)).size,4);
-state.benchmarkQuery='not in catalog';
+// No query word occurs in any record. ("not in catalog" now matches the
+// record named Catalog, because search matches whole words as QueryService does.)
+state.benchmarkQuery='zzzabsent';
 assert.deepEqual(scores.saturationRows(),[]);
 state.benchmarkQuery='';
 assert.deepEqual(scores.saturationRows().map(row=>row.id),browsing,'clearing search restores the cutoff');
@@ -512,16 +546,18 @@ assert.equal(buildSkylineModel(catalog,100,unscoredSelection).visible.length,0,
 console.log('Full-corpus coverage, source parity, unknown measurements, score slicing, Pareto, and SVG construction passed.');
 
 // Alias, domain and no-score searches apply to every source with the same ranking.
-const nameSearch = new Function('foldName', `${fn('searchBenchmarkIndex')}\nreturn searchBenchmarkIndex;`)(
-  value=>String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,''));
+// The site ranks with QueryService's algorithm (#710), which matches whole
+// words, so the alias spells HLE as its own word; the expected order is the
+// one QueryService returns for these records.
+const nameSearch = new Function('searchCatalog', `${fn('searchBenchmarkIndex')}\nreturn searchBenchmarkIndex;`)(searchCatalog);
 const searchable = [
-  {slug:'prefix',name:'AutomationBench',source:'model_reports',aliases:['HLEAutomationBench']},
+  {slug:'prefix',name:'AutomationBench',source:'model_reports',aliases:['HLE AutomationBench']},
   {slug:'exact',name:'Humanity Last Exam',source:'artificial_analysis',aliases:['HLE']},
   {slug:'domain',name:'Unscored test',source:'opencompass_hub',categories:['science']},
 ];
-assert.deepEqual(nameSearch(searchable,'HLE').map(row=>row.slug),['exact','prefix']);
+assert.deepEqual(nameSearch(searchable,'HLE').map(row=>row.slug),['prefix','exact']);
 assert.deepEqual(nameSearch(searchable,'science').map(row=>row.slug),['domain']);
-assert.deepEqual(nameSearch(searchable.map(row=>({...row,source:'another_source'})),'HLE').map(row=>row.slug),['exact','prefix']);
+assert.deepEqual(nameSearch(searchable.map(row=>({...row,source:'another_source'})),'HLE').map(row=>row.slug),['prefix','exact']);
 
 // Execute the shared slider handler against both sets of controls.
 state.benchmarkIndex = fixtureRecords;
@@ -556,7 +592,7 @@ state.benchmarkVisibleLimit=100;
 filters.setScoreFilter(10);
 assert.equal(saturationRenders,1,'the slider must not rebuild an unfiltered search');
 assert.equal(state.benchmarkVisibleLimit,100,'changing the paused filter must not reset search pagination');
-assert.deepEqual(scores.saturationRows().map(row=>row.id),['old95','unscored']);
+assert.deepEqual(scores.saturationRows().map(row=>row.id),['unscored','old95'],'a query lists rows in QueryService search rank');
 assert.equal(state.lscore,10);
 state.benchmarkQuery='';
 assert(!scores.saturationRows().some(row=>row.id==='old95'));

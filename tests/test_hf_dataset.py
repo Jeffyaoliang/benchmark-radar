@@ -116,6 +116,7 @@ def test_generate_dataset_card():
         scores_count=12929,
         artifacts_count=8577,
         observations_count=14814,
+        catalog_sources=["model_reports", "claire_radar", "llm_stats"],
     )
     assert card.startswith("---\n")
     assert "configs:" in card
@@ -139,6 +140,17 @@ def test_generate_dataset_card():
     assert frontmatter["configs"][0]["default"] is True
     assert "(`self_reported`, `third_party`)" in card
     assert "(`discovered`, `released`, `updated`)" in card
+    # The Hub links every arXiv ID it finds in the card as an associated paper,
+    # so the only one in the card must be the project's own paper (#900).
+    assert set(re.findall(r"\d{4}\.\d{4,5}", card)) == {"2609.11115"}
+    assert frontmatter["pretty_name"] == "Benchmark Radar: AI Benchmarks and Evaluation Scores"
+    assert {"benchmark-radar", "ai-benchmark", "llm-evaluation", "model-cards"} <= set(
+        frontmatter["tags"]
+    )
+    assert "# Benchmark Radar: AI Benchmarks and Evaluation Scores\n" in card
+    assert "title={Benchmark Radar: A Living Database and Search Engine" in card
+    assert "Daily Discovery and" not in card
+    assert "`claire_radar`, `llm_stats`, `model_reports`" in card
 
 
 def test_export_hf_dataset(tmp_path: Path):

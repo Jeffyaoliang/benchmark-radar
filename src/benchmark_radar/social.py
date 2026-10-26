@@ -21,6 +21,8 @@ from pathlib import Path
 
 import yaml
 
+from .daily_top import card_image_name, daily_image_url
+
 SECTION_HEADING = "## 🗣 Daily social post"
 
 # Issue #206: the record-count badge (same Shields endpoint the README embeds)
@@ -34,6 +36,9 @@ _RECORDS_BADGE = (
     "(https://benchmark-radar.org/)"
 )
 
+# Issue #671: the day's share images live on that day's branch of the cards
+# repository, rendered from the snapshot's share block. Embedding a URL per day
+# keeps an older checklist showing its own day.
 _CHECKBOX_RE = re.compile(r"^-\s+\[([ xX])\]\s+(.+)$")
 
 # Path prefixes that would otherwise read as "src", "data" etc. in a social
@@ -241,6 +246,7 @@ def render_social_section(
     channels: list[dict],
     post_sample: str | None = None,
     today: date | None = None,
+    share: dict | None = None,
 ) -> str:
     """Render the "Daily social post" section for today's radar run."""
     lines = [
@@ -248,6 +254,25 @@ def render_social_section(
         "",
         _RECORDS_BADGE,
         "",
+    ]
+    if share and share.get("cards"):
+        day = str(share["date"])
+        top = daily_image_url(day, "top3.png")
+        lines.extend(
+            [
+                f"**Today's image** for X, WeChat groups and Discord ([download]({top})):",
+                "",
+                f"[![Top benchmarks on {day}]({top})]({top})",
+                "",
+                "**One card per benchmark** (each image is shown here so none is forgotten):",
+                "",
+            ]
+        )
+        for index, card in enumerate(share["cards"], start=1):
+            title = _escape(str(card.get("title") or "untitled")[:60].rstrip("\\"))
+            url = daily_image_url(day, card_image_name(index))
+            lines.extend([f"{index}. [{title}]({url})", "", f"[![{title}]({url})]({url})", ""])
+    lines += [
         "Ready-to-post material for today. Rephrase per platform; the two "
         "sentences below are the factual core.",
         "",

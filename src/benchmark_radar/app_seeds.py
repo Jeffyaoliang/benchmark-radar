@@ -18,13 +18,29 @@ one side has an obvious counterpart on the other.
 from __future__ import annotations
 
 import math
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from .citation import apa_citation
+from .media import MEDIA_COVERAGE
+from .model_scores import (
+    CAPABILITY_ORDER,
+    DATE_LABELS,
+    average_value,
+    capability_group,
+    latest_date,
+    model_family,
+    order_models,
+    shared_average,
+)
 from .site_shell import SOURCE_LABELS, esc
+
+
+def _signed(value: int) -> str:
+    """Match signedCount in app.js: "+" only for a gain."""
+    return f"+{value:,}" if value > 0 else f"{value:,}"
 
 
 def _num(value: Any) -> str:
@@ -242,8 +258,8 @@ def _latest_release_row(entry: dict[str, Any], top: float) -> str:
     bar_class = "leaderboard-top-bar-fill" + ("" if ranked else " latest-release-bar-limited")
     score_text = esc(_js_number(score)) if score is not None else "no score"
     pill = (
-        f'<span class="pill pill-confidence pill-confidence-{esc(confidence)}">'
-        f"{esc(confidence)}</span>"
+        f'<span class="pill pill-confidence pill-confidence-{esc(confidence)}" '
+        f'title="{esc(_CONFIDENCE_TITLE)}">{esc(confidence)} data</span>'
         if confidence
         else ""
     )
@@ -297,6 +313,15 @@ def _latest_release_row(entry: dict[str, Any], top: float) -> str:
         f'<p class="latest-release-meta">{esc(meta)}</p></div>'
         "</details></li>"
     )
+
+
+# Mirrors the title in site/assets/app.js; the seed must match what the
+# renderer draws (tests/test_latest_releases_view.py).
+_CONFIDENCE_TITLE = (
+    "How much of the score is backed by observed data. High: at least two signals were found "
+    "and they cover 75% or more of the score. Low: fewer than two signals were found, or they "
+    "cover less than 40% of the score. Not a quality rating."
+)
 
 
 def _latest_releases_seed(dashboard: dict[str, Any]) -> dict[str, str]:
@@ -826,16 +851,602 @@ def _map_seed(dashboard: dict[str, Any]) -> dict[str, str]:
     }
 
 
+LIBRARY_SEED_ROWS = 120
+# The direction sidebar's opening tag, exactly as site/index.html writes it.
+LIBRARY_DIRECTIONS_OPEN = (
+    '<nav id="library-directions" class="library-directions" '
+    'aria-label="Research directions" data-i18n-aria="Research directions"'
+)
+
+
+def _library_seed(
+    catalog_index: list[dict[str, Any]], taxonomy: dict[str, Any] | None
+) -> dict[str, str]:
+    """The Library's direction links and newest rows, as crawlable HTML.
+
+    Each direction is a real link to its filtered address, and each row links to
+    the benchmark's own page, so a crawler reaches every direction and the
+    newest benchmarks from the first response. app.js replaces both with the
+    live list. Without the taxonomy there is no Library to publish.
+    """
+    if not catalog_index or not taxonomy:
+        return {}
+    counts: dict[str, int] = {}
+    for record in catalog_index:
+        for category in (record.get("library_direction") or {}).get("categories") or []:
+            counts[category] = counts.get(category, 0) + 1
+    directions = ""
+    for group in taxonomy["groups"]:
+        links = "".join(
+            f'<a class="library-direction" href="/library/?dir={esc(category["id"])}">'
+            f'<span class="library-direction-name">{esc(category["name"])}</span>'
+            f'<span class="library-direction-count">{counts.get(category["id"], 0):,}</span></a>'
+            for category in taxonomy["categories"]
+            if category["group"] == group["id"]
+        )
+        directions += (
+            '<div class="library-direction-group">'
+            f'<h3 class="library-direction-heading">{esc(group["name"])}</h3>{links}</div>'
+        )
+    names = {category["id"]: category["name"] for category in taxonomy["categories"]}
+    # The live list's "Newest" order: release date descending, then name and key
+    # ascending by code point (libraryCompare in app.js). Two stable sorts keep
+    # the tie-breakers ascending while the date runs descending.
+    by_name = sorted(catalog_index, key=lambda record: (record["name"], record.get("key") or ""))
+    newest = sorted(by_name, key=lambda record: record.get("released") or "", reverse=True)[
+        :LIBRARY_SEED_ROWS
+    ]
+    rows = ""
+    for record in newest:
+        direction = record.get("library_direction")
+        # Every filed direction, primary first, as the live row lists them.
+        facts = (
+            [
+                " · ".join(names.get(item, item) for item in direction["categories"])
+                + (" (provisional)" if direction.get("basis") == "keyword-provisional" else "")
+            ]
+            if direction
+            else []
+        )
+        if record.get("released"):
+            facts.append(_medium_date(record["released"]))
+        facts.append(SOURCE_LABELS.get(record["source"], record["source"]))
+        # The same artifact and star facts the live row shows.
+        facts.extend(
+            label
+            for field, label in (
+                ("has_paper", "Paper"),
+                ("has_repo", "Code"),
+                ("has_dataset", "Data"),
+            )
+            if record.get(field)
+        )
+        signals = record.get("attention_signals") or {}
+        if signals.get("github_stars") is not None:
+            gain = signals.get("github_stars_30d")
+            facts.append(
+                f"★ {signals['github_stars']:,} GitHub"
+                + (f" · {_signed(gain)} in 30 days" if gain is not None else "")
+            )
+        description = (
+            f'<p class="library-row-description">{esc(record["description"])}</p>'
+            if record.get("description")
+            else ""
+        )
+        rows += (
+            '<article class="library-row"><div class="library-row-body">'
+            f'<a class="library-row-name" href="/benchmarks/{esc(record["slug"])}/">'
+            f"{esc(record['name'])}</a>{description}"
+            f'<p class="library-row-facts">{" · ".join(esc(fact) for fact in facts)}</p>'
+            "</div></article>"
+        )
+    return {
+        f"{LIBRARY_DIRECTIONS_OPEN}></nav>": (
+            f"{LIBRARY_DIRECTIONS_OPEN} data-seed>{directions}</nav>"
+        ),
+        '<div id="library-list" class="library-list"></div>': (
+            f'<div id="library-list" class="library-list" data-seed>{rows}</div>'
+        ),
+        '<p id="library-status" class="library-status" aria-live="polite"></p>': (
+            '<p id="library-status" class="library-status" aria-live="polite" data-seed>'
+            f"{len(newest):,} of {len(catalog_index):,} benchmarks</p>"
+        ),
+    }
+
+
+MODEL_PAGE_COLUMNS = 6
+MODEL_UNRECORDED = "Organization not recorded"
+MODEL_DOCUMENT_TYPES = ("model_card", "system_card", "technical_report", "release_post")
+
+
+def _model_value_text(value: float, benchmark: dict[str, Any]) -> str:
+    """Match modelValueText in app.js: one decimal and "%" on a 0-100 scale."""
+    if benchmark.get("percent"):
+        rounded = Decimal(value).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        return f"{rounded.normalize():f}%" if rounded % 1 else f"{int(rounded)}%"
+    # Number(value.toPrecision(4)).toLocaleString(): four significant digits,
+    # then at most three decimals with thousands separators.
+    exponent = Decimal(value).adjusted() if value else 0
+    four = Decimal(value).quantize(Decimal(1).scaleb(exponent - 3), rounding=ROUND_HALF_UP)
+    three = four.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+    number = f"{three:,f}".rstrip("0").rstrip(".") if three % 1 else f"{int(three):,}"
+    return f"{number} {benchmark['unit']}" if benchmark.get("unit") else number
+
+
+def _model_seed_columns(
+    payload: dict[str, Any] | None, records: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Every scored model as modelMatrixModels builds it, in modelOrder."""
+    if not payload:
+        return []
+    keys = [benchmark["key"] for benchmark in payload["benchmarks"]]
+    models = []
+    for entry in payload["models"]:
+        cells = {
+            keys[score[0]]: {
+                "value": score[1],
+                "count": score[2] if len(score) > 2 else 1,
+                "group": score[3] if len(score) > 3 else None,
+            }
+            for score in entry["scores"]
+            if keys[score[0]] in records
+        }
+        if cells:
+            date, precision = latest_date(entry.get("dates") or {})
+            models.append(
+                {
+                    **entry,
+                    "date": date,
+                    "date_precision": precision,
+                    "organization": entry.get("organization") or MODEL_UNRECORDED,
+                    "cells": cells,
+                }
+            )
+    return order_models(models)
+
+
+def _model_configuration(column: dict[str, Any]) -> str:
+    """A source's checkpoint ID when it splits one label, else the name's own."""
+    return column.get("source_model_id") or model_family(column["model"])[1]
+
+
+def _model_matrix_seed(
+    columns: list[dict[str, Any]],
+    benchmarks: dict[str, dict[str, Any]],
+    records: dict[str, dict[str, Any]],
+) -> str:
+    """The first page of the matrix, in modelMatrixTable's markup."""
+    shown = sorted({key for column in columns for key in column["cells"]})
+    collisions: dict[tuple[str, str], int] = {}
+    for key in shown:
+        id_ = (records[key]["name"].lower(), records[key]["source"])
+        collisions[id_] = collisions.get(id_, 0) + 1
+    header = "".join(
+        '<th scope="col">'
+        f'<span class="models-col-name">{esc(model_family(column["model"])[0])}</span>'
+        + (
+            f'<span class="models-col-config">{esc(_model_configuration(column))}</span>'
+            if _model_configuration(column)
+            else ""
+        )
+        + '<span class="models-col-facts">'
+        + esc(
+            " · ".join(
+                [
+                    column["organization"],
+                    DATE_LABELS.get(column["date_precision"], "dated {date}").format(
+                        date=_medium_date(column["date"])
+                    )
+                    if column.get("date")
+                    else "Date unknown",
+                    f"{len(column['cells']):,} benchmarks",
+                ]
+            )
+        )
+        + "</span></th>"
+        for column in columns
+    )
+    means, shared = shared_average(
+        [{key: cell["value"] for key, cell in column["cells"].items()} for column in columns],
+        benchmarks,
+        [{key: cell["group"] for key, cell in column["cells"].items()} for column in columns],
+    )
+    ranked = sorted((mean for mean in means if mean is not None), reverse=True)
+    note = (
+        f"over the {len(shared)} benchmarks all {len(columns)} models share, 0–100"
+        if shared
+        else "these models share no benchmark on a 0–100 scale. "
+        "Pick one source to compare them on the same records."
+    )
+    average = (
+        '<tbody class="models-average"><tr><th scope="row"><span>Shared-benchmark average</span>'
+        f'<span class="models-col-facts">{esc(note)}</span></th>'
+        + "".join(
+            "<td><span>—</span></td>"
+            if mean is None
+            else f"<td><strong>{mean:g}</strong>"
+            + (
+                f'<span class="models-cell-note">#{ranked.index(mean) + 1}</span>'
+                if len(columns) > 1
+                else ""
+            )
+            + "</td>"
+            for mean in means
+        )
+        + "</tr></tbody>"
+    )
+    groups: dict[str, list[dict[str, Any]]] = {group: [] for group in CAPABILITY_ORDER}
+    for key in shown:
+        groups[capability_group(records[key])].append(records[key])
+    bodies = ""
+    for group, members in groups.items():
+        if not members:
+            continue
+        rows = ""
+        for record in sorted(members, key=lambda record: (record["name"].lower(), record["key"])):
+            benchmark = benchmarks.get(record["key"]) or {}
+            label = (
+                f'<a class="models-record-name" href="/benchmarks/{esc(record["slug"])}/">'
+                f"{esc(record['name'])}</a>"
+                '<span class="models-source">'
+                f"{esc(SOURCE_LABELS.get(record['source'], record['source']))}</span>"
+            )
+            if collisions[(record["name"].lower(), record["source"])] > 1:
+                label += f'<span class="models-source">{esc(record["key"].split(":")[-1])}</span>'
+            cells = ""
+            for column in columns:
+                cell = column["cells"].get(record["key"])
+                if cell is None:
+                    cells += (
+                        '<td class="models-cell-missing"><span title="No reported score" '
+                        'aria-label="No reported score">—</span></td>'
+                    )
+                    continue
+                text = _model_value_text(cell["value"], benchmark)
+                unscaled = average_value(cell["value"], benchmark) is None
+                cells += (
+                    f'<td><button class="models-cell{" models-cell-unscaled" if unscaled else ""}" '
+                    f'type="button" data-model="{esc(column["key"])}" '
+                    f'data-record="{esc(record["key"])}" '
+                    'aria-pressed="false" '
+                    f'aria-label="{esc(column["model"])} · {esc(record["name"])} · {esc(text)}">'
+                    f"<span>{esc(text)}</span>"
+                    + (
+                        '<span class="models-cell-note" title="Not on a 0–100 scale, so it is '
+                        'shown but left out of averages">not averaged</span>'
+                        if unscaled
+                        else ""
+                    )
+                    + (
+                        f'<span class="models-cell-note">best of {cell["count"]} settings</span>'
+                        if cell["count"] > 1
+                        else ""
+                    )
+                    + "</button></td>"
+                )
+            rows += f'<tr><th scope="row">{label}</th>{cells}</tr>'
+        bodies += (
+            f'<tbody><tr class="models-group"><th colspan="{len(columns) + 1}" scope="colgroup">'
+            f'{esc(group)} <span class="models-col-facts">{len(members)}</span></th></tr>'
+            f"{rows}</tbody>"
+        )
+    return (
+        '<div class="models-matrix-scroll"><table class="models-matrix">'
+        '<caption class="visually-hidden">Reported scores by model and benchmark</caption>'
+        f'<thead><tr><th scope="col">Benchmark</th>{header}</tr></thead>'
+        f"{average}{bodies}</table></div>"
+    )
+
+
+def _models_seed(
+    catalog_index: list[dict[str, Any]],
+    model_scores: dict[str, Any] | None,
+    documents: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    """The matrix's first page for every lab, as crawlable HTML; mirrors renderModels."""
+    records = {record["key"]: record for record in catalog_index if record.get("key")}
+    columns = _model_seed_columns(model_scores, records)
+    if not columns:
+        return {}
+    benchmarks = {benchmark["key"]: benchmark for benchmark in model_scores["benchmarks"]}
+    labs: dict[str, int] = {}
+    for column in columns:
+        labs[column["organization"]] = labs.get(column["organization"], 0) + 1
+    # Labs with model documents but no scored model under that name, as in
+    # the live list, so their documents stay reachable.
+    for document in (documents or {}).get("documents") or []:
+        if document.get("document_type") in MODEL_DOCUMENT_TYPES and document.get("organization"):
+            labs.setdefault(document["organization"], 0)
+    nav = "".join(
+        f'<a class="library-direction" href="/models/?lab={esc(lab)}">'
+        f'<span class="library-direction-name">{esc(lab)}</span>'
+        f'<span class="library-direction-count">{count:,}</span></a>'
+        for lab, count in sorted(
+            labs.items(),
+            key=lambda item: (item[0] == MODEL_UNRECORDED, -item[1], _collate(item[0])),
+        )
+        if lab != MODEL_UNRECORDED
+    )
+    page = columns[:MODEL_PAGE_COLUMNS]
+    scored = sum(1 for record in catalog_index if record.get("scored_models"))
+    return {
+        '<nav id="models-labs" class="library-directions" aria-label="AI labs" '
+        'data-i18n-aria="AI labs"></nav>': (
+            '<nav id="models-labs" class="library-directions" aria-label="AI labs" '
+            f'data-i18n-aria="AI labs" data-seed>{nav}</nav>'
+        ),
+        '<span id="models-page" aria-live="polite"></span>': (
+            '<span id="models-page" aria-live="polite" data-seed>'
+            f"1–{len(page)} of {len(columns):,} models, most benchmarks first</span>"
+        ),
+        '<div id="models-list" class="models-list"></div>': (
+            '<div id="models-list" class="models-list" data-seed>'
+            f"{_model_matrix_seed(page, benchmarks, records)}"
+            '<p class="models-unscored">'
+            f"{len(catalog_index) - scored:,} benchmark records have no reported model score. "
+            '<a href="/library/">Browse them in the Library</a></p></div>'
+        ),
+        '<p id="models-status" class="library-status" aria-live="polite"></p>': (
+            '<p id="models-status" class="library-status" aria-live="polite" data-seed>'
+            f"{len(columns):,} models with a reported score on {scored:,} of "
+            f"{len(catalog_index):,} benchmark records</p>"
+        ),
+    }
+
+
+DIRECTION_TREND_SECTION = (
+    '<section class="direction-trends" id="direction-trends" '
+    'aria-labelledby="direction-trends-heading"'
+)
+
+
+def _weekly_values(weekly: list[int | None]) -> str:
+    """The sixteen weeks as data for the page to re-announce in any language;
+    an empty item is a week the stream does not cover."""
+    return ",".join("" if value is None else str(value) for value in weekly)
+
+
+def weekly_summary(weekly: list[int | None]) -> str:
+    """The 16-week bars as text for screen readers; uncovered weeks say so."""
+    return "Weekly new records, oldest first: " + ", ".join(
+        "no data" if value is None else str(value) for value in weekly
+    )
+
+
+def direction_sparkline(weekly: list[int | None]) -> str:
+    """The 16-week bars as SVG, attribute for attribute as directionSparkline."""
+    max_value = max([1, *(value for value in weekly if value is not None)])
+    bars = "".join(
+        f'<rect x="{index * 6}" '
+        f'y="{_js_number(20 - max(1.5 if value else 0.5, value / max_value * 20))}" width="4" '
+        f'height="{_js_number(max(1.5 if value else 0.5, value / max_value * 20))}"></rect>'
+        for index, value in enumerate(weekly)
+        if value is not None
+    )
+    return (
+        f'<svg viewBox="0 0 {len(weekly) * 6} 20" class="direction-spark" '
+        f'aria-hidden="true">{bars}</svg>'
+    )
+
+
+def direction_focus_chart(weekly: list[int | None]) -> str:
+    """The focus panel's weekly chart, attribute for attribute as directionFocusChart."""
+    max_value = max([1, *(value for value in weekly if value is not None)])
+    parts = ""
+    for index, value in enumerate(weekly):
+        if value is None:
+            continue
+        height = max(1.5 if value else 0.5, value / max_value * 72)
+        parts += (
+            f'<rect x="{index * 20 + 3}" y="{_js_number(84 - height)}" width="14" '
+            f'height="{_js_number(height)}"></rect>'
+            f'<text x="{index * 20 + 10}" y="{_js_number(81 - height)}" '
+            f'text-anchor="middle">{value}</text>'
+        )
+    return (
+        f'<svg viewBox="0 0 {len(weekly) * 20} 96" class="direction-focus-chart" '
+        f'aria-hidden="true">{parts}</svg>'
+    )
+
+
+# Columns in the Trends direction table, which a group heading spans.
+DIRECTION_TABLE_COLUMNS = 7
+
+
+def _direction_change(row: dict[str, Any]) -> str:
+    if row["previous"] is None:
+        return "—"
+    delta = row["current"] - row["previous"]
+    return f"+{delta}" if delta > 0 else (f"−{-delta}" if delta < 0 else "0")
+
+
+def _direction_focus_seed(
+    row: dict[str, Any],
+    model: dict[str, Any],
+    taxonomy: dict[str, Any],
+    records: list[dict[str, Any]],
+) -> str:
+    """The focus panel for one direction; mirrors directionFocusPanel.
+
+    The <aside> also carries the panel's facts as data attributes, which
+    directionFocusText turns back into its sentences in the reader's language
+    when the page keeps this seed.
+    """
+    from .library_directions import DIRECTION_TREND_WEEKS, direction_focus_records
+
+    days = model["window_days"]
+    group = next(
+        (entry["name"] for entry in taxonomy["groups"] if entry["id"] == row["group"]), None
+    )
+    facts = " · ".join(
+        part
+        for part in (
+            group,
+            f"{row['current']:,} new records in the last {days} days",
+            f"no comparison with the previous {days} days"
+            if row["previous"] is None
+            else f"{_direction_change(row)} vs the previous {days} days",
+        )
+        if part
+    )
+    first_week = (
+        date.fromisoformat(model["anchor"]) - timedelta(days=7 * DIRECTION_TREND_WEEKS - 1)
+    ).isoformat()
+    recent = direction_focus_records(records, row["id"], model["anchor"], days)
+    listing = (
+        '<ol class="direction-focus-records">'
+        + "".join(
+            f'<li><a href="/benchmarks/{esc(record["slug"])}/">{esc(record["name"])}</a>'
+            f'<span data-date="{esc(record["released"])}">'
+            f"{_medium_date(record['released'])}</span></li>"
+            for record in recent
+        )
+        + "</ol>"
+        if recent
+        else '<p class="empty-state">No release in this window.</p>'
+    )
+    attrs = (
+        f'data-current="{row["current"]}" '
+        f'data-previous="{"" if row["previous"] is None else row["previous"]}" '
+        f'data-change="{esc(_direction_change(row))}" data-days="{days}" '
+        f'data-group="{esc(group or "")}" data-first-week="{first_week}" '
+        f'data-anchor="{esc(model["anchor"])}" data-shown="{len(recent)}"'
+    )
+    return (
+        '<aside class="direction-focus" id="direction-focus" '
+        f'aria-labelledby="direction-focus-heading" data-seed {attrs}>'
+        '<div class="direction-focus-head"><div>'
+        '<p class="direction-focus-eyebrow" data-i18n="Direction focus">Direction focus</p>'
+        f'<h3 id="direction-focus-heading" tabindex="-1">{esc(row["name"])}</h3></div>'
+        '<button class="clear-button direction-focus-close" type="button" '
+        'id="direction-focus-close" data-i18n="Close">Close</button></div>'
+        f'<p class="direction-focus-facts">{esc(facts)}</p>'
+        f'<figure class="direction-focus-figure">{direction_focus_chart(row["weekly"])}'
+        f'<span class="visually-hidden" data-weekly="{_weekly_values(row["weekly"])}">'
+        f"{esc(weekly_summary(row['weekly']))}</span>"
+        f"<figcaption>Weekly new records, {_medium_date(first_week)} to "
+        f"{_medium_date(model['anchor'])}</figcaption></figure>"
+        + (
+            f"<h4>Newest {len(recent)} of {row['current']:,} releases</h4>"
+            if row["current"] > len(recent)
+            else "<h4>Recent releases</h4>"
+        )
+        + f"{listing}"
+        f'<a class="direction-focus-library" href="/library/?dir={esc(row["id"])}" '
+        'data-i18n="Open in the Library">Open in the Library</a>'
+        "</aside>"
+    )
+
+
+def _direction_trends_seed(
+    dashboard: dict[str, Any],
+    catalog_index: list[dict[str, Any]],
+    taxonomy: dict[str, Any] | None,
+) -> dict[str, str]:
+    """The Trends direction table at its default 30-day window, as HTML."""
+    from .library_directions import (
+        direction_display,
+        direction_focus_id,
+        direction_trend_rows,
+        discovery_anchor,
+    )
+
+    anchor = discovery_anchor(catalog_index)
+    if not catalog_index or not taxonomy or not anchor:
+        return {}
+    model = direction_trend_rows(catalog_index, taxonomy, anchor, 30)
+    lines = direction_display(model, taxonomy)
+    focus = direction_focus_id(model, [line["row"]["id"] for line in lines if "row" in line])
+    body = ""
+    for line in lines:
+        if "heading" in line:
+            body += (
+                f'<tr class="direction-group"><th colspan="{DIRECTION_TABLE_COLUMNS}">'
+                f"{esc(line['heading'])} "
+                f'<span class="direction-group-count">{line["count"]}</span></th></tr>'
+            )
+            continue
+        row = line["row"]
+        previous = "—" if row["previous"] is None else f"{row['previous']:,}"
+        change = _direction_change(row)
+        focused = ' class="is-focused"' if row["id"] == focus else ""
+        body += (
+            f'<tr{focused}><th scope="row"><a href="/library/?dir={esc(row["id"])}" '
+            f'data-direction="{esc(row["id"])}"'
+            + (' data-i18n="Not yet classified">' if row["id"] == "unclassified" else ">")
+            + f"{esc(row['name'])}</a></th>"
+            f'<td class="direction-number">{row["current"]:,}</td>'
+            f'<td class="direction-number">{previous}</td>'
+            f'<td class="direction-number">{change}</td>'
+            f'<td class="direction-number">{row["undated"]:,}</td>'
+            f'<td class="direction-number">'
+            f"{_signed(row['stars_30d']) if row['stars_tracked'] else '—'}</td>"
+            f"<td>{direction_sparkline(row['weekly'])}"
+            f'<span class="visually-hidden" data-weekly="{_weekly_values(row["weekly"])}">'
+            f"{esc(weekly_summary(row['weekly']))}</span></td></tr>"
+        )
+    # The same caveats the live renderer writes: without them the seeded counts
+    # have no anchor date and read as complete and additive.
+    note = " ".join(
+        part
+        for part in (
+            f"New benchmark records by release date, 30 days to {_medium_date(anchor)}.",
+            "The latest days are still filling in as new papers are collected.",
+            "A record counts in every direction it is filed under, so rows overlap and do not "
+            "add up to a total.",
+            "Undated counts every record in the direction that has no release date, whatever "
+            "the window.",
+            ""
+            if model["comparable"]
+            else "No comparison: the previous 30 days start before the discovery stream "
+            f"({_medium_date(model['discovery_since']) if model['discovery_since'] else '—'}).",
+        )
+        if part
+    )
+    return {
+        '<p class="section-note" id="direction-trends-note"></p>': (
+            '<p class="section-note" id="direction-trends-note" data-seed '
+            f'data-anchor="{esc(anchor)}" data-window="30" '
+            f'data-comparable="{1 if model["comparable"] else 0}" '
+            f'data-since="{esc(model["discovery_since"] or "")}">{esc(note)}</p>'
+        ),
+        f"{DIRECTION_TREND_SECTION} hidden>": f"{DIRECTION_TREND_SECTION} data-seed>",
+        '<tbody id="direction-trends-body"></tbody>': (
+            f'<tbody id="direction-trends-body" data-seed>{body}</tbody>'
+        ),
+        '<aside class="direction-focus" id="direction-focus" '
+        'aria-labelledby="direction-focus-heading" hidden></aside>': (
+            _direction_focus_seed(
+                next(row for row in model["rows"] if row["id"] == focus),
+                model,
+                taxonomy,
+                catalog_index,
+            )
+        ),
+    }
+
+
 def view_seeds(
     dashboard: dict[str, Any],
     palette: tuple[dict[str, str], list[str]],
     catalog_index: list[dict[str, Any]] | None = None,
+    *,
+    library_taxonomy: dict[str, Any] | None = None,
+    model_scores: dict[str, Any] | None = None,
+    documents: dict[str, Any] | None = None,
 ) -> dict[str, dict[str, str]]:
     """Every view's seed, keyed by view. An empty dict means nothing to publish."""
+    trends = _trends_seed(dashboard, palette)
+    if trends:
+        # The direction table rides on the Trends page; it never publishes the
+        # page on its own.
+        trends |= _direction_trends_seed(dashboard, catalog_index or [], library_taxonomy)
     return {
+        "library": _library_seed(catalog_index or [], library_taxonomy),
+        "models": _models_seed(catalog_index or [], model_scores, documents),
         "leaderboard": _leaderboard_seed(dashboard, catalog_index or []),
         "saturation": _score_browser_seed(dashboard, catalog_index or []),
-        "trends": _trends_seed(dashboard, palette),
+        "trends": trends,
         "map": _map_seed(dashboard),
     }
 
@@ -852,8 +1463,10 @@ CITE_CFF_URL = "https://github.com/ktwu01/benchmark-radar/blob/main/CITATION.cff
 CITE_APA = apa_citation()
 CITE_BIBTEX = """@misc{wu2026benchmarkradarlivingdatabase,
       title={Benchmark Radar: A Living Database and Search Engine for AI Benchmarks and Evaluation},
-      author={Koutian Wu and Junjie Zhou and Ergan Shang and Jiayu Wang and
-              Pengqian Han and Junkai Wang and Wanghan Xu},
+      author={Koutian Wu and Wenjun Zhang and Junjie Zhou and Pengqian Han and
+              Ergan Shang and Jiayu Wang and Junkai Wang and Wanghan Xu and
+              Songyuanyi Lu and Yixuan Li and Rudy {Mizrahi Celekli} and
+              Lazizbek Ravshanov and Yaoliang Bian and Xudong Han and Lin Shi},
       year={2026},
       eprint={2609.11115},
       archivePrefix={arXiv},
@@ -908,6 +1521,20 @@ def _cite_credit() -> str:
     return f"{esc(CITE_CREDIT_LEAD)} {joined}."
 
 
+def _cite_media() -> str:
+    """Coverage under the citation formats, mirrored by app.js's citeMedia()."""
+    rows = "".join(
+        f'<li><a href="{esc(url)}" target="_blank" rel="noopener noreferrer">{esc(label)}</a>'
+        f' <span class="cite-media-note">{esc(note)}</span></li>'
+        for label, url, note in MEDIA_COVERAGE
+    )
+    return (
+        '<section class="cite-media" aria-labelledby="cite-media-title">'
+        '<h3 class="cite-media-title" id="cite-media-title">In the media</h3>'
+        f'<ul class="cite-media-list">{rows}</ul></section>'
+    )
+
+
 def _cite_seed() -> dict[str, str]:
     blocks = "".join(
         (
@@ -927,6 +1554,7 @@ def _cite_seed() -> dict[str, str]:
         f'href="{esc(CITE_CFF_URL)}" target="_blank" rel="noopener noreferrer">'
         "View the citation file</a>"
         f'<p class="cite-credit">{_cite_credit()}</p>'
+        f"{_cite_media()}"
     )
     return {'<div id="cite-content"></div>': (f'<div id="cite-content" data-seed>{content}</div>')}
 

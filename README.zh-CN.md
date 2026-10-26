@@ -14,7 +14,6 @@
 
 <p align="center">
   <a href="https://benchmark-radar.org/"><img alt="已收集的 benchmark 记录" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fbenchmark-radar.org%2Fdata%2Frecords-badge.json&amp;style=for-the-badge"></a>
-  <a href="https://github.com/ktwu01/benchmark-radar/releases/download/cli-data/benchmark-radar-data.zip"><img alt="下载数据集" src="https://img.shields.io/badge/Dataset-download%20ZIP-2f81f7?style=for-the-badge&amp;logo=json&amp;logoColor=white"></a>
   <a href="https://huggingface.co/datasets/ktwu01/benchmark-radar"><img alt="Hugging Face 数据集" src="https://img.shields.io/badge/Hugging%20Face-Dataset-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=000"></a>
   <a href="https://arxiv.org/abs/2609.11115"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge&logo=arxiv" alt="arXiv"></a>
   <a href="https://huggingface.co/papers/2609.11115"><img src="https://img.shields.io/badge/Hugging%20Face-Upvote%20us-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=000" alt="在 Hugging Face 为 Benchmark Radar 投一票"></a>
@@ -57,7 +56,7 @@ benchmark 目录。每条记录保留自己的分数、评测条件和引用来�
 - **[打开 dashboard](https://benchmark-radar.org/)** — 每日发现、benchmark 趋势、分数和模型覆盖情况
 - **[在本地查询](https://benchmark-radar.org/cli/)** — 安装并使用离线 CLI
 - **[通过 RSS 订阅](https://benchmark-radar.org/feed.xml)** — 每天获取最新的 benchmark 情报
-- **[下载完整数据集](https://github.com/ktwu01/benchmark-radar/releases/download/cli-data/benchmark-radar-data.zip)** — 一个 ZIP 包含 benchmark 目录、详情记录和每日发现快照
+- **[下载完整数据集](https://huggingface.co/datasets/ktwu01/benchmark-radar)** — benchmark 目录、分数和每日发现记录
 - **[参与贡献](CONTRIBUTING.md)** — 添加 benchmark、模型卡、信源或修复
 
 如果 Benchmark Radar 帮你节省了研究时间，请 **[给仓库点个 Star](https://github.com/ktwu01/benchmark-radar)**，让更多做评测的人发现它。
@@ -108,13 +107,13 @@ npx skills add ktwu01/benchmark-radar
 如果 Benchmark Radar 对你的研究或评测工作有帮助，欢迎引用这份技术报告：
 
 ```text
-Wu, K., Zhou, J., Shang, E., Wang, J., Han, P., Wang, J., & Xu, W. (2026). Benchmark Radar: A living database and search engine for AI benchmarks and evaluation. arXiv:2609.11115. https://arxiv.org/abs/2609.11115
+Wu, K., Zhang, W., Zhou, J., Han, P., Shang, E., Wang, J., Wang, J., Xu, W., Lu, S., Li, Y., Mizrahi Celekli, R., Ravshanov, L., Bian, Y., Han, X., & Shi, L. (2026). Benchmark Radar: A living database and search engine for AI benchmarks and evaluation. arXiv:2609.11115. https://arxiv.org/abs/2609.11115
 ```
 
 ```bibtex
 @misc{wu2026benchmarkradarlivingdatabase,
       title={Benchmark Radar: A Living Database and Search Engine for AI Benchmarks and Evaluation},
-      author={Koutian Wu and Junjie Zhou and Ergan Shang and Jiayu Wang and Pengqian Han and Junkai Wang and Wanghan Xu},
+      author={Koutian Wu and Wenjun Zhang and Junjie Zhou and Pengqian Han and Ergan Shang and Jiayu Wang and Junkai Wang and Wanghan Xu and Songyuanyi Lu and Yixuan Li and Rudy {Mizrahi Celekli} and Lazizbek Ravshanov and Yaoliang Bian and Xudong Han and Lin Shi},
       year={2026},
       eprint={2609.11115},
       archivePrefix={arXiv},
@@ -173,4 +172,4 @@ saturation 和趋势视图、每日 feed、可下载的证据数据，以及一�
 
 </details>
 
-© 2026 Koutian Wu and contributors
+© 2026 Benchmark Radar contributors

@@ -46,10 +46,16 @@ ARTIFICIAL_ANALYSIS_KEY_PREFIX = "artificial-analysis"
 SOURCES = {
     LLM_STATS_SNAPSHOT_ID: (LLM_STATS_SOURCE, LLM_STATS_KEY_PREFIX),
     ARTIFICIAL_ANALYSIS_SNAPSHOT_ID: (ARTIFICIAL_ANALYSIS_SOURCE, ARTIFICIAL_ANALYSIS_KEY_PREFIX),
-    "claire_radar_2026-09-25": ("claire_radar", "claire-radar"),
+    "claire_radar_2026-10-14": ("claire_radar", "claire-radar"),
 }
 
 _SLUG_STRIP = re.compile(r"[^a-z0-9]+")
+# Hosts that answer every http:// request with a permanent redirect to the same
+# https:// URL (checked 2026-10-26). A source that still writes http:// for them
+# costs each reader and crawler a redirect hop, so the link is published as the
+# address the host sends them to. Any other host keeps the scheme it was given:
+# rewriting a host that only speaks http would break the link.
+_HTTPS_HOSTS = frozenset({"arxiv.org", "github.com", "robodojo-benchmark.com"})
 
 # One organization, one name, across all sources.
 #
@@ -202,6 +208,13 @@ def value_kind(raw: str, parsed: float | None) -> str:
     return "number" if parsed is not None else "text"
 
 
+def https_url(url: str) -> str:
+    """The https:// form of a link whose host only redirects http:// to it."""
+    if url[:7].lower() == "http://" and urlsplit(url).hostname in _HTTPS_HOSTS:
+        return "https://" + url[7:]
+    return url
+
+
 def _source_record(
     row: dict[str, Any],
     slug: str,
@@ -220,7 +233,7 @@ def _source_record(
         ("dataset", "dataset_url"),
         ("website", "project_url"),
     ):
-        url = (row.get(column) or "").strip()
+        url = https_url((row.get(column) or "").strip())
         if url:
             artifact = {"kind": kind, "url": url}
             identifier = artifact_identifier(url)
@@ -229,7 +242,7 @@ def _source_record(
             if artifact not in artifacts:
                 artifacts.append(artifact)
     provenance = {
-        "source_url": (row.get("detail_source_url") or "").strip() or None,
+        "source_url": https_url((row.get("detail_source_url") or "").strip()) or None,
         "crawled_at": crawled_at,
         "crawl_bundle": snapshot_id,
     }
@@ -529,7 +542,9 @@ def normalize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
             _source_record(
                 row,
                 slugs[key],
-                crawled_at,
+                # An adapter may carry a row's own collection time, for a row
+                # kept from an earlier crawl; every other row was collected now.
+                str(row.get("crawled_at") or crawled_at),
                 source=source,
                 key_prefix=key_prefix,
                 snapshot_id=snapshot_id,
@@ -676,6 +691,8 @@ def build_benchmark_index(
     records: list[dict[str, Any]],
     series_by_key: dict[str, dict[str, Any]] | None = None,
     observations: list[dict[str, Any]] | None = None,
+    directions_by_key: dict[str, dict[str, Any]] | None = None,
+    signals_by_key: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """The small search payload: one entry per source record, never per merge.
 
@@ -685,6 +702,8 @@ def build_benchmark_index(
     it is invisible. One row per record keeps a bad grouping a display bug.
     """
     series_by_key = series_by_key or {}
+    directions_by_key = directions_by_key or {}
+    signals_by_key = signals_by_key or {}
     models_by_key: dict[str, dict[str, dict[str, Any]]] = {}
     for observation in observations or []:
         name = observation.get("model_name")
@@ -772,6 +791,14 @@ def build_benchmark_index(
                 "repo_resolution_status": repository.get("resolution_status"),
                 "has_dataset": any(item["kind"] == "dataset" for item in artifacts),
                 "has_size": bool(record.get("sizes")),
+                # A reviewed classification from benchmark-radar.com's Library,
+                # kept apart from the source `categories` that search ranks on
+                # and labelled with its basis and join (library_directions.py).
+                "library_direction": directions_by_key.get(record["key"]),
+                # Dated observations of the record's repository and paper from
+                # benchmark-radar.com, labelled with their date and join
+                # (library_signals.py); never a score or a ranking.
+                "attention_signals": signals_by_key.get(record["key"]),
             }
         )
     index.sort(key=lambda item: (item["name"].lower(), item["key"]))
@@ -779,7 +806,11 @@ def build_benchmark_index(
 
 
 def write_benchmark_index(
-    index: list[dict[str, Any]], output: Path, *, documents: dict[str, Any] | None = None
+    index: list[dict[str, Any]],
+    output: Path,
+    *,
+    documents: dict[str, Any] | None = None,
+    library_taxonomy: dict[str, Any] | None = None,
 ) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -789,6 +820,7 @@ def write_benchmark_index(
                 "count": len(index),
                 "benchmarks": index,
                 **({"document_registry": documents} if documents is not None else {}),
+                **({"library_taxonomy": library_taxonomy} if library_taxonomy else {}),
             },
             ensure_ascii=False,
             sort_keys=True,

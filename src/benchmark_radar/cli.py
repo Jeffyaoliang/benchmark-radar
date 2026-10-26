@@ -13,6 +13,7 @@ import yaml
 from .authors import contacts_csv
 from .authors import survey as author_survey
 from .briefing import current_day_snapshot, daily_report_run, generate_daily_briefing
+from .daily_top import write_share_block
 from .export import DEFAULT_TABLE_LIMIT, write_exports
 from .findings import daily_findings
 from .kw_bench_store import STORE_FILENAME as KW_BENCH_STORE_FILENAME
@@ -87,6 +88,29 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(handle)
 
 
+def _radar_day(payload: dict) -> str | None:
+    # The radar day is the UTC date of the run, not the wall clock of a rerun
+    # that crossed midnight.
+    if not payload.get("generated_at"):
+        return None
+    value = str(payload["generated_at"]).replace("Z", "+00:00")
+    return datetime.fromisoformat(value).astimezone(UTC).date().isoformat()
+
+
+def _share_block_for(payload: dict, snapshot_dir: Path) -> dict | None:
+    # A snapshot that cannot be read embeds no image rather than blocking the
+    # checklist itself.
+    day = _radar_day(payload)
+    path = snapshot_dir / f"{day}.json"
+    if not day or not path.exists():
+        return None
+    try:
+        block = json.loads(path.read_text(encoding="utf-8")).get("share")
+    except (OSError, json.JSONDecodeError):
+        return None
+    return block if block and block.get("cards") else None
+
+
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] in QUERY_COMMANDS:
         raise SystemExit(run_query_cli(sys.argv[1:]))
@@ -106,6 +130,7 @@ def main() -> None:
             "classify",
             "authors",
             "social",
+            "share",
             "normalize-catalog",
             "normalize-external",  # Compatibility with installed maintainer scripts.
             "build-data-release",
@@ -121,6 +146,7 @@ def main() -> None:
             "benchmark tracks against the KW-Bench L0-L5 capability rubric, survey "
             "the public profiles of authors behind popular benchmark repositories, "
             "render the daily social post section from the day's evidence and git history, "
+            "choose the day's benchmarks to share and record who made them, "
             "or normalize the committed source snapshots and model reports into the shared "
             "benchmark catalog, build the downloadable CLI dataset, or export "
             "the Hugging Face dataset release. Query commands search and inspect "
@@ -170,6 +196,11 @@ def main() -> None:
         type=Path,
         default=Path("out/social.md"),
         help="social only: where the rendered social post section is written.",
+    )
+    parser.add_argument(
+        "--skip-share-images",
+        action="store_true",
+        help="social only: omit the day's share images, which were not published.",
     )
     parser.add_argument(
         "--items",
@@ -448,11 +479,34 @@ def main() -> None:
         # One index over every source, one row per source record. Two sources
         # describing the same benchmark stay two rows until identity.yml says
         # otherwise under human review.
-        index = build_benchmark_index(resolved_records, series_by_key, all_observations)
+        from .library_directions import (
+            assign_library_directions,
+            library_taxonomy,
+            load_direction_reviews,
+            load_library_directions,
+        )
+
+        # Directions join on the raw records: an artifact a record only borrows
+        # through identity inheritance must not become its own join anchor.
+        library_document = load_library_directions()
+        directions = assign_library_directions(
+            all_records, library_document, identity.equivalent_groups, load_direction_reviews()
+        )
+        from .library_signals import assign_library_signals, load_library_signals
+
+        signals = assign_library_signals(all_records, load_library_signals())
+        index = build_benchmark_index(
+            resolved_records,
+            series_by_key,
+            all_observations,
+            directions_by_key=directions,
+            signals_by_key=signals,
+        )
         index_path = write_benchmark_index(
             index,
             Path("site/data/benchmark-index.json"),
             documents=document_registry(resolved_records),
+            library_taxonomy=library_taxonomy(library_document),
         )
 
         shard_report = write_shards(
@@ -576,6 +630,15 @@ def main() -> None:
             f"models: {registry_report['model_count']} "
             f"from {len(registry_report['source_counts'])} sources -> {DEFAULT_REGISTRY_OUTPUT}"
         )
+        # The Models matrix: each registry model's best reported score per
+        # record, from the same shards.
+        from .model_scores import DEFAULT_SCORES_OUTPUT, write_model_scores
+
+        scores_report = write_model_scores(DEFAULT_SHARD_DIR, DEFAULT_SCORES_OUTPUT)
+        print(
+            f"model scores: {scores_report['models']} models on "
+            f"{scores_report['benchmarks']} records -> {DEFAULT_SCORES_OUTPUT}"
+        )
 
         report = dashboard["kw_bench"]["coverage"]
         print(
@@ -613,14 +676,31 @@ def main() -> None:
         print(f"{action} {args.dashboard_output} from {data['snapshot_count']} daily snapshots")
         return
 
+    if args.command == "share":
+        # Runs in its own job after the snapshot is persisted, so a slow lookup
+        # can never cost the day its evidence. The cards' choice and creators
+        # are committed into that snapshot, and every render reads them
+        # instead of the network.
+        payload = json.loads(args.items.read_text(encoding="utf-8"))
+        day = _radar_day(payload)
+        block = write_share_block(args.snapshot_dir, day) if day else None
+        if block:
+            print(f"Recorded {len(block['cards'])} share cards for {day} ({block['basis']})")
+        else:
+            print(f"No share cards for {day or 'an undated run'}")
+        return
+
     if args.command == "social":
         # Config-independent: dispatched before load_config so the command
         # works against explicit --items/--repo/--channels paths outside the
         # repository without needing an unrelated radar config.yml.
         items: list[dict] = []
+        share_block = None
         if args.items.exists():
             payload = json.loads(args.items.read_text(encoding="utf-8"))
             items = payload.get("evidence_items") or []
+            if not args.skip_share_images:
+                share_block = _share_block_for(payload, args.snapshot_dir)
         now = datetime.now(UTC)
         until = args.until or now.isoformat()
         since = args.since or (now - timedelta(hours=24)).isoformat()
@@ -633,6 +713,7 @@ def main() -> None:
             load_channels(args.channels, daily_only=False),
             post_sample=load_post_sample(args.channels),
             today=now.date(),
+            share=share_block,
         )
         if args.existing_body and args.existing_body.exists():
             section = merge_checked(section, args.existing_body.read_text(encoding="utf-8"))

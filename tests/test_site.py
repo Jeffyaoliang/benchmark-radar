@@ -1,8 +1,13 @@
+import json
 import re
+import shutil
+import subprocess
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
+
+import pytest
 
 
 class SiteParser(HTMLParser):
@@ -45,9 +50,10 @@ def test_readmes_offer_free_data_and_an_earned_star_request():
     assert "点击下面的动图" in chinese
     assert "assets/swe-bench-verified.gif" in english
     assert "assets/swe-bench-verified.gif" in chinese
-    download = "releases/download/cli-data/benchmark-radar-data.zip"
-    assert download in english and "daily discovery snapshots in one ZIP" in english
-    assert download in chinese and "每日发现快照" in chinese
+    dataset = "https://huggingface.co/datasets/ktwu01/benchmark-radar"
+    assert dataset in english and "daily discovery records" in english
+    assert dataset in chinese and "每日发现记录" in chinese
+    assert "releases/download/cli-data" not in english + chinese
     assert "star the repository" in english
     assert "给仓库点个 Star" in chinese
     assert Path("CITATION.cff").exists()
@@ -87,8 +93,20 @@ def test_every_html_entry_point_loads_clarity_once_and_discloses_analytics():
 
     homepage = Path("site/index.html").read_text(encoding="utf-8")
     assert "session replays and heatmaps" in homepage
-    assert "Sensitive content is masked by default" in homepage
+    assert "sensitive content is masked by default" in homepage
     assert "https://privacy.microsoft.com/privacystatement" in homepage
+    assert "By using this site, you agree" not in homepage
+    assert "data-analytics-consent-reset" in homepage
+
+
+def test_clarity_loads_only_after_stored_opt_in():
+    loader = Path("site/assets/clarity.js").read_text(encoding="utf-8")
+    entry = loader.rsplit("const choice = readChoice();", 1)[1]
+    assert 'if (choice === "granted") loadClarity();' in entry
+    assert 'else if (choice !== "denied") showBanner();' in entry
+    assert 'data-consent="granted"' in loader
+    assert 'data-consent="denied"' in loader
+    assert '"consentv2"' in loader
 
 
 def test_privacy_notice_is_collapsible_and_collapsed_by_default():
@@ -96,11 +114,12 @@ def test_privacy_notice_is_collapsible_and_collapsed_by_default():
     styles = Path("site/assets/styles.css").read_text(encoding="utf-8")
     renderer = Path("site/assets/app.js").read_text(encoding="utf-8")
 
-    disclosure = homepage.split('<details class="privacy-note">', 1)[1].split("</details>", 1)[0]
+    opening = '<details class="privacy-note" id="privacy-notice">'
+    disclosure = homepage.split(opening, 1)[1].split("</details>", 1)[0]
     assert "<summary" in disclosure
     assert "Privacy notice" in disclosure.split("<summary", 1)[1].split("</summary>", 1)[0]
     assert "session replays and heatmaps" in disclosure
-    assert "Sensitive content is masked by default" in disclosure
+    assert "sensitive content is masked by default" in disclosure
     assert "https://privacy.microsoft.com/privacystatement" in disclosure
     assert 'class="privacy-note" open' not in homepage
 
@@ -169,12 +188,17 @@ def test_citation_formats_are_one_click_away_behind_a_short_link():
         assert fragment in cff
         assert fragment in script
     assert "given-names: Junjie" in cff
-    assert '"Wu, K., Zhou, J., Shang, E., Wang, J., Han, P., Wang, J., & Xu, W. (2026). "' in script
     assert (
-        '"      author={Koutian Wu and Junjie Zhou and Ergan Shang and Jiayu Wang and '
-        'Pengqian Han and Junkai Wang and Wanghan Xu},"'
+        '"Wu, K., Zhang, W., Zhou, J., Han, P., Shang, E., Wang, J., Wang, J., Xu, W., '
+        'Lu, S., Li, Y., Mizrahi Celekli, R., Ravshanov, L., Bian, Y., Han, X., & Shi, L. (2026). "'
     ) in script
-    assert html.count('name="citation_author"') == 7
+    assert (
+        '"      author={Koutian Wu and Wenjun Zhang and Junjie Zhou and Pengqian Han and '
+        "Ergan Shang and Jiayu Wang and Junkai Wang and Wanghan Xu and "
+        "Songyuanyi Lu and Yixuan Li and Rudy {Mizrahi Celekli} and "
+        'Lazizbek Ravshanov and Yaoliang Bian and Xudong Han and Lin Shi},"'
+    ) in script
+    assert html.count('name="citation_author"') == 15
     assert '<meta name="citation_author" content="Zhou, Junjie">' in html
 
 
@@ -1070,8 +1094,11 @@ def test_attention_signals_are_not_offered_the_evidence_rubric():
 def test_detail_grid_shows_every_component_that_moves_the_total():
     script = Path("site/assets/app.js").read_text(encoding="utf-8")
 
-    for component in ("Priority", "Relevance", "Evidence", "Recency", "Adoption"):
+    for component in ("Relevance", "Evidence", "Recency", "Adoption"):
         assert f'[t("{component}"), Number(item.' in script
+    # Issue #908: the header's score badge already shows the priority, so the
+    # expanded grid does not repeat it.
+    assert '[t("Priority"), Number(item.' not in script
 
 
 def test_today_view_has_one_filterable_observation_list_and_one_source_status():
@@ -1084,7 +1111,7 @@ def test_today_view_has_one_filterable_observation_list_and_one_source_status():
     assert 'id="filters"' in html
     assert 'id="kind-filter"' in html
     assert (
-        "visibleObservations.map((item, offset) => observationCard(item, pageStart + offset))"
+        "visibleObservations.map((item, offset) => observationCard(item, pageStart + offset, day))"
         in script
     )
     assert "Daily field note" not in html
@@ -1170,14 +1197,20 @@ def test_evidence_cards_show_fetched_source_metadata_without_inventing_zeroes():
     )
     facts = json.loads(result.stdout)
 
+    # The third field marks a value that earns bold: a name, or a count above
+    # zero (design.md, "Bold values, never labels").
     assert facts["reported"] == [
-        ["Organizations", "OpenAI"],
-        ["Authors", "Alice, Bob +1"],
-        ["Stars", "0"],
+        ["Organizations", "OpenAI", True],
+        ["Authors", "Alice, Bob +1", True],
+        ["Stars", "0", False],
+    ]
+    assert facts["slug_owner"] == [
+        ["By", "NVIDIA-NeMo", True],
+        ["Activity counters", "Not reported by this source", False],
     ]
     assert facts["unreported"] == [
-        ["Authors", "Deyao Hong"],
-        ["Activity counters", "Not reported by this source"],
+        ["Authors", "Deyao Hong", True],
+        ["Activity counters", "Not reported by this source", False],
     ]
     assert facts["dates"] == [
         ["Published", "date:2026-08-24T17:59:04Z"],
@@ -1400,6 +1433,10 @@ def test_static_html_references_existing_local_assets():
         "cli/",
         "cite/",
         "about/",
+        "media/",
+        "library/",
+        "models/",
+        "benchmarks/",
     }
     missing = []
     for reference in parser.local_refs:
@@ -1737,7 +1774,8 @@ def test_leaderboard_has_an_honest_time_based_score_track():
     prose = " ".join(html.split())
 
     assert 'id="adoption-frontier"' in html
-    assert 'id="frontier-benchmark"' in html
+    # The left benchmark browser is the one selector (issue #995).
+    assert 'id="frontier-benchmark"' not in html
     assert 'id="frontier-chart"' in html
     # `frontierEvents` outlives the staircase it was written for: the leaderboard
     # still counts first reports, and the score chart still reads the newest
@@ -1879,7 +1917,7 @@ def test_daily_briefing_renders_scannable_insight_blocks():
     script = Path("site/assets/app.js").read_text(encoding="utf-8")
 
     assert "function briefingParts(line)" in script
-    assert "function briefingInsight(line, citations)" in script
+    assert "function briefingInsight(line, citations, day)" in script
     assert '"briefing-insight-head"' in script
     assert '"briefing-insight-body"' in script
     assert '"briefing-insight-meta"' in script
@@ -1947,10 +1985,19 @@ def test_rendered_briefing_splits_each_bullet_into_head_body_and_meta():
     assert "High confidence" in subtext(meta)
     assert "3 sources" in subtext(meta)
     multi_source_chip = next(
-        node for node in meta["children"] if "briefing-chip-sources" in node["className"].split()
+        node for node in _flatten(meta) if "briefing-chip-sources" in node["className"].split()
     )
-    assert multi_source_chip["tag"] == "span"
-    assert multi_source_chip["href"] == ""
+    # Issue #919: the count is a disclosure summary, and the details element
+    # lists one link per cited source so each of the N sources is reachable.
+    assert multi_source_chip["tag"] == "summary"
+    disclosure = next(
+        node
+        for node in _flatten(meta)
+        if node["tag"] == "details" and node["className"] == "briefing-sources"
+    )
+    links = [node for node in _flatten(disclosure) if node["tag"] == "a"]
+    assert len(links) == 3
+    assert all(link["href"].startswith("http") for link in links)
 
     # An older bullet without the "Why it matters" structure degrades to a head
     # with no body, yet its evidence and confidence still move to the metadata.
@@ -2333,7 +2380,8 @@ def test_dashboard_and_markdown_format_statistics_identically():
 
 def test_rendered_questions_link_cited_evidence_to_its_source():
     nodes = list(_flatten(_rendered_questions()))
-    links = [node for node in nodes if node["href"]]
+    # The single-source count is itself a link to the same evidence (#956).
+    links = [node for node in nodes if node["href"] and node["className"] != "answer-source-count"]
 
     assert [node["href"] for node in links] == ["https://arxiv.org/abs/2608.00001"]
     assert links[0]["text"] == "A harness for long-horizon agent tasks"
@@ -2484,6 +2532,38 @@ def test_rendered_answers_hold_confidence_as_metadata_not_question_text():
     summary = next(n for n in nodes if n["className"] == "answer-disclosure-summary")
     assert "View analysis" in summary["text"]
     assert "READ the full answer" not in summary["text"].upper()
+
+
+def test_rendered_answer_source_count_is_clickable(tmp_path):
+    """Issue #956: the answer's source count links to every cited source."""
+    single = [n for n in _flatten(_rendered_questions()) if n["className"] == "answer-source-count"]
+    assert [(n["tag"], n["text"], n["href"]) for n in single] == [
+        ("a", "1 source", "https://arxiv.org/abs/2608.00001")
+    ]
+
+    def add_second(fixture):
+        evidence = fixture["questions"]["groups"][0]["answers"][0]["cited_evidence"]
+        evidence.append(
+            {
+                "id": "E002",
+                "title": "Second paper",
+                "url": "https://example.com/two",
+                "source": "hn",
+            }
+        )
+
+    rendered = _render_with(add_second, tmp_path)
+    count = next(n for n in _flatten(rendered) if n["className"] == "answer-source-count")
+    assert count["tag"] == "summary"
+    assert count["text"] == "2 sources"
+    disclosure = next(
+        n
+        for n in _flatten(rendered)
+        if n["tag"] == "details" and n["className"] == "briefing-sources"
+    )
+    assert "open" not in disclosure["attributes"]
+    links = [n["href"] for n in _flatten(disclosure) if n["tag"] == "a"]
+    assert links == ["https://arxiv.org/abs/2608.00001", "https://example.com/two"]
 
 
 def test_leaderboard_coverage_counts_are_native_disclosures():
@@ -2826,10 +2906,10 @@ def test_issue_286_navigation_is_backable_but_typing_is_not():
     # hit, because it carries a reader from a search into another view.
     assert 'function setView(view, update = true, mode = "push")' in script
     assert "if (update) writeUrl(mode);" in script
-    picker = script.split('byId("frontier-benchmark").addEventListener("change"', 1)[1].split(
-        "});", 1
-    )[0]
-    assert 'writeUrl("push")' in picker
+    browser = script.split(
+        'button.addEventListener("click", () => {\n    selectFrontier(record.slug);', 1
+    )[1].split("});", 1)[0]
+    assert 'writeUrl("push")' in browser
 
     # Continuous refinement of the current view replaces. Both debounced
     # renderers are the keystroke path, and neither may push.
@@ -2885,30 +2965,23 @@ def test_issue_311_the_today_list_loads_one_page_at_a_time():
     assert '${attentionCount} ${t("attention")}' in renderer
     assert '"need attention"' not in script
 
-    # Dataset access remains free under the homepage pager; starring is an
-    # earned request, not a gate. The stronger cite/star/share card closes the
-    # page in the footer instead of competing with the result list.
+    # Dataset access lives in the footer's Data column on every page, so the
+    # homepage no longer repeats it under the pager; starring is an earned
+    # request, not a gate.
     assert 'id="badge-export"' not in html
     assert 'id="export-dialog"' not in html
     assert "function openExport(" not in script
     assert "function observationsToCsv(" not in script
     assert "function downloadText(" not in script
-    pager_end = html.index("</nav>", html.index('class="today-pagination"'))
-    dataset_card = html.index('<div class="footer-dataset">')
-    page_footer = html.index("<footer>")
-    assert pager_end < dataset_card < page_footer
-    dataset = html.split('<div class="footer-dataset">', 1)[1].split("</div>", 1)[0]
-    assert "Free dataset. No crawler needed." in dataset
-    assert 'href="/data/radar.json"' in dataset
-    assert "Star the repository" not in dataset
-    assert "Contact" not in dataset
+    assert 'class="footer-dataset"' not in html
     footer = html.split("<footer>", 1)[1].split("</footer>", 1)[0]
+    assert 'href="https://huggingface.co/datasets/ktwu01/benchmark-radar"' in footer
     assert 'class="adoption-cta"' in footer
     assert "If this saved you research time" in footer
     assert 'id="share-radar"' in footer
     contact = script.split("function openContact(", 1)[1].split("dialog.showModal();", 1)[0]
     assert "The complete dataset is free to download" in contact
-    assert 'href: "/data/radar.json"' in contact
+    assert 'href: "https://huggingface.co/datasets/ktwu01/benchmark-radar"' in contact
     assert 'className: "contact-dataset"' in contact
 
 
@@ -2940,6 +3013,8 @@ def test_heading_outline_and_scale_stay_quiet():
     )
     assert {name for name, _, _ in sections} == {
         "today",
+        "library",
+        "models",
         "leaderboard",
         "saturation",
         "map",
@@ -2986,11 +3061,9 @@ def test_heading_outline_and_scale_stay_quiet():
     assert "text-transform: uppercase" not in styles
     assert "text-transform: none;" not in styles
 
-    # Footer is one left-aligned column: updated stamp, view links, dataset
-    # card last (bottom).
+    # Footer stacks three bands: signup, link columns, then legal and contact.
     footer_block = styles.split("\nfooter {")[-1].split("}", 1)[0]
-    assert "flex-direction: column;" in footer_block
-    assert "align-items: flex-start;" in footer_block
+    assert "display: grid;" in footer_block
 
     # View and detail headings share the compact leaderboard scale; none of
     # them may reintroduce the uppercase display treatment. h1 and h2 are styled
@@ -3061,24 +3134,11 @@ def test_issue_332_a_release_outranks_a_same_day_update():
     assert "releaseRank(a) - releaseRank(b)" in sort_body
     assert "Number(b.recency_score || 0) - Number(a.recency_score || 0)" in sort_body
 
-    # The caption names the order the reader is looking at, and only claims the
-    # release tie-break when the result set actually contains both kinds.
-    assert 't("Sort: New releases first, then Recency ↓, then Priority ↓")' in script
-    assert 't("Sort: Date, then new releases, then Recency ↓, then Priority ↓")' in script
-    # "Is a release" is its own predicate now that releaseRank grades by age:
-    # reading it as `=== 0` would have counted only the freshest tier.
-    assert "const releases = observations.filter(isRelease).length;" in script
+    # Issue #978: the visible feed now follows the explicit ordering control.
+    assert 't("Sort: Newest")' in script
+    assert 't("Sort: Recorded stars + likes + downloads + points; missing signals last")' in script
+    assert 'state.todaySort === "newest"' in script
     assert 'return item.event_kind === "released";' in script
-    assert "releases > 0 && releases < observations.length" in script
-    # The caption stops at "new releases first" rather than claiming a strict
-    # timestamp sort across release tiers; it then names the scored-recency
-    # order that v5 applies inside a tier.
-    assert "Sort: Newest releases first" not in script
-
-    # Both captions are translated; an untranslated string would render as
-    # English inside an otherwise Chinese page.
-    assert "排序:新发布优先,再按新鲜度 ↓,再按优先度 ↓" in script
-    assert "排序:日期,再新发布优先,再按新鲜度 ↓,再按优先度 ↓" in script
 
 
 def test_issue_333_the_page_never_scrolls_sideways():
@@ -3236,20 +3296,103 @@ def test_issue_332_the_freshest_releases_reach_page_one():
 # adding pages beside it is to let the new thing leak into its router.
 
 
-def test_the_documents_are_linked_from_the_footer_not_the_view_row():
-    """The view row lists tools. Blog and About are reading, and sit below it.
-
-    Both are real anchors either way, so a reader and a crawler reach the same
-    pages; what moved is which of them competes for the reader's first glance.
-    """
+def test_about_is_last_in_the_view_row_after_media_and_blog():
+    """About, Media and Blog are discoverable in the masthead without becoming SPA views."""
     html = Path("site/index.html").read_text(encoding="utf-8")
     view_nav = re.search(r'<nav class="view-nav".*?</nav>', html, re.S).group(0)
-    footer_nav = re.search(r'<nav class="footer-nav".*?</nav>', html, re.S).group(0)
-    for path in ("/blog/", "/about/"):
-        assert f'href="{path}"' not in view_nav, path
-        links = re.findall(rf'<a\b[^>]*href="{path}"[^>]*>', footer_nav)
-        assert len(links) == 1, path
-        assert "data-view" not in links[0], path
+    links = re.findall(r'<a\b[^>]*href="([^"]+)"[^>]*>', view_nav)
+    assert links[-3:] == ["/media/", "/blog/", "/about/"]
+    for path in ("/media/", "/blog/", "/about/"):
+        anchor = re.search(rf'<a\b[^>]*href="{path}"[^>]*>', view_nav).group(0)
+        assert "data-view" not in anchor
+
+
+def test_footer_offers_signup_link_columns_and_contact():
+    """Issue #906: one shared footer with the signup on top and contact bottom right."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    footer = html.split("<footer>", 1)[1].split("</footer>", 1)[0]
+    signup = footer.index('class="email-signup footer-signup"')
+    columns = footer.index('class="footer-columns"')
+    bottom = footer.index('class="footer-bottom"')
+    assert signup < columns < bottom
+    assert 'id="build-meta"' not in footer
+    for heading in ("Explore", "Data", "Project", "Contribute"):
+        assert f'<h2 data-i18n="{heading}">{heading}</h2>' in footer
+    assert 'href="/feed.xml"' in footer
+    assert 'href="https://huggingface.co/datasets/ktwu01/benchmark-radar"' in footer
+    assert "issues/new?template=report.yml" in footer
+    assert "data-lang-switch" in footer
+    contact = footer.split('class="footer-contact"', 1)[1]
+    assert 'href="mailto:ktwu@utexas.edu"' in contact
+    # Issue #990: the footer carries the same reach-out channels as the dialog.
+    assert 'href="https://discord.com/invite/JX9Caj4fMF"' in contact
+    assert 'href="https://x.com/ktwu01"' in contact
+    assert "ktwu001" in contact
+
+
+def test_both_signup_forms_post_to_the_same_kit_form():
+    """The card above the briefing and the footer must feed one list."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    forms = re.findall(r'<form class="email-signup-form"[^>]*>.*?</form>', html, re.S)
+    assert len(forms) == 2
+    actions = {re.search(r'action="([^"]+)"', form).group(1) for form in forms}
+    assert len(actions) == 1
+    (action,) = actions
+    # The action Kit's published form 10097391 posts to.
+    assert action == "https://app.kit.com/forms/10097391/subscriptions"
+    for form in forms:
+        assert 'method="post"' in form
+        assert 'type="email" name="email_address" required' in form
+        # A visible-only placeholder is not a label for screen readers.
+        assert '<span class="visually-hidden" data-i18n="Email address">' in form
+        # Consent and cadence live in the panel that opens once an address is
+        # typed. Consent is required, and so is a cadence, with none chosen in
+        # advance; daily is listed first.
+        more = form.split('class="email-signup-more"', 1)[1]
+        assert '<input type="checkbox" required>' in more
+        assert "checked" not in more
+        daily = more.index('name="fields[frequency]" value="daily" required')
+        weekly = more.index('name="fields[frequency]" value="weekly"')
+        assert daily < weekly
+        assert 'href="#privacy-notice"' in more
+    # Nothing but the title sits beside the resting form.
+    assert "email-signup-note" not in html
+    assert 'id="privacy-notice"' in html
+    card = html.index('class="email-signup email-signup-card"')
+    assert card < html.index('id="daily-briefing"') < html.index("<footer>")
+
+
+def test_signup_panel_opens_only_after_an_address_is_typed():
+    styles = Path("site/assets/styles.css").read_text(encoding="utf-8")
+    closed = _css_rule(styles, ".email-signup-more {")
+    assert "grid-template-rows: 0fr;" in closed
+    assert "visibility: hidden;" in closed
+    assert (
+        '.email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {'
+        in styles
+    )
+    # A browser without :has() must still be able to tick the required box.
+    assert "@supports not selector(:has(*))" in styles
+
+
+def test_footer_and_signup_strings_are_translated():
+    app_js = Path("site/assets/app.js").read_text(encoding="utf-8")
+    table = app_js.split("const I18N = {", 1)[1]
+    for key in (
+        "Get benchmark updates by email",
+        "email.signup.consent",
+        "How often?",
+        "Weekly",
+        "Daily",
+        "the latest each day",
+        "every Monday",
+        "Email address",
+        "Subscribe",
+        "Contribute",
+        "Report a mistake",
+        "In the media",
+    ):
+        assert f'"{key}":' in table or f"    {key}:" in table, key
 
 
 def test_the_blog_link_is_not_a_client_route():
@@ -3325,4 +3468,231 @@ def test_model_filter_controls_and_status_have_chinese_translations():
         "模型发布日期",
         "文档发布日期",
         "搜索全部 benchmark（暂不按分数筛选）",
+    ]
+
+
+def test_card_titles_read_as_names_and_decode_escaped_text():
+    # Issue #908: an "owner/repo-name" ID shows as the repo name in words, the
+    # owner moves to the byline, and escaped source text shows as text. The
+    # helpers are run as written in app.js.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("// GitHub and Hugging Face titles")
+    helpers = script[start : script.index("function compactNames")]
+    cases = [
+        {"title": "kizmiz/cabo-rl", "summary": "Play Cabo with friends"},
+        {"title": "zuwasi/swe-sweep", "summary": "ESL SWE-sweep workspace"},
+        {"title": "Zelin259/rna-velocity-benchmark", "summary": "RNA Velocity Benchmark Data"},
+        {"title": "MatinMalekikh/selective-classification-and-abstention", "summary": ""},
+        {"title": "Agnuxo1/AIMS-PAIEC-2026", "summary": ""},
+        {"title": "Schema &amp; Citation Dataset (Volume 183)", "summary": ""},
+        {"title": "embeddings-benchmark/mteb 2.26.20", "summary": "MTEB release"},
+        {"title": "yojul/bluesky-gym-leaderboard-results", "summary": ""},
+        {"title": "kizmiz/llm-nlp-eval", "summary": ""},
+    ]
+    program = (
+        helpers
+        + "const cases = "
+        + json.dumps(cases)
+        + ";\nconsole.log(JSON.stringify({titles: cases.map(displayTitle), "
+        + "owners: cases.map((c) => slugParts(c)?.owner ?? null), "
+        + "summary: plainSummary("
+        + "'&lt;p&gt;&lt;strong&gt;A &amp;amp; B&lt;/strong&gt;&lt;/p&gt;'), "
+        + "comparison: plainSummary("
+        + "'accuracy rose (p&lt;0.001) while recall held (p&gt;=0.084).')}));"
+    )
+    result = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert result["titles"] == [
+        "Cabo RL",
+        "SWE Sweep",
+        "RNA Velocity Benchmark",
+        "Selective Classification and Abstention",
+        "AIMS PAIEC 2026",
+        "Schema & Citation Dataset (Volume 183)",
+        "MTEB 2.26.20",
+        "Bluesky Gym Leaderboard Results",
+        "LLM NLP Eval",
+    ]
+    assert result["owners"] == [
+        "kizmiz",
+        "zuwasi",
+        "Zelin259",
+        "MatinMalekikh",
+        "Agnuxo1",
+        None,
+        "embeddings-benchmark",
+        "yojul",
+        "kizmiz",
+    ]
+    assert result["summary"] == "A & B"
+    # Comparisons decode to angle brackets but are not tags (2026-10-24 Bashkir
+    # benchmark summary): the results between them must survive.
+    assert result["comparison"] == "accuracy rose (p<0.001) while recall held (p>=0.084)."
+
+
+def test_card_rail_pairs_each_event_with_its_own_date():
+    # A paper published 8 Oct and discovered 24 Oct reads "Discovered 24 Oct".
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index('// "Released 24 Oct", "Updated 24 Oct"')
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const t = (v) => v; const getLang = () => 'en';"
+        "const titleCase = (v) => v.charAt(0).toUpperCase() + v.slice(1);"
+        + helpers
+        + "const base = {published_at: '2026-10-08T00:00:00Z', "
+        + "discovered_at: '2026-10-24T00:00:00Z', updated_at: '2026-10-20T00:00:00Z'};"
+        + "console.log(JSON.stringify(['discovered', 'updated', 'released'].map("
+        + "(event_kind) => railEvent({...base, source: 'arXiv', event_kind}))));"
+    )
+    rails = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [rail["verb"] for rail in rails] == ["Discovered", "Updated", "Released"]
+    assert [rail["date"].split()[0] for rail in rails] == ["24", "20", "8"]
+
+
+def test_card_links_skip_only_what_the_rail_already_opens():
+    # "GitHub Release ↗" already opens the repository's site, so its repo link
+    # is not repeated; a Hugging Face Papers card keeps its direct arXiv link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const ARTIFACT_LINK_KINDS")
+    helpers = script[start : script.index('// "AgentPhishing: A Benchmark')]
+    program = (
+        "const t = (v) => v;"
+        "const element = (tag, props = {}, children = []) => ({ tag, props, children });"
+        "const safeHttpUrl = (v) => String(v);"
+        + helpers
+        + "const kinds = (item) => (artifactLinks(item)?.children || []).map((a) => a.props.text);"
+        + "console.log(JSON.stringify([kinds({source: 'GitHub Release', "
+        + "url: 'https://github.com/embeddings-benchmark/mteb/releases/tag/2.26.20', "
+        + "artifact_urls: ['https://github.com/embeddings-benchmark/mteb']}), "
+        + "kinds({source: 'Hugging Face Papers', url: 'https://huggingface.co/papers/2610.1', "
+        + "artifact_urls: ['https://arxiv.org/abs/2610.1', 'https://github.com/a/b']})]));"
+    )
+    release, paper = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert release == []
+    assert paper == ["Paper ↗", "Code ↗"]
+
+
+def test_daily_briefing_share_control_appears_only_for_items_with_a_card():
+    """Issue #671: each briefing item links to its published image, or to none."""
+    nodes = list(_flatten(_rendered_briefing("tests/fixtures/daily_briefing_share.json")))
+    insights = [n for n in nodes if n["className"] == "briefing-insight"]
+    assert len(insights) == 2
+
+    def share_links(insight):
+        return [n for n in _flatten(insight) if n["className"] == "share-link"]
+
+    carded, uncarded = (share_links(i) for i in insights)
+    assert len(carded) == 1
+    assert carded[0]["tag"] == "a"
+    assert carded[0]["href"].endswith("/daily/2026-10-25/card-01.png")
+    assert carded[0]["text"].startswith("Share image")
+    # The item stays listed; it only has no image to offer, so no dead link.
+    assert uncarded == []
+    copy_buttons = [n for n in _flatten(insights[0]) if n["className"] == "share-copy"]
+    assert copy_buttons == []
+
+
+def test_share_control_is_only_a_link_with_a_named_label():
+    """The image link takes focus natively and names its benchmark."""
+    source = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = source.index("function shareControl(")
+    block = source[start : source.index("function briefingShare(")]
+    assert 'element("a"' in block
+    assert 'element("button"' not in block
+    assert block.count("aria-label") == 1
+    assert "clipboard" not in block
+    assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
+    assert "shareCardFor(day, item.url)" in source
+
+
+def test_card_source_is_a_chip_with_the_organization_mark():
+    # Issue #971: the source link is a chip with a logo and an arrow. A source
+    # without a mark keeps the chip with its name, so no card loses its source link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const SOURCE_BRAND")
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const element = (tag, props = {}, children = []) => "
+        "({ tag, props, children: children.filter(Boolean) });"
+        "const brandIcon = (name) => ({ tag: 'svg', brand: name, children: [] });"
+        + helpers
+        + "const chip = (source, href) => { const node = sourceChip({source}, href);"
+        + "return {tag: node.tag, href: node.props.attrs?.href, "
+        + "brand: node.children.find((c) => c.tag === 'svg')?.brand, "
+        + "name: node.children.find((c) => c.props?.className === 'radar-source-name')"
+        + "?.props.text, "
+        + "arrow: node.children.some((c) => c.props?.text === '↗'), "
+        + "label: node.props.attrs?.['aria-label']}; };"
+        + "console.log(JSON.stringify(['GitHub', 'GitHub Release', 'Hugging Face', "
+        + "'Hugging Face Papers', 'arXiv', 'Crossref'].map((s) => chip(s, 'https://x.test/'))"
+        + ".concat([chip('GitHub', null)])));"
+    )
+    chips = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [c.get("brand") for c in chips] == [
+        "github",
+        "github",
+        "huggingface",
+        "huggingface",
+        "arxiv",
+        None,
+        "github",
+    ]
+    # A mark replaces the name; the name stays as the accessible label, and
+    # "Release" is not part of a logo.
+    assert [c.get("name") for c in chips] == [None] * 5 + ["Crossref", None]
+    assert [c.get("label") for c in chips][:2] == ["GitHub", "GitHub Release"]
+    assert all(c["arrow"] for c in chips)
+    assert [c["tag"] for c in chips] == ["a"] * 6 + ["span"]
+
+
+def test_top_share_label_follows_the_number_of_cards_in_the_image():
+    """top3.png holds fewer than three cards on a thin day; the label must say so."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("function topShareLabel(")
+    helper = script[start : script.index("function renderTopShare(")]
+    program = (
+        "const t = (v) => v;"
+        + helper
+        + "console.log(JSON.stringify([1, 2, 3, 5].map(topShareLabel)));"
+    )
+    labels = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert labels == [
+        "Share the top benchmark of the day",
+        "Share the top 2 benchmarks of the day",
+        "Share the top 3 benchmark of the day",
+        "Share the top 3 benchmark of the day",
     ]

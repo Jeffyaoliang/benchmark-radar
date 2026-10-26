@@ -143,13 +143,71 @@ def _write(tmp_path: Path, dashboard: dict) -> dict:
         json.dumps(
             {
                 "benchmarks": [
-                    {"slug": f"benchmark-{i}", "name": entry["name"], "source": "model_reports"}
+                    {
+                        "slug": f"benchmark-{i}",
+                        "key": f"model-reports:benchmark-{i}",
+                        "name": entry["name"],
+                        "source": "model_reports",
+                        "description": "",
+                        "library_direction": (
+                            {"primary": "math", "categories": ["math"]} if i == 0 else None
+                        ),
+                        "scored_models": (
+                            [{"name": "Frontier-1", "date": "2026-05-14"}] if i == 0 else []
+                        ),
+                    }
                     for i, entry in enumerate(entries)
                 ],
-                "document_registry": {**board, "entries": entries},
+                "document_registry": {
+                    **board,
+                    "entries": entries,
+                    # Model documents exist only where the registry does, so a
+                    # dashboard without model cards publishes no Models page.
+                    "documents": [
+                        {
+                            "id": "model_reports:acme_frontier_1",
+                            "document_type": "model_card",
+                            "organization": "Acme",
+                            "model_name": "Frontier-1",
+                            "title": "Frontier-1",
+                            "published": "2026-05-14",
+                            "source_url": "https://acme.example/frontier-1",
+                            "benchmarks": [{"benchmark_id": "aime", "name": "AIME"}],
+                        }
+                    ]
+                    if entries
+                    else [],
+                },
+                "library_taxonomy": {
+                    "groups": [{"id": "reasoning", "name": "Reasoning"}],
+                    "categories": [{"id": "math", "group": "reasoning", "name": "Math Reasoning"}],
+                },
             }
         )
     )
+    # The Models matrix reads its scores from the catalog shards, as in production.
+    if entries:
+        shard = {
+            "record": {"key": "model-reports:benchmark-0"},
+            "scores_by_source": {
+                "model_reports": {
+                    "series": {
+                        "direction": "higher_is_better",
+                        "score_summary": {"display_multiplier": 1, "unit": "percent"},
+                    },
+                    "rows": [
+                        {
+                            "model_name": "Frontier-1",
+                            "organization": "Acme",
+                            "value": 74.7,
+                            "reported_date": "2026-05-14",
+                        }
+                    ],
+                }
+            },
+        }
+        (tmp_path / "data" / "benchmarks").mkdir(exist_ok=True)
+        (tmp_path / "data" / "benchmarks" / "benchmark-0.json").write_text(json.dumps(shard))
     return write_app_pages(dashboard, tmp_path)
 
 
@@ -157,6 +215,8 @@ def test_view_seo_is_read_from_the_script_the_browser_uses():
     seo = load_view_seo(SITE / "assets" / "app.js")
     assert {view: entry["canonical"] for view, entry in seo.items()} == {
         "today": "/",
+        "library": "/library/",
+        "models": "/models/",
         "leaderboard": "/leaderboard/",
         "saturation": "/saturation/",
         "trends": "/trends/",
@@ -215,6 +275,8 @@ def test_utility_seo_parser_does_not_depend_on_two_space_indentation(tmp_path):
 def test_every_view_is_published_at_its_own_path(tmp_path):
     report = _write(tmp_path, _dashboard())
     assert report["paths"] == [
+        "/library/",
+        "/models/",
         "/leaderboard/",
         "/saturation/",
         "/trends/",
@@ -248,6 +310,8 @@ def test_each_page_declares_the_url_it_is_served_at(tmp_path):
 def test_only_the_named_view_is_open(tmp_path):
     _write(tmp_path, _dashboard())
     for path, open_id in (
+        ("library", "library-view"),
+        ("models", "models-view"),
         ("leaderboard", "leaderboard-view"),
         ("saturation", "saturation-view"),
         ("trends", "trends-view"),
@@ -329,6 +393,22 @@ def test_pages_carry_breadcrumb_and_webpage_schema(tmp_path):
     ]
 
 
+def test_every_generated_route_ships_a_dataset_without_a_website_parent(tmp_path):
+    report = _write(tmp_path, _dashboard())
+    for path in report["paths"]:
+        page = (tmp_path / path.strip("/") / "index.html").read_text(encoding="utf-8")
+        blocks = [
+            json.loads(block)
+            for block in re.findall(
+                r'<script type="application/ld\+json">(.*?)</script>', page, re.DOTALL
+            )
+        ]
+        dataset = next(block for block in blocks if block.get("@type") == "Dataset")
+        assert "isPartOf" not in dataset, path
+        assert dataset["includedInDataCatalog"]["@type"] == "DataCatalog"
+        assert any(block.get("@type") == "WebSite" for block in blocks), path
+
+
 def test_utility_schema_names_the_clean_route(tmp_path):
     _write(tmp_path, _dashboard())
     for utility, label in (("cli", "CLI"), ("cite", "Publications"), ("rubric", "Scoring rubric")):
@@ -404,6 +484,21 @@ def test_cite_credit_is_the_same_sentence_in_both_renderers():
         assert f'["{name}", "{url}"]' in script, f"app.js and the seed disagree on {name}"
     assert "citeCredit()" in script
     assert 'className: "cite-credit"' in script
+
+
+def test_cite_card_lists_the_media_coverage_in_both_renderers(tmp_path):
+    """Coverage sits under the citation formats, seeded and hydrated alike."""
+    from benchmark_radar.media import MEDIA_COVERAGE
+
+    _write(tmp_path, _dashboard())
+    page = (tmp_path / "cite" / "index.html").read_text(encoding="utf-8")
+    seeded = page.split('<div id="cite-content" data-seed>', 1)[1]
+    assert seeded.index('class="cite-credit"') < seeded.index('class="cite-media"')
+    script = (SITE / "assets" / "app.js").read_text(encoding="utf-8")
+    for label, url, note in MEDIA_COVERAGE:
+        assert f'href="{url}"' in seeded, label
+        assert json.dumps([label, url, note]) in script, label
+    assert "citeMedia()," in script
 
 
 def test_cite_credit_strings_are_translated():

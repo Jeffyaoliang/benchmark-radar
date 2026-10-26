@@ -187,9 +187,6 @@ def test_the_picker_uses_the_full_population_cutoff_contract():
     # Unknown scores remain visible under principle.md. The Node harness tests
     # their membership together with strict numeric boundaries and all sources.
     assert "matchesScoreCutoff(summary, state.lscore)" in membership
-    picker = script.split("function frontierPickerGroups(scored)", 1)[1].split("\n}", 1)[0]
-    assert "scored.map((row)" in picker
-    assert "renderFrontierPicker(scored, state.lfrontier);" in script
 
 
 def test_the_picker_and_the_search_both_cover_both_layers():
@@ -208,12 +205,27 @@ def test_the_picker_and_the_search_both_cover_both_layers():
 
 
 def test_catalog_search_matches_aliases_without_source_preference():
+    # The site delegates to the QueryService port (#710). Aliases are name
+    # evidence, and no source is preferred: the sort key carries no source term,
+    # so a record's origin only matters as low-weight searchable text.
     script = source("site/assets/app.js")
     search = script.split("function searchBenchmarkIndex(records, query)", 1)[1].split("\n}", 1)[0]
-    assert "record.aliases || []" in search
-    assert "names.includes(needle) ? 0" in search
-    assert "record.source" not in search
+    assert "searchCatalog(records, query)" in search
     assert "includeUnscored" not in search
+    module = source("site/assets/catalog-search.js")
+    assert "record.aliases && record.aliases.length" in module
+    sort_key = module.split("function sortKey(", 1)[1].split("\n}", 1)[0]
+    assert "record.source" not in sort_key
+
+
+def test_a_query_lists_saturation_rows_in_search_rank():
+    # Search keeps weak candidates that share one query word (#710). Filtering
+    # in browse order put scored but unrelated benchmarks above R2HandoverSim
+    # for "robot grasp planning", so a query must keep the search rank.
+    script = source("site/assets/app.js")
+    rows = script.split("function saturationRows()", 1)[1].split("\n}", 1)[0]
+    assert "[...matches].map((id, index) => [id, index])" in rows
+    assert "rank.get(a.id) - rank.get(b.id)" in rows
 
 
 def test_missing_catalog_fails_without_a_preferred_source_fallback():
@@ -311,18 +323,18 @@ def test_the_search_reach_line_counts_only_what_it_can_return():
 
 
 def test_search_matches_the_fields_the_placeholder_promises():
-    script = source("site/assets/app.js")
-    search = script.split("function searchBenchmarkIndex(records, query)", 1)[1].split("\n}", 1)[0]
-    assert "record.categories || []" in search
-    assert "foldName(record.publisher).includes(needle)" in search
-    assert "foldName(record.modality).includes(needle)" in search
+    # Descriptions are searched too, which is what #710 was missing.
+    module = source("site/assets/catalog-search.js")
+    fields = module.split("const FIELD_ORDER = [", 1)[1].split("]", 1)[0]
+    for field in ("name", "description", "categories", "publisher", "modality"):
+        assert f'"{field}"' in fields
 
 
 def test_a_link_to_an_unscored_benchmark_uses_the_full_catalog():
     script = source("site/assets/app.js")
     render = script.split("function renderAdoptionFrontier(board)", 1)[1].split("\n// ---", 1)[0]
     assert "state.benchmarkIndex.find((row) => row.slug === state.lfrontier)" in render
-    assert "renderCatalogBenchmark(board, scored, record)" in render
+    assert "renderCatalogBenchmark(board, record)" in render
     assert "scoreRecord(" not in render
 
 
@@ -477,7 +489,7 @@ def test_the_axis_and_header_name_the_score_reading():
     # time". What must not drift is that a single reading is never presented as
     # a track over time.
     assert "heading: record.name" in script
-    assert "subline: catalogSubline(record, meta)" in script
+    assert "subline: meta.name" in script
     assert "adoption trajectory" not in script
     # The counts line and the reporting-stage sentence are gone from the markup,
     # so nothing can repopulate them.
@@ -738,9 +750,9 @@ def test_issue_312_the_saturation_view_reveals_left_to_right():
     # before its cached shard settles would otherwise let the second paint
     # clear the entrance class before the browser drew a frame.
     assert "let catalogRenderSeq = 0;" in script
-    catalog_render = script.split("function renderCatalogBenchmark(board, scored, record)", 1)[
-        1
-    ].split("\nfunction ", 1)[0]
+    catalog_render = script.split("function renderCatalogBenchmark(board, record)", 1)[1].split(
+        "\nfunction ", 1
+    )[0]
     assert "const renderToken = ++catalogRenderSeq;" in catalog_render
     assert "if (renderToken !== catalogRenderSeq) return;" in catalog_render
 
@@ -842,3 +854,34 @@ def test_reported_result_lists_preserve_observations_sources_and_localization():
     if not node:
         pytest.skip("node is not installed")
     subprocess.run([node, "tests/catalog_score_results_harness.mjs"], check=True, timeout=60)
+
+
+def test_the_score_chart_leads_the_saturation_detail_panel():
+    # design.md, "A shared block follows the surface's job": the chart is
+    # Saturation's answer, and the explanation follows directly under it.
+    script = source("site/assets/app.js")
+    panel = script.split("function catalogBenchmarkDetail(shard)", 1)[1].split("\n}", 1)[0]
+    chart = panel.index("catalogScoresBlock(shard)")
+    explanation = panel.index("catalogIdentityBlock(detail)")
+    assert chart < explanation < panel.index("catalogDocumentsBlock(detail)")
+
+
+def test_the_panel_header_says_each_fact_once():
+    """Issue #995: the header repeated the browser and the chart's own label.
+
+    The dropdown listed the same benchmarks as the browser on the left, the bare
+    top score repeated the chart's "Best reported score" line, and the filter
+    note took a row of its own. The filter note now joins the source subline.
+    """
+    html = source("site/index.html")
+    script = source("site/assets/app.js")
+    for removed in (
+        'id="frontier-benchmark"',
+        'id="frontier-highest-score"',
+        'id="frontier-filter-note"',
+    ):
+        assert removed not in html
+    assert '"All tracked benchmarks"' not in script
+    shell = script.split("function renderCatalogShell(", 1)[1].split("\nfunction ", 1)[0]
+    assert 'outsideScoreFilter(state.lfrontier) ? t("Outside current filter")' in shell
+    assert '.join(" · ")' in shell
