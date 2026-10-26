@@ -2374,7 +2374,8 @@ def test_dashboard_and_markdown_format_statistics_identically():
 
 def test_rendered_questions_link_cited_evidence_to_its_source():
     nodes = list(_flatten(_rendered_questions()))
-    links = [node for node in nodes if node["href"]]
+    # The single-source count is itself a link to the same evidence (#956).
+    links = [node for node in nodes if node["href"] and node["className"] != "answer-source-count"]
 
     assert [node["href"] for node in links] == ["https://arxiv.org/abs/2608.00001"]
     assert links[0]["text"] == "A harness for long-horizon agent tasks"
@@ -2525,6 +2526,38 @@ def test_rendered_answers_hold_confidence_as_metadata_not_question_text():
     summary = next(n for n in nodes if n["className"] == "answer-disclosure-summary")
     assert "View analysis" in summary["text"]
     assert "READ the full answer" not in summary["text"].upper()
+
+
+def test_rendered_answer_source_count_is_clickable(tmp_path):
+    """Issue #956: the answer's source count links to every cited source."""
+    single = [n for n in _flatten(_rendered_questions()) if n["className"] == "answer-source-count"]
+    assert [(n["tag"], n["text"], n["href"]) for n in single] == [
+        ("a", "1 source", "https://arxiv.org/abs/2608.00001")
+    ]
+
+    def add_second(fixture):
+        evidence = fixture["questions"]["groups"][0]["answers"][0]["cited_evidence"]
+        evidence.append(
+            {
+                "id": "E002",
+                "title": "Second paper",
+                "url": "https://example.com/two",
+                "source": "hn",
+            }
+        )
+
+    rendered = _render_with(add_second, tmp_path)
+    count = next(n for n in _flatten(rendered) if n["className"] == "answer-source-count")
+    assert count["tag"] == "summary"
+    assert count["text"] == "2 sources"
+    disclosure = next(
+        n
+        for n in _flatten(rendered)
+        if n["tag"] == "details" and n["className"] == "briefing-sources"
+    )
+    assert "open" not in disclosure["attributes"]
+    links = [n["href"] for n in _flatten(disclosure) if n["tag"] == "a"]
+    assert links == ["https://arxiv.org/abs/2608.00001", "https://example.com/two"]
 
 
 def test_leaderboard_coverage_counts_are_native_disclosures():
@@ -3522,6 +3555,53 @@ def test_share_control_is_a_link_and_a_button_with_named_labels():
     assert 'role: "status"' in block
     assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
     assert "shareCardFor(day, item.url)" in source
+
+
+def test_card_source_is_a_chip_with_the_organization_mark():
+    # Issue #971: the source link is a chip with a logo and an arrow. A source
+    # without a mark keeps the chip with its name, so no card loses its source link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const SOURCE_BRAND")
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const element = (tag, props = {}, children = []) => "
+        "({ tag, props, children: children.filter(Boolean) });"
+        "const brandIcon = (name) => ({ tag: 'svg', brand: name, children: [] });"
+        + helpers
+        + "const chip = (source, href) => { const node = sourceChip({source}, href);"
+        + "return {tag: node.tag, href: node.props.attrs?.href, "
+        + "brand: node.children.find((c) => c.tag === 'svg')?.brand, "
+        + "name: node.children.find((c) => c.props?.className === 'radar-source-name')"
+        + "?.props.text, "
+        + "arrow: node.children.some((c) => c.props?.text === '↗'), "
+        + "label: node.props.attrs?.['aria-label']}; };"
+        + "console.log(JSON.stringify(['GitHub', 'GitHub Release', 'Hugging Face', "
+        + "'Hugging Face Papers', 'arXiv', 'Crossref'].map((s) => chip(s, 'https://x.test/'))"
+        + ".concat([chip('GitHub', null)])));"
+    )
+    chips = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [c.get("brand") for c in chips] == [
+        "github",
+        "github",
+        "huggingface",
+        "huggingface",
+        "arxiv",
+        None,
+        "github",
+    ]
+    # A mark replaces the name; the name stays as the accessible label, and
+    # "Release" is not part of a logo.
+    assert [c.get("name") for c in chips] == [None] * 5 + ["Crossref", None]
+    assert [c.get("label") for c in chips][:2] == ["GitHub", "GitHub Release"]
+    assert all(c["arrow"] for c in chips)
+    assert [c["tag"] for c in chips] == ["a"] * 6 + ["span"]
 
 
 def test_top_share_label_follows_the_number_of_cards_in_the_image():
