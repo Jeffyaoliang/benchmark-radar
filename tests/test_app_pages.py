@@ -486,6 +486,21 @@ def test_cite_credit_is_the_same_sentence_in_both_renderers():
     assert 'className: "cite-credit"' in script
 
 
+def test_cite_card_lists_the_media_coverage_in_both_renderers(tmp_path):
+    """Coverage sits under the citation formats, seeded and hydrated alike."""
+    from benchmark_radar.media import MEDIA_COVERAGE
+
+    _write(tmp_path, _dashboard())
+    page = (tmp_path / "cite" / "index.html").read_text(encoding="utf-8")
+    seeded = page.split('<div id="cite-content" data-seed>', 1)[1]
+    assert seeded.index('class="cite-credit"') < seeded.index('class="cite-media"')
+    script = (SITE / "assets" / "app.js").read_text(encoding="utf-8")
+    for label, url, note in MEDIA_COVERAGE:
+        assert f'href="{url}"' in seeded, label
+        assert json.dumps([label, url, note]) in script, label
+    assert "citeMedia()," in script
+
+
 def test_cite_credit_strings_are_translated():
     """Nothing else catches an untranslated t() key: it falls back to English
     silently, so the zh reader sees a stray English sentence.

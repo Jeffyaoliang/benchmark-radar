@@ -1432,6 +1432,10 @@ def test_static_html_references_existing_local_assets():
         "cli/",
         "cite/",
         "about/",
+        "media/",
+        "library/",
+        "models/",
+        "benchmarks/",
     }
     missing = []
     for reference in parser.local_refs:
@@ -3062,11 +3066,9 @@ def test_heading_outline_and_scale_stay_quiet():
     assert "text-transform: uppercase" not in styles
     assert "text-transform: none;" not in styles
 
-    # Footer is one left-aligned column: updated stamp, view links, dataset
-    # card last (bottom).
+    # Footer stacks three bands: signup, link columns, then legal and contact.
     footer_block = styles.split("\nfooter {")[-1].split("}", 1)[0]
-    assert "flex-direction: column;" in footer_block
-    assert "align-items: flex-start;" in footer_block
+    assert "display: grid;" in footer_block
 
     # View and detail headings share the compact leaderboard scale; none of
     # them may reintroduce the uppercase display treatment. h1 and h2 are styled
@@ -3312,18 +3314,68 @@ def test_issue_332_the_freshest_releases_reach_page_one():
 # adding pages beside it is to let the new thing leak into its router.
 
 
-def test_about_is_last_in_the_view_row_and_blog_stays_in_the_footer():
-    """About is discoverable in the masthead without becoming an SPA view."""
+def test_about_is_last_in_the_view_row_after_media_and_blog():
+    """About, Media and Blog are discoverable in the masthead without becoming SPA views."""
     html = Path("site/index.html").read_text(encoding="utf-8")
     view_nav = re.search(r'<nav class="view-nav".*?</nav>', html, re.S).group(0)
-    footer_nav = re.search(r'<nav class="footer-nav".*?</nav>', html, re.S).group(0)
-    assert 'href="/blog/"' not in view_nav
-    assert 'href="/blog/"' in footer_nav
     links = re.findall(r'<a\b[^>]*href="([^"]+)"[^>]*>', view_nav)
-    assert links[-1] == "/about/"
-    about = re.search(r'<a\b[^>]*href="/about/"[^>]*>', view_nav).group(0)
-    assert "data-view" not in about
-    assert 'href="/about/"' not in footer_nav
+    assert links[-3:] == ["/media/", "/blog/", "/about/"]
+    for path in ("/media/", "/blog/", "/about/"):
+        anchor = re.search(rf'<a\b[^>]*href="{path}"[^>]*>', view_nav).group(0)
+        assert "data-view" not in anchor
+
+
+def test_footer_offers_signup_link_columns_and_contact():
+    """Issue #906: one shared footer with the signup on top and contact bottom right."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    footer = html.split("<footer>", 1)[1].split("</footer>", 1)[0]
+    signup = footer.index('class="email-signup footer-signup"')
+    columns = footer.index('class="footer-columns"')
+    bottom = footer.index('class="footer-bottom"')
+    assert signup < columns < bottom
+    assert 'id="build-meta"' not in footer
+    for heading in ("Explore", "Data", "Project", "Contribute"):
+        assert f'<h2 data-i18n="{heading}">{heading}</h2>' in footer
+    assert 'href="/feed.xml"' in footer
+    assert 'href="https://huggingface.co/datasets/ktwu01/benchmark-radar"' in footer
+    assert "issues/new?template=report.yml" in footer
+    assert "data-lang-switch" in footer
+    contact = footer.split('class="footer-contact"', 1)[1]
+    assert 'href="mailto:ktwu@utexas.edu"' in contact
+
+
+def test_both_signup_forms_post_to_the_same_kit_form():
+    """The card above the briefing and the footer must feed one list."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    forms = re.findall(r'<form class="email-signup-form"[^>]*>.*?</form>', html, re.S)
+    assert len(forms) == 2
+    actions = {re.search(r'action="([^"]+)"', form).group(1) for form in forms}
+    assert len(actions) == 1
+    (action,) = actions
+    assert action.startswith("https://app.convertkit.com/forms/")
+    assert action.endswith("/subscriptions")
+    for form in forms:
+        assert 'method="post"' in form
+        assert 'type="email" name="email_address" required' in form
+        # A visible-only placeholder is not a label for screen readers.
+        assert '<span class="visually-hidden" data-i18n="Email address">' in form
+    card = html.index('class="email-signup email-signup-card"')
+    assert card < html.index('id="daily-briefing"') < html.index("<footer>")
+
+
+def test_footer_and_signup_strings_are_translated():
+    app_js = Path("site/assets/app.js").read_text(encoding="utf-8")
+    table = app_js.split("const I18N = {", 1)[1]
+    for key in (
+        "Get the weekly benchmark briefing",
+        "email.signup.note",
+        "Email address",
+        "Subscribe",
+        "Contribute",
+        "Report a mistake",
+        "In the media",
+    ):
+        assert f'"{key}":' in table or f"    {key}:" in table, key
 
 
 def test_the_blog_link_is_not_a_client_route():

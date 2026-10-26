@@ -270,6 +270,8 @@
           >
             Publications
           </a>
+          <a href="/media/" data-i18n="Media">Media</a>
+          <a href="/blog/" data-i18n="Blog">Blog</a>
           <a href="/about/" data-i18n="About">About</a>
         </nav>
       </div>
@@ -503,6 +505,22 @@
                  above the health and corpus cards (issue #248). The briefing
                  says what changed, the Q&A answers what a reader would ask
                  about it. -->
+            <!-- The signup sits above the briefing because that card is what
+                 the weekly email repeats, so a reader decides with the sample
+                 in view (issue #906). -->
+            <section class="email-signup email-signup-card" aria-labelledby="briefing-signup-heading">
+              <h2 class="email-signup-title" id="briefing-signup-heading" data-i18n="Get the weekly benchmark briefing">Get the weekly benchmark briefing</h2>
+              <p class="email-signup-note" data-i18n="email.signup.note">
+                One email a week: new benchmarks, score changes and what they mean. Unsubscribe anytime.
+              </p>
+              <form class="email-signup-form" action="https://app.convertkit.com/forms/KIT_FORM_ID/subscriptions" method="post" target="_blank">
+                <label>
+                  <span class="visually-hidden" data-i18n="Email address">Email address</span>
+                  <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
+                </label>
+                <button type="submit" data-i18n="Subscribe">Subscribe</button>
+              </form>
+            </section>
             <section class="daily-briefing" id="daily-briefing" aria-labelledby="daily-briefing-heading">
               <h2 class="daily-briefing-title" id="daily-briefing-heading" data-i18n="Daily briefing">Daily briefing</h2>
               <div id="daily-briefing-body"></div>
@@ -1164,52 +1182,115 @@
     </dialog>
 
     <footer>
-      <!-- These documents keep real links so readers and crawlers can reach them. -->
-      <nav class="footer-nav" aria-label="About this site" data-i18n-aria="About this site">
-        <a href="/blog/" data-i18n="Blog">Blog</a>
-      </nav>
-      <p id="build-meta">Updated —</p>
-      <aside class="adoption-cta" aria-label="Support Benchmark Radar">
-        <p data-i18n="If this saved you research time, cite the work, star the repo and help other eval builders find it.">
-          If this saved you research time, cite the work, star the repo and help other eval builders find it.
+      <!-- Every page reuses this footer, so the signup reaches readers who
+           never open Today (issue #906). The form posts straight to Kit, with
+           no script, so it works on the blog and benchmark pages too. -->
+      <section class="email-signup footer-signup" aria-labelledby="footer-signup-heading">
+        <div>
+          <h2 class="email-signup-title" id="footer-signup-heading" data-i18n="Get the weekly benchmark briefing">Get the weekly benchmark briefing</h2>
+          <p class="email-signup-note" data-i18n="email.signup.note">
+            One email a week: new benchmarks, score changes and what they mean. Unsubscribe anytime.
+          </p>
+        </div>
+        <form class="email-signup-form" action="https://app.convertkit.com/forms/KIT_FORM_ID/subscriptions" method="post" target="_blank">
+          <label>
+            <span class="visually-hidden" data-i18n="Email address">Email address</span>
+            <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
+          </label>
+          <button type="submit" data-i18n="Subscribe">Subscribe</button>
+        </form>
+        <p class="email-signup-alt">
+          <span data-i18n="Prefer a feed reader?">Prefer a feed reader?</span>
+          <a href="/feed.xml" data-i18n="Get the RSS feed">Get the RSS feed</a>
         </p>
-        <span class="adoption-actions">
-          <!-- A real path, so the citation panel is useful before JavaScript
-               and can be indexed as its own page. -->
-          <a
-            class="primary-link"
-            id="cite-open"
-            href="/cite/"
-            aria-haspopup="dialog"
-            aria-controls="cite-dialog"
-            aria-expanded="false"
-            data-i18n="Cite"
-          >Cite</a>
-          <a
-            class="primary-link"
-            href="https://github.com/ktwu01/benchmark-radar"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-i18n="Star the repository"
-          >Star the repository</a>
-          <button type="button" class="secondary-link" id="share-radar" data-i18n="Share">
-            Share
-          </button>
-        </span>
-      </aside>
-      <details class="privacy-note">
-        <summary data-i18n="Privacy notice">Privacy notice</summary>
-        <p>
-          If you accept, we use Microsoft Clarity cookies, session replays and heatmaps to understand
-          how people use this site and improve its navigation and content. Nothing loads until you
-          accept, and sensitive content is masked by default. See the
-          <a href="https://privacy.microsoft.com/privacystatement">Microsoft Privacy Statement</a>.
+      </section>
+      <div class="footer-columns">
+        <aside class="adoption-cta" aria-label="Support Benchmark Radar">
+          <p data-i18n="If this saved you research time, cite the work, star the repo and help other eval builders find it.">
+            If this saved you research time, cite the work, star the repo and help other eval builders find it.
+          </p>
+          <span class="adoption-actions">
+            <!-- A real path, so the citation panel is useful before JavaScript
+                 and can be indexed as its own page. -->
+            <a
+              class="primary-link"
+              id="cite-open"
+              href="/cite/"
+              aria-haspopup="dialog"
+              aria-controls="cite-dialog"
+              aria-expanded="false"
+              data-i18n="Cite"
+            >Cite</a>
+            <a
+              class="primary-link"
+              href="https://github.com/ktwu01/benchmark-radar"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-i18n="Star the repository"
+            >Star the repository</a>
+            <button type="button" class="secondary-link" id="share-radar" data-i18n="Share">
+              Share
+            </button>
+          </span>
+        </aside>
+        <nav class="footer-links" aria-label="Explore" data-i18n-aria="Explore">
+          <h2 data-i18n="Explore">Explore</h2>
+          <a href="/" data-i18n="Today">Today</a>
+          <a href="/benchmarks/" data-i18n="All benchmarks">All benchmarks</a>
+          <a href="/library/" data-i18n="Library">Library</a>
+          <a href="/models/" data-i18n="Models">Models</a>
+          <a href="/trends/" data-i18n="Trends">Trends</a>
+          <a href="/saturation/" data-i18n="Saturation">Saturation</a>
+          <a href="/leaderboard/" data-i18n="Landscape">Landscape</a>
+        </nav>
+        <nav class="footer-links" aria-label="Data" data-i18n-aria="Data">
+          <h2 data-i18n="Data">Data</h2>
+          <a href="https://huggingface.co/datasets/ktwu01/benchmark-radar" data-i18n="Download the dataset">Download the dataset</a>
+          <a href="/cli/" data-i18n="Command-line tool">Command-line tool</a>
+          <a href="/feed.xml" data-i18n="RSS feed">RSS feed</a>
+          <a href="https://github.com/ktwu01/benchmark-radar" data-i18n="Source code">Source code</a>
+        </nav>
+        <nav class="footer-links" aria-label="Project" data-i18n-aria="Project">
+          <h2 data-i18n="Project">Project</h2>
+          <a href="/about/" data-i18n="About">About</a>
+          <a href="/cite/" data-i18n="Publications">Publications</a>
+          <a href="/media/" data-i18n="Media">Media</a>
+          <a href="/blog/" data-i18n="Blog">Blog</a>
+        </nav>
+        <nav class="footer-links" aria-label="Contribute" data-i18n-aria="Contribute">
+          <h2 data-i18n="Contribute">Contribute</h2>
+          <a href="https://github.com/ktwu01/benchmark-radar/issues/new?template=feature-request.yml" data-i18n="Suggest a benchmark or source">Suggest a benchmark or source</a>
+          <a href="https://github.com/ktwu01/benchmark-radar/issues/new?template=report.yml" data-i18n="Report a mistake">Report a mistake</a>
+          <a href="https://github.com/ktwu01/benchmark-radar/issues/new?template=use-case.yml" data-i18n="Share how you use it">Share how you use it</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-legal">
+          <p class="copyright">© 2026 Koutian Wu and contributors</p>
+          <details class="privacy-note">
+            <summary data-i18n="Privacy notice">Privacy notice</summary>
+            <p>
+              If you accept, we use Microsoft Clarity cookies, session replays and heatmaps to understand
+              how people use this site and improve its navigation and content. Nothing loads until you
+              accept, and sensitive content is masked by default. See the
+              <a href="https://privacy.microsoft.com/privacystatement">Microsoft Privacy Statement</a>.
+            </p>
+            <p>
+              If you subscribe to the weekly email, Kit stores your email address to send it. Every email
+              has an unsubscribe link. To delete your address, write to
+              <a href="mailto:ktwu@utexas.edu">ktwu@utexas.edu</a>.
+            </p>
+            <p>
+              <button type="button" class="privacy-choice" data-analytics-consent-reset data-i18n="Change analytics choice">Change analytics choice</button>
+            </p>
+          </details>
+          <button type="button" class="footer-lang" data-lang-switch>English · 中文</button>
+        </div>
+        <p class="footer-contact">
+          <span data-i18n="Contact">Contact</span>
+          <a href="mailto:ktwu@utexas.edu">ktwu@utexas.edu</a>
         </p>
-        <p>
-          <button type="button" class="privacy-choice" data-analytics-consent-reset data-i18n="Change analytics choice">Change analytics choice</button>
-        </p>
-      </details>
-      <p class="copyright">© 2026 Koutian Wu and contributors</p>
+      </div>
     </footer>
   </body>
 </html>

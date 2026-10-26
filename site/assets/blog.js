@@ -119,13 +119,17 @@ function showLanguage(language, { remember = false } = {}) {
   }
 }
 
-const langToggle = document.getElementById("lang-toggle");
-if (langToggle) {
-  langToggle.addEventListener("click", () => {
-    const current = document.documentElement.lang === "zh-CN" ? "zh" : "en";
-    showLanguage(current === "zh" ? "en" : "zh", { remember: true });
-  });
+function flipLanguage() {
+  const current = document.documentElement.lang === "zh-CN" ? "zh" : "en";
+  showLanguage(current === "zh" ? "en" : "zh", { remember: true });
 }
+
+const langToggle = document.getElementById("lang-toggle");
+if (langToggle) langToggle.addEventListener("click", flipLanguage);
+// The footer switch is a second door to the same language state.
+document.querySelectorAll("[data-lang-switch]").forEach((control) => {
+  control.addEventListener("click", flipLanguage);
+});
 showLanguage(savedLanguage());
 
 // Repository star count. Mirrors app.js's renderStarCount: a rate-limited API

@@ -4173,6 +4173,36 @@ dialog::backdrop {
   text-decoration: underline;
 }
 
+.cite-media {
+  margin-top: 1.6rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.cite-media-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.95rem;
+}
+
+.cite-media-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.cite-media-list a {
+  color: var(--ink);
+}
+
+.cite-media-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .copy-label {
   margin: 0 0 0.5rem;
   color: var(--muted);
@@ -4458,39 +4488,225 @@ button.stale-banner-action {
 }
 
 footer {
-  /* One left-aligned column: document links, updated stamp, then the dataset
-     card underneath them. */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.9rem;
-  padding: 1.5rem 0 3rem;
+  /* Three bands, read top to bottom: the email signup, the link columns,
+     then legal and contact. */
+  display: grid;
+  gap: 2rem;
+  padding: 2rem 0 3rem;
   border-top: 1px solid var(--edge);
   color: var(--muted);
 }
 
 .copyright {
+  margin: 0;
   font-size: 0.72rem;
 }
 
-.footer-nav {
+.email-signup {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.email-signup-card {
+  margin-bottom: 1.25rem;
+}
+
+.email-signup-title {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
+.email-signup-note,
+.email-signup-alt {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--body);
+  font-size: 13px;
+  letter-spacing: normal;
+  line-height: 1.5;
+}
+
+.email-signup-alt a {
+  color: var(--ink);
+}
+
+.email-signup-form {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.25rem;
+  gap: 0.6rem;
+}
+
+.email-signup-form label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.email-signup-form input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 0.9rem;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+}
+
+.email-signup-form button {
+  flex: 0 0 auto;
+  min-height: var(--control-height);
+  padding: 0 1.2rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.email-signup-form button:hover,
+.email-signup-form button:focus-visible {
+  background: var(--blue-deep);
+  border-color: var(--blue-deep);
+}
+
+.email-signup-form input:focus-visible,
+.email-signup-form button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* The footer copy is wide, so the band puts the pitch beside the form;
+   the sidebar card above the briefing keeps the stacked layout. */
+.footer-signup {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 30rem);
+  align-items: center;
+  padding: 1.75rem 2rem;
+}
+
+.footer-signup .email-signup-title {
+  font-size: 1.35rem;
+}
+
+.footer-signup .email-signup-alt {
+  grid-column: 1 / -1;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.4fr) repeat(4, minmax(9rem, 1fr));
+  gap: 2rem;
+  align-items: start;
+}
+
+.footer-columns .adoption-cta {
+  margin-top: 0;
+}
+
+.footer-links {
+  display: grid;
+  gap: 0.55rem;
+  font-family: var(--body);
+  font-size: 14px;
+  letter-spacing: normal;
+}
+
+.footer-links h2 {
+  margin: 0 0 0.25rem;
+  color: var(--ink);
   font-family: var(--utility);
   font-size: 0.72rem;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  letter-spacing: 0.07em;
 }
 
-.footer-nav a {
-  color: var(--ink);
+.footer-links a {
+  color: var(--muted);
   text-decoration: none;
 }
 
-.footer-nav a:hover,
-.footer-nav .nav-active {
+.footer-links a:hover,
+.footer-links a:focus-visible,
+.footer-links .nav-active {
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.25em;
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: baseline;
+}
+
+.footer-lang {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.footer-lang:hover,
+.footer-lang:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.footer-contact {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.footer-contact a {
+  color: var(--ink);
+}
+
+@media (max-width: 1050px) {
+  .footer-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footer-columns .adoption-cta {
+    grid-column: 1 / -1;
+  }
+
+  .footer-signup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .email-signup-form {
+    flex-direction: column;
+  }
+
+  .footer-signup {
+    padding: 1.25rem;
+  }
 }
 
 @media (max-width: 1050px) {
