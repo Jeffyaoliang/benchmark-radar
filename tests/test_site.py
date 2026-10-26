@@ -1110,7 +1110,7 @@ def test_today_view_has_one_filterable_observation_list_and_one_source_status():
     assert 'id="filters"' in html
     assert 'id="kind-filter"' in html
     assert (
-        "visibleObservations.map((item, offset) => observationCard(item, pageStart + offset))"
+        "visibleObservations.map((item, offset) => observationCard(item, pageStart + offset, day))"
         in script
     )
     assert "Daily field note" not in html
@@ -1911,7 +1911,7 @@ def test_daily_briefing_renders_scannable_insight_blocks():
     script = Path("site/assets/app.js").read_text(encoding="utf-8")
 
     assert "function briefingParts(line)" in script
-    assert "function briefingInsight(line, citations)" in script
+    assert "function briefingInsight(line, citations, day)" in script
     assert '"briefing-insight-head"' in script
     assert '"briefing-insight-body"' in script
     assert '"briefing-insight-meta"' in script
@@ -3523,6 +3523,40 @@ def test_card_links_skip_only_what_the_rail_already_opens():
     assert paper == ["Paper ↗", "Code ↗"]
 
 
+def test_daily_briefing_share_control_appears_only_for_items_with_a_card():
+    """Issue #671: each briefing item links to its published image, or to none."""
+    nodes = list(_flatten(_rendered_briefing("tests/fixtures/daily_briefing_share.json")))
+    insights = [n for n in nodes if n["className"] == "briefing-insight"]
+    assert len(insights) == 2
+
+    def share_links(insight):
+        return [n for n in _flatten(insight) if n["className"] == "share-link"]
+
+    carded, uncarded = (share_links(i) for i in insights)
+    assert len(carded) == 1
+    assert carded[0]["tag"] == "a"
+    assert carded[0]["href"].endswith("/daily/2026-10-25/card-01.png")
+    assert carded[0]["text"].startswith("Share image")
+    # The item stays listed; it only has no image to offer, so no dead link.
+    assert uncarded == []
+    copy_buttons = [n for n in _flatten(insights[0]) if n["className"] == "share-copy"]
+    assert [b["tag"] for b in copy_buttons] == ["button"]
+
+
+def test_share_control_is_a_link_and_a_button_with_named_labels():
+    """A link and a button take focus natively; each label names its benchmark."""
+    source = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = source.index("function shareControl(")
+    block = source[start : source.index("function briefingShare(")]
+    assert 'element("a"' in block
+    assert 'element("button"' in block
+    assert 'type: "button"' in block
+    assert block.count("aria-label") == 2
+    assert 'role: "status"' in block
+    assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
+    assert "shareCardFor(day, item.url)" in source
+
+
 def test_card_source_is_a_chip_with_the_organization_mark():
     # Issue #971: the source link is a chip with a logo and an arrow. A source
     # without a mark keeps the chip with its name, so no card loses its source link.
@@ -3568,3 +3602,29 @@ def test_card_source_is_a_chip_with_the_organization_mark():
     assert [c.get("label") for c in chips][:2] == ["GitHub", "GitHub Release"]
     assert all(c["arrow"] for c in chips)
     assert [c["tag"] for c in chips] == ["a"] * 6 + ["span"]
+
+
+def test_top_share_label_follows_the_number_of_cards_in_the_image():
+    """top3.png holds fewer than three cards on a thin day; the label must say so."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("function topShareLabel(")
+    helper = script[start : script.index("function renderTopShare(")]
+    program = (
+        "const t = (v) => v;"
+        + helper
+        + "console.log(JSON.stringify([1, 2, 3, 5].map(topShareLabel)));"
+    )
+    labels = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert labels == [
+        "Top benchmark of the day",
+        "Top 2 of the day",
+        "Top 3 of the day",
+        "Top 3 of the day",
+    ]
