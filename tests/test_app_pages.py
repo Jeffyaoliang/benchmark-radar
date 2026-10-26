@@ -393,6 +393,22 @@ def test_pages_carry_breadcrumb_and_webpage_schema(tmp_path):
     ]
 
 
+def test_every_generated_route_ships_a_dataset_without_a_website_parent(tmp_path):
+    report = _write(tmp_path, _dashboard())
+    for path in report["paths"]:
+        page = (tmp_path / path.strip("/") / "index.html").read_text(encoding="utf-8")
+        blocks = [
+            json.loads(block)
+            for block in re.findall(
+                r'<script type="application/ld\+json">(.*?)</script>', page, re.DOTALL
+            )
+        ]
+        dataset = next(block for block in blocks if block.get("@type") == "Dataset")
+        assert "isPartOf" not in dataset, path
+        assert dataset["includedInDataCatalog"]["@type"] == "DataCatalog"
+        assert any(block.get("@type") == "WebSite" for block in blocks), path
+
+
 def test_utility_schema_names_the_clean_route(tmp_path):
     _write(tmp_path, _dashboard())
     for utility, label in (("cli", "CLI"), ("cite", "Publications"), ("rubric", "Scoring rubric")):
@@ -468,6 +484,21 @@ def test_cite_credit_is_the_same_sentence_in_both_renderers():
         assert f'["{name}", "{url}"]' in script, f"app.js and the seed disagree on {name}"
     assert "citeCredit()" in script
     assert 'className: "cite-credit"' in script
+
+
+def test_cite_card_lists_the_media_coverage_in_both_renderers(tmp_path):
+    """Coverage sits under the citation formats, seeded and hydrated alike."""
+    from benchmark_radar.media import MEDIA_COVERAGE
+
+    _write(tmp_path, _dashboard())
+    page = (tmp_path / "cite" / "index.html").read_text(encoding="utf-8")
+    seeded = page.split('<div id="cite-content" data-seed>', 1)[1]
+    assert seeded.index('class="cite-credit"') < seeded.index('class="cite-media"')
+    script = (SITE / "assets" / "app.js").read_text(encoding="utf-8")
+    for label, url, note in MEDIA_COVERAGE:
+        assert f'href="{url}"' in seeded, label
+        assert json.dumps([label, url, note]) in script, label
+    assert "citeMedia()," in script
 
 
 def test_cite_credit_strings_are_translated():

@@ -360,7 +360,6 @@ function rerenderCurrentView() {
   if (state.view === "trends") renderTrends();
   if (state.view === "map") renderTrendMap();
   renderStaleBanner();
-  renderBuildMeta();
 }
 
 function toggleLang() {
@@ -623,6 +622,26 @@ const I18N = {
     Trend: "趋势",
     Explore: "探索",
     Blog: "博客",
+    Media: "媒体报道",
+    "Get benchmark updates by email": "通过邮件获取 benchmark 更新",
+    "Email address": "邮箱地址",
+    Subscribe: "订阅",
+    "email.signup.consent": "我同意接收 Benchmark Radar 的邮件，并可随时退订。",
+    "How often?": "多久一封？",
+    Daily: "每天",
+    "the latest each day": "每天最新动态",
+    Weekly: "每周",
+    "every Monday": "每周一",
+    "Download the dataset": "下载数据集",
+    "Command-line tool": "命令行工具",
+    "RSS feed": "RSS 订阅",
+    "Source code": "源代码",
+    Project: "项目",
+    Contribute: "参与贡献",
+    "Suggest a benchmark or source": "推荐 benchmark 或数据源",
+    "Report a mistake": "报告错误",
+    "Share how you use it": "分享你的使用场景",
+    "In the media": "媒体报道",
     Rubric: "评分标准",
     "Daily briefing": "每日简报",
     "Questions for today": "今日问答",
@@ -853,6 +872,15 @@ const I18N = {
     topics: "个主题",
     // --- Today / health ------------------------------------------------------
     "Evidence cited by GPT": "GPT 引用的证据",
+    "Share image": "分享图片",
+    "Top 3 of the day": "今日前三",
+    "Top 2 of the day": "今日前二",
+    "Top benchmark of the day": "今日第一",
+    "Copy link": "复制链接",
+    "Copy image link": "复制图片链接",
+    "Link copied": "链接已复制",
+    "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
+    "opens in a new tab": "在新标签页打开",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
     "No observations match these filters. Clear one or more filters to widen the view.":
@@ -1116,7 +1144,6 @@ const I18N = {
       "完整数据集可以免费下载。如果它帮你节省了研究时间，请给仓库点个 Star，让更多评测开发者找到它。",
     Download: "下载",
     "Star the repository": "给仓库点 Star",
-    "Free dataset. No crawler needed.": "免费数据集，无需爬虫。",
     "If this saved you research time, cite the work, star the repo and help other eval builders find it.":
       "如果它帮你节省了研究时间，请引用这项工作、给仓库点 Star，让更多评测开发者找到它。",
     Cite: "引用",
@@ -2549,6 +2576,40 @@ function briefingParts(line) {
   return { head, body, confidence, evidenceIds };
 }
 
+// One source stays a direct link; several open as a native disclosure listing a
+// link to each, so the count a reader sees is never a dead end. Shared by the
+// briefing chips and the question answers.
+function sourcesControl(citedSources, chipClass) {
+  const sourceText = `${citedSources.length} ${
+    citedSources.length === 1 ? t("source") : t("sources")
+  }`;
+  if (citedSources.length === 1) {
+    const citation = citedSources[0];
+    return element("a", {
+      className: chipClass,
+      text: sourceText,
+      attrs: {
+        href: citation.href,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        title: `Open evidence: ${citation.title}`,
+        "aria-label": `${sourceText}: ${citation.title}`,
+      },
+    });
+  }
+  return element("details", { className: "briefing-sources" }, [
+    element("summary", { className: chipClass, text: sourceText }),
+    element("ul", { className: "briefing-sources-list" }, citedSources.map((entry) =>
+      element("li", {}, [
+        element("a", {
+          text: entry.title,
+          attrs: { href: entry.href, target: "_blank", rel: "noopener noreferrer" },
+        }),
+        element("span", { text: ` (${entry.source})` }),
+      ]))),
+  ]);
+}
+
 function briefingMeta(parts, citations) {
   const chips = [];
   if (parts.confidence) {
@@ -2562,46 +2623,91 @@ function briefingMeta(parts, citations) {
     return citation ? [citation] : [];
   });
   if (citedSources.length > 0) {
-    const sourceText = `${citedSources.length} ${
-      citedSources.length === 1 ? t("source") : t("sources")
-    }`;
-    const citation = citedSources.length === 1 ? citedSources[0] : null;
-    chips.push(citation
-      ? element("a", {
-          className: "briefing-chip briefing-chip-sources",
-          text: sourceText,
-          attrs: {
-            href: citation.href,
-            target: "_blank",
-            rel: "noopener noreferrer",
-            title: `Open evidence: ${citation.title}`,
-            "aria-label": `${sourceText}: ${citation.title}`,
-          },
-        })
-      : element("details", { className: "briefing-sources" }, [
-          element("summary", {
-            className: "briefing-chip briefing-chip-sources",
-            text: sourceText,
-          }),
-          element("ul", { className: "briefing-sources-list" }, citedSources.map((entry) =>
-            element("li", {}, [
-              element("a", {
-                text: entry.title,
-                attrs: {
-                  href: entry.href,
-                  target: "_blank",
-                  rel: "noopener noreferrer",
-                },
-              }),
-              element("span", { text: ` (${entry.source})` }),
-            ]))),
-        ]));
+    chips.push(sourcesControl(citedSources, "briefing-chip briefing-chip-sources"));
   }
   if (!chips.length) return null;
   return element("p", { className: "briefing-insight-meta" }, chips);
 }
 
-function briefingInsight(line, citations) {
+// Share images (issue #671) are rendered by the daily pipeline and published
+// per day, so the page only links to one. An item the day did not make a card
+// for gets no control: a link to an image that was never rendered would be a
+// dead end, and the item stays listed either way.
+function shareCardFor(day, url) {
+  const href = safeHttpUrl(url);
+  if (!href) return null;
+  const card = (day?.share?.cards || []).find((entry) => safeHttpUrl(entry.url) === href);
+  const image = card ? safeHttpUrl(card.image) : "";
+  return image ? { image } : null;
+}
+
+function shareControl(image, label) {
+  const status = element("span", {
+    className: "share-status",
+    attrs: { role: "status" },
+  });
+  const copy = element("button", {
+    className: "share-copy",
+    text: t("Copy link"),
+    attrs: { type: "button", "aria-label": `${t("Copy image link")}: ${label}` },
+  });
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(image);
+      status.textContent = t("Link copied");
+    } catch {
+      status.textContent = t("Could not copy. Open the image and copy its address.");
+    }
+  });
+  return element("div", { className: "share-control" }, [
+    element("a", {
+      className: "share-link",
+      text: `${t("Share image")} \u2197`,
+      attrs: {
+        href: image,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        "aria-label": `${t("Share image")}: ${label} (${t("opens in a new tab")})`,
+      },
+    }),
+    copy,
+    status,
+  ]);
+}
+
+function briefingShare(parts, citations, day) {
+  const citation = parts.evidenceIds
+    .map((id) => citations.find((entry) => entry.id === id))
+    .find(Boolean);
+  const card = citation ? shareCardFor(day, citation.href) : null;
+  return card ? shareControl(card.image, citation.title) : null;
+}
+
+// top3.png holds the first three cards, or fewer when the day has fewer, so
+// the label follows the number of cards the picture really shows.
+function topShareLabel(count) {
+  if (count >= 3) return t("Top 3 of the day");
+  return count === 2 ? t("Top 2 of the day") : t("Top benchmark of the day");
+}
+
+function renderTopShare(day, visible) {
+  const host = byId("today-share");
+  if (!host) return;
+  const count = Math.min((day?.share?.cards || []).length, 3);
+  const image = visible ? safeHttpUrl(day?.share?.top3_image) : "";
+  host.hidden = !image;
+  replaceChildren(
+    host,
+    image
+      ? [
+          element("span", { className: "today-share-label", text: topShareLabel(count) }),
+          shareControl(image, topShareLabel(count)),
+        ]
+      : [],
+  );
+}
+
+function briefingInsight(line, citations, day) {
   const parts = briefingParts(line);
   const head = element("h3", { className: "briefing-insight-head" },
     briefingContent(parts.head || line, citations));
@@ -2614,6 +2720,7 @@ function briefingInsight(line, citations) {
     head,
     body,
     briefingMeta(parts, citations),
+    briefingShare(parts, citations, day),
   ]);
 }
 
@@ -2699,7 +2806,7 @@ function renderDailyBriefing(day) {
           // head (the takeaway), the "why it matters" support beneath it, and a
           // metadata line carrying confidence and source count instead of
           // paragraph-wide prose and mid-sentence evidence IDs.
-          ...usable.map((line) => briefingInsight(line, citations)),
+          ...usable.map((line) => briefingInsight(line, citations, day)),
           briefingDetails(briefing, citations),
         ]
       : [
@@ -2780,7 +2887,7 @@ function answerBlock(answer) {
   // support (Tab to focus, Enter/Space to toggle) for free and stays collapsed
   // on load because no `open` attribute is rendered.
   const citations = answerCitations(answer);
-  const sourceCount = validBriefingCitations(answer?.cited_evidence).length;
+  const citedSources = validBriefingCitations(answer?.cited_evidence);
   const meta = element("p", { className: "answer-meta" }, [
     ...(confidence
       ? [
@@ -2790,13 +2897,8 @@ function answerBlock(answer) {
           }),
         ]
       : []),
-    ...(sourceCount
-      ? [
-          element("span", {
-            className: "answer-source-count",
-            text: `${sourceCount} ${sourceCount === 1 ? t("source") : t("sources")}`,
-          }),
-        ]
+    ...(citedSources.length
+      ? [sourcesControl(citedSources, "answer-source-count")]
       : []),
   ]);
   const detail = element("div", { className: "answer-detail" }, [
@@ -2949,17 +3051,6 @@ function renderTodayDateOptions() {
       ),
     ],
   );
-}
-
-function renderBuildMeta() {
-  if (!state.data) return;
-  byId("build-meta").textContent = `${t("Updated")} ${formatDate(
-    state.data.generated_at,
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  )} UTC`;
 }
 
 // The search box reads the daily feed: titles, summaries and source names of
@@ -3226,11 +3317,12 @@ function renderToday({ resultsOnly = false } = {}) {
       : releasesLead
         ? t("Sort: New releases first, then Recency ↓, then Priority ↓")
         : t("Sort: Recency ↓, then Priority ↓");
+  renderTopShare(day, !showingAllDates && !range);
   const listHost = byId("today-list");
   replaceChildren(
     listHost,
     visibleObservations.length
-      ? visibleObservations.map((item, offset) => observationCard(item, pageStart + offset))
+      ? visibleObservations.map((item, offset) => observationCard(item, pageStart + offset, day))
       : emptyTodayNodes(day, benchmarkMatches),
   );
   byId("today-page-status").textContent = t(
@@ -10988,25 +11080,53 @@ function railDate(value) {
   });
 }
 
-function evidenceCard(item) {
+// The source is the first thing a reader checks on a card, so it is a chip
+// (issue #971): the organization's mark and an arrow, nothing else. The name
+// stays in the label for screen readers, and "Release" is not part of a logo:
+// the rail already says "Released". A source without a mark shows its name.
+const SOURCE_BRAND = {
+  GitHub: "github",
+  "GitHub Release": "github",
+  "GitHub Organization": "github",
+  "Hugging Face": "huggingface",
+  "Hugging Face Papers": "huggingface",
+  arXiv: "arxiv",
+  "Hacker News": "hackernews",
+  "Semantic Scholar": "semanticscholar",
+};
+
+function sourceChip(item, href) {
+  const brand = SOURCE_BRAND[item.source];
+  const children = [
+    brand ? brandIcon(brand) : element("span", { className: "radar-source-name", text: item.source }),
+    element("span", { className: "radar-source-arrow", text: "↗", attrs: { "aria-hidden": "true" } }),
+  ];
+  const attrs = brand ? { "aria-label": item.source, title: item.source } : {};
+  return href
+    ? element(
+        "a",
+        {
+          className: "radar-source",
+          attrs: { ...attrs, href, target: "_blank", rel: "noopener noreferrer" },
+        },
+        children,
+      )
+    : element("span", { className: "radar-source", attrs }, children);
+}
+
+function evidenceCard(item, day) {
+  const shareCard = shareCardFor(day, item.url);
   const fullTitle = displayTitle(item);
   const { name, subtitle } = splitBenchmarkTitle(fullTitle);
   const categories = (item.categories || []).slice(0, 3).map(titleCase);
   const sourceHref = safeHttpUrl(item.url);
-  const sourceLabel = `${item.source} ↗`;
   // A repository past 100 or 1,000 GitHub stars is tinted gold. The tint
   // reports a count the source published; it is not a quality judgement.
   const stars = Number(item.metrics?.stars);
   const tier = stars > 1000 ? " stars-1000" : stars > 100 ? " stars-100" : "";
   return element("article", { className: `record-card radar-card${tier}` }, [
     element("div", { className: "radar-rail" }, [
-      sourceHref
-        ? element("a", {
-            className: "radar-source",
-            text: sourceLabel,
-            attrs: { href: sourceHref, target: "_blank", rel: "noopener noreferrer" },
-          })
-        : element("span", { className: "radar-source", text: item.source }),
+      sourceChip(item, sourceHref),
       railEvent(item).verb
         ? element("span", { className: "radar-event", text: railEvent(item).verb })
         : null,
@@ -11034,15 +11154,16 @@ function evidenceCard(item) {
         text: item.summary || t("No description published at the source."),
       }),
       artifactLinks(item),
+      shareCard ? shareControl(shareCard.image, fullTitle) : null,
     ]),
     scoreBlock(item),
   ]);
 }
 
-function observationCard(record, index) {
+function observationCard(record, index, day) {
   const item = { ...record, summary: plainSummary(record.summary) };
   const isAttention = item.observation_kind === "attention";
-  if (!isAttention) return evidenceCard(item);
+  if (!isAttention) return evidenceCard(item, day);
   const metadata = isAttention
     ? element("div", { className: "signal-meta" }, [
         element("span", { className: "attention-badge", text: t("attention") }),
@@ -11104,6 +11225,16 @@ const WECHAT_ID = "ktwu001";
 const DISCORD_ID = "ktwu01";
 
 const BRAND_ICON_PATHS = {
+  github:
+    "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12",
+  huggingface:
+    "M12.025 1.13c-5.77 0-10.449 4.647-10.449 10.378 0 1.112.178 2.181.503 3.185.064-.222.203-.444.416-.577a.96.96 0 0 1 .524-.15c.293 0 .584.124.84.284.278.173.48.408.71.694.226.282.458.611.684.951v-.014c.017-.324.106-.622.264-.874s.403-.487.762-.543c.3-.047.596.06.787.203s.31.313.4.467c.15.257.212.468.233.542.01.026.653 1.552 1.657 2.54.616.605 1.01 1.223 1.082 1.912.055.537-.096 1.059-.38 1.572.637.121 1.294.187 1.967.187.657 0 1.298-.063 1.921-.178-.287-.517-.44-1.041-.384-1.581.07-.69.465-1.307 1.081-1.913 1.004-.987 1.647-2.513 1.657-2.539.021-.074.083-.285.233-.542.09-.154.208-.323.4-.467a1.08 1.08 0 0 1 .787-.203c.359.056.604.29.762.543s.247.55.265.874v.015c.225-.34.457-.67.683-.952.23-.286.432-.52.71-.694.257-.16.547-.284.84-.285a.97.97 0 0 1 .524.151c.228.143.373.388.43.625l.006.04a10.3 10.3 0 0 0 .534-3.273c0-5.731-4.678-10.378-10.449-10.378M8.327 6.583a1.5 1.5 0 0 1 .713.174 1.487 1.487 0 0 1 .617 2.013c-.183.343-.762-.214-1.102-.094-.38.134-.532.914-.917.71a1.487 1.487 0 0 1 .69-2.803m7.486 0a1.487 1.487 0 0 1 .689 2.803c-.385.204-.536-.576-.916-.71-.34-.12-.92.437-1.103.094a1.487 1.487 0 0 1 .617-2.013 1.5 1.5 0 0 1 .713-.174m-10.68 1.55a.96.96 0 1 1 0 1.921.96.96 0 0 1 0-1.92m13.838 0a.96.96 0 1 1 0 1.92.96.96 0 0 1 0-1.92M8.489 11.458c.588.01 1.965 1.157 3.572 1.164 1.607-.007 2.984-1.155 3.572-1.164.196-.003.305.12.305.454 0 .886-.424 2.328-1.563 3.202-.22-.756-1.396-1.366-1.63-1.32q-.011.001-.02.006l-.044.026-.01.008-.03.024q-.018.017-.035.036l-.032.04a1 1 0 0 0-.058.09l-.014.025q-.049.088-.11.19a1 1 0 0 1-.083.116 1.2 1.2 0 0 1-.173.18q-.035.029-.075.058a1.3 1.3 0 0 1-.251-.243 1 1 0 0 1-.076-.107c-.124-.193-.177-.363-.337-.444-.034-.016-.104-.008-.2.022q-.094.03-.216.087-.06.028-.125.063l-.13.074q-.067.04-.136.086a3 3 0 0 0-.135.096 3 3 0 0 0-.26.219 2 2 0 0 0-.12.121 2 2 0 0 0-.106.128l-.002.002a2 2 0 0 0-.09.132l-.001.001a1.2 1.2 0 0 0-.105.212q-.013.036-.024.073c-1.139-.875-1.563-2.317-1.563-3.203 0-.334.109-.457.305-.454m.836 10.354c.824-1.19.766-2.082-.365-3.194-1.13-1.112-1.789-2.738-1.789-2.738s-.246-.945-.806-.858-.97 1.499.202 2.362c1.173.864-.233 1.45-.685.64-.45-.812-1.683-2.896-2.322-3.295s-1.089-.175-.938.647 2.822 2.813 2.562 3.244-1.176-.506-1.176-.506-2.866-2.567-3.49-1.898.473 1.23 2.037 2.16c1.564.932 1.686 1.178 1.464 1.53s-3.675-2.511-4-1.297c-.323 1.214 3.524 1.567 3.287 2.405-.238.839-2.71-1.587-3.216-.642-.506.946 3.49 2.056 3.522 2.064 1.29.33 4.568 1.028 5.713-.624m5.349 0c-.824-1.19-.766-2.082.365-3.194 1.13-1.112 1.789-2.738 1.789-2.738s.246-.945.806-.858.97 1.499-.202 2.362c-1.173.864.233 1.45.685.64.451-.812 1.683-2.896 2.322-3.295s1.089-.175.938.647-2.822 2.813-2.562 3.244 1.176-.506 1.176-.506 2.866-2.567 3.49-1.898-.473 1.23-2.037 2.16c-1.564.932-1.686 1.178-1.464 1.53s3.675-2.511 4-1.297c.323 1.214-3.524 1.567-3.287 2.405.238.839 2.71-1.587 3.216-.642.506.946-3.49 2.056-3.522 2.064-1.29.33-4.568 1.028-5.713-.624",
+  arxiv:
+    "M3.8423 0a1.0037 1.0037 0 0 0-.922.6078c-.1536.3687-.0438.6275.2938 1.1113l6.9185 8.3597-1.0223 1.1058a1.0393 1.0393 0 0 0 .003 1.4229l1.2292 1.3135-5.4391 6.4444c-.2803.299-.4538.823-.2971 1.1986a1.0253 1.0253 0 0 0 .9585.635.9133.9133 0 0 0 .6891-.3405l5.783-6.126 7.4902 8.0051a.8527.8527 0 0 0 .6835.2597.9575.9575 0 0 0 .8777-.6138c.1577-.377-.017-.7502-.306-1.1407l-7.0518-8.3418 1.0632-1.13a.9626.9626 0 0 0 .0089-1.3165L4.6336.4639s-.3733-.4535-.768-.463zm0 .272h.0166c.2179.0052.4874.2715.5644.3639l.005.006.0052.0055 10.169 10.9905a.6915.6915 0 0 1-.0072.945l-1.0666 1.133-1.4982-1.7724-8.5994-10.39c-.3286-.472-.352-.6183-.2592-.841a.7307.7307 0 0 1 .6704-.4401Zm14.341 1.5701a.877.877 0 0 0-.6554.2418l-5.6962 6.1584 1.6944 1.8319 5.3089-6.5138c.3251-.4335.479-.6603.3247-1.0292a1.1205 1.1205 0 0 0-.9763-.689zm-7.6557 12.2823 1.3186 1.4135-5.7864 6.1295a.6494.6494 0 0 1-.4959.26.7516.7516 0 0 1-.706-.4669c-.1119-.2682.0359-.6864.2442-.9083l.0051-.0055.0047-.0055z",
+  hackernews:
+    "M0 24V0h24v24H0zM6.951 5.896l4.112 7.708v5.064h1.583v-4.972l4.148-7.799h-1.749l-2.457 4.875c-.372.745-.688 1.434-.688 1.434s-.297-.708-.651-1.434L8.831 5.896h-1.88z",
+  semanticscholar:
+    "M24 8.609c-.848.536-1.436.83-2.146 1.245-4.152 2.509-8.15 5.295-11.247 8.981l-1.488 1.817-4.568-7.268c1.021.814 3.564 3.098 4.603 3.599l3.356-2.526c2.336-1.644 8.946-5.226 11.49-5.848ZM8.046 15.201c.346.277.692.537.969.744.761-3.668.121-7.613-1.886-11.039 3.374-.052 6.731-.087 10.105-.139a14.794 14.794 0 0 1 1.298 5.295c.294-.156.588-.294.883-.433-.104-1.868-.641-3.91-1.662-6.263-4.602-.018-9.188-.018-13.79-.018 2.993 3.547 4.36 7.839 4.083 11.853Zm-.623-.484c.087.086.191.155.277.225-.138-3.409-1.419-6.887-3.824-9.881H1.73c3.098 2.855 4.984 6.299 5.693 9.656Zm-.744-.658c.104.087.208.173.329.277-.9-2.526-2.492-5.018-4.741-7.198H0c2.89 2.076 5.122 4.481 6.679 6.921Z",
   email: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm9 6.9L4.2 6h15.6L12 11.9Zm-8 6.6V8.9l8 5.9 8-5.9v9.6H4Z",
   wechat:
     "M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05a6.127 6.127 0 0 1-.253-1.72c0-3.571 3.437-6.467 7.678-6.467.233 0 .463.013.694.031C17.02 4.792 13.205 2.188 8.69 2.188Zm-2.6 4.408c.654 0 1.184.517 1.184 1.154 0 .637-.53 1.154-1.184 1.154-.654 0-1.184-.517-1.184-1.154 0-.637.53-1.154 1.184-1.154Zm5.51 0c.654 0 1.184.517 1.184 1.154 0 .637-.53 1.154-1.184 1.154-.654 0-1.184-.517-1.184-1.154 0-.637.53-1.154 1.184-1.154Zm7.835 3.124c-3.858 0-6.984 2.667-6.984 5.957 0 3.29 3.126 5.957 6.984 5.957.848 0 1.663-.146 2.418-.408a.622.622 0 0 1 .516.07l1.371.802a.235.235 0 0 0 .12.039.213.213 0 0 0 .208-.213c0-.052-.02-.102-.035-.153l-.28-1.067a.426.426 0 0 1 .153-.479c1.359-1.111 2.2-2.707 2.2-4.548 0-3.29-3.126-5.957-6.984-5.957Zm-3.865 3.594c.55 0 .996.435.996.971 0 .537-.446.972-.996.972-.55 0-.996-.435-.996-.972 0-.536.446-.971.996-.971Zm7.729 0c.55 0 .996.435.996.971 0 .537-.446.972-.996.972-.55 0-.996-.435-.996-.972 0-.536.446-.971.996-.971Z",
@@ -11379,6 +11510,50 @@ function citeCredit() {
   return node;
 }
 
+// Coverage under the citation formats. This mirrors MEDIA_COVERAGE in
+// media.py, which also feeds the seeded card and the /media/ page.
+const MEDIA_COVERAGE = [
+  ["Daily AI Wire News", "https://dailyaiwire.news/article/benchmark-radar-ai-evaluation-database-search-engine", "Article"],
+  ["Moonlight", "https://www.themoonlight.io/en/review/benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-evaluation", "Paper summary"],
+  ["Papers with Code", "https://paperswithcode.co/paper/2609.11115", "Paper listing"],
+  ["alphaXiv", "https://www.alphaxiv.org/abs/2609.11115", "Paper discussion"],
+  ["Hugging Face Papers", "https://huggingface.co/papers/2609.11115", "Paper discussion"],
+  ["arXivDaily", "https://www.arxivdaily.com/universities/sjtu", "Shanghai Jiao Tong University paper feed (rolling)"],
+  ["Geepity", "https://geepity.com/2609.11115/", "Paper page"],
+  ["Isfahan AI", "https://isfahan-ai.ir/news/1248", "News post"],
+  ["Collected", "https://collected.ga/typesafe-ai-daily-benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-eval/", "Typesafe AI Daily"],
+  ["Alexy Khrabrov on LinkedIn", "https://www.linkedin.com/posts/chiefscientist_typesafe-ai-daily-benchmark-radar-a-living-share-7504531089483309056-9uO7/", "Community post"],
+  ["Daily AI Wire News on LinkedIn", "https://www.linkedin.com/posts/benchmark-radar-launches-as-centralized-ai-share-7504478957413527552-jdN_/", "Article announcement"],
+  ["@SciFi on X", "https://x.com/SciFi/status/2098817718036127993", "Community post"],
+  ["@HuggingPapers on X", "https://x.com/HuggingPapers/status/2099412410264060340", "Community post"],
+  ["@marcel_butucea on X", "https://x.com/marcel_butucea/status/2098914581204680765", "Community post"],
+  ["Moltbook", "https://www.moltbook.com/post/a65591a2-d28d-4f3d-b381-fe2836c4e4c3", "Community post"],
+];
+
+function citeMedia() {
+  return element("section", { className: "cite-media", attrs: { "aria-labelledby": "cite-media-title" } }, [
+    element("h3", {
+      className: "cite-media-title",
+      text: t("In the media"),
+      attrs: { id: "cite-media-title" },
+    }),
+    element(
+      "ul",
+      { className: "cite-media-list" },
+      MEDIA_COVERAGE.map(([label, url, note]) =>
+        element("li", {}, [
+          element("a", {
+            text: label,
+            attrs: { href: url, target: "_blank", rel: "noopener noreferrer" },
+          }),
+          document.createTextNode(" "),
+          element("span", { className: "cite-media-note", text: note }),
+        ]),
+      ),
+    ),
+  ]);
+}
+
 // Reachable at /cite/, so the card has a short link that can be pasted into a
 // paper, a README or a message instead of a reader hunting the footer for it.
 function openCite(updateUrl = true) {
@@ -11415,6 +11590,7 @@ function openCite(updateUrl = true) {
       attrs: { href: CITE_CFF_URL, target: "_blank", rel: "noopener noreferrer" },
     }),
     citeCredit(),
+    citeMedia(),
   ]);
   showModalDialog(dialog);
 }
@@ -11497,6 +11673,11 @@ function bindEvents() {
   window.addEventListener("popstate", onPopState);
   const langToggle = byId("lang-toggle");
   if (langToggle) langToggle.addEventListener("click", toggleLang);
+  // The footer switch is a second door to the masthead toggle, so both stay
+  // one control with one state.
+  document.querySelectorAll("[data-lang-switch]").forEach((item) => {
+    item.addEventListener("click", toggleLang);
+  });
   document.querySelectorAll("[data-view]").forEach((item) => {
     item.addEventListener("click", async (event) => {
       // View nav entries are anchors so crawlers can follow them; keep the
@@ -12199,7 +12380,6 @@ async function initialize() {
     if (state.view === "trends") renderTrends();
     if (state.view === "map") renderTrendMap();
 
-    renderBuildMeta();
     renderStaleBanner();
     if (state.rubric) {
       openRubric(null, state.rubric === "current" ? null : state.rubric, false);
@@ -12222,7 +12402,6 @@ async function initialize() {
       syncLeaderboardNav();
       setView(state.view, false);
       rerenderCurrentView();
-      renderBuildMeta();
       renderStaleBanner();
       return;
     }

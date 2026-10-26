@@ -114,7 +114,8 @@ def test_privacy_notice_is_collapsible_and_collapsed_by_default():
     styles = Path("site/assets/styles.css").read_text(encoding="utf-8")
     renderer = Path("site/assets/app.js").read_text(encoding="utf-8")
 
-    disclosure = homepage.split('<details class="privacy-note">', 1)[1].split("</details>", 1)[0]
+    opening = '<details class="privacy-note" id="privacy-notice">'
+    disclosure = homepage.split(opening, 1)[1].split("</details>", 1)[0]
     assert "<summary" in disclosure
     assert "Privacy notice" in disclosure.split("<summary", 1)[1].split("</summary>", 1)[0]
     assert "session replays and heatmaps" in disclosure
@@ -1110,7 +1111,7 @@ def test_today_view_has_one_filterable_observation_list_and_one_source_status():
     assert 'id="filters"' in html
     assert 'id="kind-filter"' in html
     assert (
-        "visibleObservations.map((item, offset) => observationCard(item, pageStart + offset))"
+        "visibleObservations.map((item, offset) => observationCard(item, pageStart + offset, day))"
         in script
     )
     assert "Daily field note" not in html
@@ -1432,6 +1433,10 @@ def test_static_html_references_existing_local_assets():
         "cli/",
         "cite/",
         "about/",
+        "media/",
+        "library/",
+        "models/",
+        "benchmarks/",
     }
     missing = []
     for reference in parser.local_refs:
@@ -1911,7 +1916,7 @@ def test_daily_briefing_renders_scannable_insight_blocks():
     script = Path("site/assets/app.js").read_text(encoding="utf-8")
 
     assert "function briefingParts(line)" in script
-    assert "function briefingInsight(line, citations)" in script
+    assert "function briefingInsight(line, citations, day)" in script
     assert '"briefing-insight-head"' in script
     assert '"briefing-insight-body"' in script
     assert '"briefing-insight-meta"' in script
@@ -2374,7 +2379,8 @@ def test_dashboard_and_markdown_format_statistics_identically():
 
 def test_rendered_questions_link_cited_evidence_to_its_source():
     nodes = list(_flatten(_rendered_questions()))
-    links = [node for node in nodes if node["href"]]
+    # The single-source count is itself a link to the same evidence (#956).
+    links = [node for node in nodes if node["href"] and node["className"] != "answer-source-count"]
 
     assert [node["href"] for node in links] == ["https://arxiv.org/abs/2608.00001"]
     assert links[0]["text"] == "A harness for long-horizon agent tasks"
@@ -2525,6 +2531,38 @@ def test_rendered_answers_hold_confidence_as_metadata_not_question_text():
     summary = next(n for n in nodes if n["className"] == "answer-disclosure-summary")
     assert "View analysis" in summary["text"]
     assert "READ the full answer" not in summary["text"].upper()
+
+
+def test_rendered_answer_source_count_is_clickable(tmp_path):
+    """Issue #956: the answer's source count links to every cited source."""
+    single = [n for n in _flatten(_rendered_questions()) if n["className"] == "answer-source-count"]
+    assert [(n["tag"], n["text"], n["href"]) for n in single] == [
+        ("a", "1 source", "https://arxiv.org/abs/2608.00001")
+    ]
+
+    def add_second(fixture):
+        evidence = fixture["questions"]["groups"][0]["answers"][0]["cited_evidence"]
+        evidence.append(
+            {
+                "id": "E002",
+                "title": "Second paper",
+                "url": "https://example.com/two",
+                "source": "hn",
+            }
+        )
+
+    rendered = _render_with(add_second, tmp_path)
+    count = next(n for n in _flatten(rendered) if n["className"] == "answer-source-count")
+    assert count["tag"] == "summary"
+    assert count["text"] == "2 sources"
+    disclosure = next(
+        n
+        for n in _flatten(rendered)
+        if n["tag"] == "details" and n["className"] == "briefing-sources"
+    )
+    assert "open" not in disclosure["attributes"]
+    links = [n["href"] for n in _flatten(disclosure) if n["tag"] == "a"]
+    assert links == ["https://arxiv.org/abs/2608.00001", "https://example.com/two"]
 
 
 def test_leaderboard_coverage_counts_are_native_disclosures():
@@ -2926,24 +2964,17 @@ def test_issue_311_the_today_list_loads_one_page_at_a_time():
     assert '${attentionCount} ${t("attention")}' in renderer
     assert '"need attention"' not in script
 
-    # Dataset access remains free under the homepage pager; starring is an
-    # earned request, not a gate. The stronger cite/star/share card closes the
-    # page in the footer instead of competing with the result list.
+    # Dataset access lives in the footer's Data column on every page, so the
+    # homepage no longer repeats it under the pager; starring is an earned
+    # request, not a gate.
     assert 'id="badge-export"' not in html
     assert 'id="export-dialog"' not in html
     assert "function openExport(" not in script
     assert "function observationsToCsv(" not in script
     assert "function downloadText(" not in script
-    pager_end = html.index("</nav>", html.index('class="today-pagination"'))
-    dataset_card = html.index('<div class="footer-dataset">')
-    page_footer = html.index("<footer>")
-    assert pager_end < dataset_card < page_footer
-    dataset = html.split('<div class="footer-dataset">', 1)[1].split("</div>", 1)[0]
-    assert "Free dataset. No crawler needed." in dataset
-    assert 'href="https://huggingface.co/datasets/ktwu01/benchmark-radar"' in dataset
-    assert "Star the repository" not in dataset
-    assert "Contact" not in dataset
+    assert 'class="footer-dataset"' not in html
     footer = html.split("<footer>", 1)[1].split("</footer>", 1)[0]
+    assert 'href="https://huggingface.co/datasets/ktwu01/benchmark-radar"' in footer
     assert 'class="adoption-cta"' in footer
     assert "If this saved you research time" in footer
     assert 'id="share-radar"' in footer
@@ -3029,11 +3060,9 @@ def test_heading_outline_and_scale_stay_quiet():
     assert "text-transform: uppercase" not in styles
     assert "text-transform: none;" not in styles
 
-    # Footer is one left-aligned column: updated stamp, view links, dataset
-    # card last (bottom).
+    # Footer stacks three bands: signup, link columns, then legal and contact.
     footer_block = styles.split("\nfooter {")[-1].split("}", 1)[0]
-    assert "flex-direction: column;" in footer_block
-    assert "align-items: flex-start;" in footer_block
+    assert "display: grid;" in footer_block
 
     # View and detail headings share the compact leaderboard scale; none of
     # them may reintroduce the uppercase display treatment. h1 and h2 are styled
@@ -3279,18 +3308,99 @@ def test_issue_332_the_freshest_releases_reach_page_one():
 # adding pages beside it is to let the new thing leak into its router.
 
 
-def test_about_is_last_in_the_view_row_and_blog_stays_in_the_footer():
-    """About is discoverable in the masthead without becoming an SPA view."""
+def test_about_is_last_in_the_view_row_after_media_and_blog():
+    """About, Media and Blog are discoverable in the masthead without becoming SPA views."""
     html = Path("site/index.html").read_text(encoding="utf-8")
     view_nav = re.search(r'<nav class="view-nav".*?</nav>', html, re.S).group(0)
-    footer_nav = re.search(r'<nav class="footer-nav".*?</nav>', html, re.S).group(0)
-    assert 'href="/blog/"' not in view_nav
-    assert 'href="/blog/"' in footer_nav
     links = re.findall(r'<a\b[^>]*href="([^"]+)"[^>]*>', view_nav)
-    assert links[-1] == "/about/"
-    about = re.search(r'<a\b[^>]*href="/about/"[^>]*>', view_nav).group(0)
-    assert "data-view" not in about
-    assert 'href="/about/"' not in footer_nav
+    assert links[-3:] == ["/media/", "/blog/", "/about/"]
+    for path in ("/media/", "/blog/", "/about/"):
+        anchor = re.search(rf'<a\b[^>]*href="{path}"[^>]*>', view_nav).group(0)
+        assert "data-view" not in anchor
+
+
+def test_footer_offers_signup_link_columns_and_contact():
+    """Issue #906: one shared footer with the signup on top and contact bottom right."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    footer = html.split("<footer>", 1)[1].split("</footer>", 1)[0]
+    signup = footer.index('class="email-signup footer-signup"')
+    columns = footer.index('class="footer-columns"')
+    bottom = footer.index('class="footer-bottom"')
+    assert signup < columns < bottom
+    assert 'id="build-meta"' not in footer
+    for heading in ("Explore", "Data", "Project", "Contribute"):
+        assert f'<h2 data-i18n="{heading}">{heading}</h2>' in footer
+    assert 'href="/feed.xml"' in footer
+    assert 'href="https://huggingface.co/datasets/ktwu01/benchmark-radar"' in footer
+    assert "issues/new?template=report.yml" in footer
+    assert "data-lang-switch" in footer
+    contact = footer.split('class="footer-contact"', 1)[1]
+    assert 'href="mailto:ktwu@utexas.edu"' in contact
+
+
+def test_both_signup_forms_post_to_the_same_kit_form():
+    """The card above the briefing and the footer must feed one list."""
+    html = Path("site/index.html").read_text(encoding="utf-8")
+    forms = re.findall(r'<form class="email-signup-form"[^>]*>.*?</form>', html, re.S)
+    assert len(forms) == 2
+    actions = {re.search(r'action="([^"]+)"', form).group(1) for form in forms}
+    assert len(actions) == 1
+    (action,) = actions
+    # The action Kit's published form 10097391 posts to.
+    assert action == "https://app.kit.com/forms/10097391/subscriptions"
+    for form in forms:
+        assert 'method="post"' in form
+        assert 'type="email" name="email_address" required' in form
+        # A visible-only placeholder is not a label for screen readers.
+        assert '<span class="visually-hidden" data-i18n="Email address">' in form
+        # Consent and cadence live in the panel that opens once an address is
+        # typed. Consent is required, and so is a cadence, with none chosen in
+        # advance; daily is listed first.
+        more = form.split('class="email-signup-more"', 1)[1]
+        assert '<input type="checkbox" required>' in more
+        assert "checked" not in more
+        daily = more.index('name="fields[frequency]" value="daily" required')
+        weekly = more.index('name="fields[frequency]" value="weekly"')
+        assert daily < weekly
+        assert 'href="#privacy-notice"' in more
+    # Nothing but the title sits beside the resting form.
+    assert "email-signup-note" not in html
+    assert 'id="privacy-notice"' in html
+    card = html.index('class="email-signup email-signup-card"')
+    assert card < html.index('id="daily-briefing"') < html.index("<footer>")
+
+
+def test_signup_panel_opens_only_after_an_address_is_typed():
+    styles = Path("site/assets/styles.css").read_text(encoding="utf-8")
+    closed = _css_rule(styles, ".email-signup-more {")
+    assert "grid-template-rows: 0fr;" in closed
+    assert "visibility: hidden;" in closed
+    assert (
+        '.email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {'
+        in styles
+    )
+    # A browser without :has() must still be able to tick the required box.
+    assert "@supports not selector(:has(*))" in styles
+
+
+def test_footer_and_signup_strings_are_translated():
+    app_js = Path("site/assets/app.js").read_text(encoding="utf-8")
+    table = app_js.split("const I18N = {", 1)[1]
+    for key in (
+        "Get benchmark updates by email",
+        "email.signup.consent",
+        "How often?",
+        "Weekly",
+        "Daily",
+        "the latest each day",
+        "every Monday",
+        "Email address",
+        "Subscribe",
+        "Contribute",
+        "Report a mistake",
+        "In the media",
+    ):
+        assert f'"{key}":' in table or f"    {key}:" in table, key
 
 
 def test_the_blog_link_is_not_a_client_route():
@@ -3488,3 +3598,110 @@ def test_card_links_skip_only_what_the_rail_already_opens():
     )
     assert release == []
     assert paper == ["Paper ↗", "Code ↗"]
+
+
+def test_daily_briefing_share_control_appears_only_for_items_with_a_card():
+    """Issue #671: each briefing item links to its published image, or to none."""
+    nodes = list(_flatten(_rendered_briefing("tests/fixtures/daily_briefing_share.json")))
+    insights = [n for n in nodes if n["className"] == "briefing-insight"]
+    assert len(insights) == 2
+
+    def share_links(insight):
+        return [n for n in _flatten(insight) if n["className"] == "share-link"]
+
+    carded, uncarded = (share_links(i) for i in insights)
+    assert len(carded) == 1
+    assert carded[0]["tag"] == "a"
+    assert carded[0]["href"].endswith("/daily/2026-10-25/card-01.png")
+    assert carded[0]["text"].startswith("Share image")
+    # The item stays listed; it only has no image to offer, so no dead link.
+    assert uncarded == []
+    copy_buttons = [n for n in _flatten(insights[0]) if n["className"] == "share-copy"]
+    assert [b["tag"] for b in copy_buttons] == ["button"]
+
+
+def test_share_control_is_a_link_and_a_button_with_named_labels():
+    """A link and a button take focus natively; each label names its benchmark."""
+    source = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = source.index("function shareControl(")
+    block = source[start : source.index("function briefingShare(")]
+    assert 'element("a"' in block
+    assert 'element("button"' in block
+    assert 'type: "button"' in block
+    assert block.count("aria-label") == 2
+    assert 'role: "status"' in block
+    assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
+    assert "shareCardFor(day, item.url)" in source
+
+
+def test_card_source_is_a_chip_with_the_organization_mark():
+    # Issue #971: the source link is a chip with a logo and an arrow. A source
+    # without a mark keeps the chip with its name, so no card loses its source link.
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("const SOURCE_BRAND")
+    helpers = script[start : script.index("function evidenceCard")]
+    program = (
+        "const element = (tag, props = {}, children = []) => "
+        "({ tag, props, children: children.filter(Boolean) });"
+        "const brandIcon = (name) => ({ tag: 'svg', brand: name, children: [] });"
+        + helpers
+        + "const chip = (source, href) => { const node = sourceChip({source}, href);"
+        + "return {tag: node.tag, href: node.props.attrs?.href, "
+        + "brand: node.children.find((c) => c.tag === 'svg')?.brand, "
+        + "name: node.children.find((c) => c.props?.className === 'radar-source-name')"
+        + "?.props.text, "
+        + "arrow: node.children.some((c) => c.props?.text === '↗'), "
+        + "label: node.props.attrs?.['aria-label']}; };"
+        + "console.log(JSON.stringify(['GitHub', 'GitHub Release', 'Hugging Face', "
+        + "'Hugging Face Papers', 'arXiv', 'Crossref'].map((s) => chip(s, 'https://x.test/'))"
+        + ".concat([chip('GitHub', null)])));"
+    )
+    chips = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert [c.get("brand") for c in chips] == [
+        "github",
+        "github",
+        "huggingface",
+        "huggingface",
+        "arxiv",
+        None,
+        "github",
+    ]
+    # A mark replaces the name; the name stays as the accessible label, and
+    # "Release" is not part of a logo.
+    assert [c.get("name") for c in chips] == [None] * 5 + ["Crossref", None]
+    assert [c.get("label") for c in chips][:2] == ["GitHub", "GitHub Release"]
+    assert all(c["arrow"] for c in chips)
+    assert [c["tag"] for c in chips] == ["a"] * 6 + ["span"]
+
+
+def test_top_share_label_follows_the_number_of_cards_in_the_image():
+    """top3.png holds fewer than three cards on a thin day; the label must say so."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    script = Path("site/assets/app.js").read_text(encoding="utf-8")
+    start = script.index("function topShareLabel(")
+    helper = script[start : script.index("function renderTopShare(")]
+    program = (
+        "const t = (v) => v;"
+        + helper
+        + "console.log(JSON.stringify([1, 2, 3, 5].map(topShareLabel)));"
+    )
+    labels = json.loads(
+        subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, check=True, timeout=60
+        ).stdout
+    )
+    assert labels == [
+        "Top benchmark of the day",
+        "Top 2 of the day",
+        "Top 3 of the day",
+        "Top 3 of the day",
+    ]

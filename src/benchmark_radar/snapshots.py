@@ -1252,6 +1252,10 @@ def dashboard_data(
                 # persisted, or days where the call was skipped or failed. The
                 # dashboard renders its own absent state from that.
                 "briefing": snapshot.get("briefing") or {},
+                # Where the day's published share images are (issue #671), or
+                # an empty object for a day the share step never ran on. The
+                # dashboard shows a Share control only where this names an image.
+                "share": _share_images(snapshot.get("share")),
                 # Same contract as `briefing`: an empty object means the opt-in
                 # Q&A did not run for this day, which the dashboard renders as
                 # its own absent state rather than as an empty answer set.
@@ -1381,6 +1385,33 @@ def records_badge(dashboard: dict[str, Any]) -> str:
         )
         + "\n"
     )
+
+
+def _share_images(share: dict[str, Any] | None) -> dict[str, Any]:
+    """Public image URLs for a snapshot's ``share`` block, keyed by card URL.
+
+    The images themselves are rendered by the daily pipeline from this block,
+    so the file names follow the card order. The card text stays in the
+    snapshot; the dashboard only needs to know which item has which image.
+    """
+    # Imported here because daily_top imports this module.
+    from .daily_top import card_image_name, daily_image_url
+
+    cards = [card for card in (share or {}).get("cards") or [] if card.get("url")]
+    if not cards or not share or not share.get("date"):
+        return {}
+    day = str(share["date"])
+    return {
+        "top3_image": daily_image_url(day, "top3.png"),
+        "cards": [
+            {
+                "url": str(card["url"]),
+                "title": str(card.get("title") or ""),
+                "image": daily_image_url(day, card_image_name(index)),
+            }
+            for index, card in enumerate(cards, start=1)
+        ],
+    }
 
 
 def dashboard_bootstrap(dashboard: dict[str, Any]) -> dict[str, Any]:
@@ -1518,13 +1549,13 @@ def rebuild_dashboard(
     if feed_output is not None:
         app_pages = write_app_pages(value, sitemap_output.parent)
         view_paths = app_pages["paths"]
-        # /about/ is prose, not a view over the corpus, so it is written from
-        # the shared chrome rather than from the dashboard document. The nav
-        # links to it from every page this build writes, so it is written
-        # unconditionally; only its sitemap date depends on there being a
-        # corpus history to date it by.
+        # /about/ and /media/ are prose, not views over the corpus, so they are
+        # written from the shared chrome rather than from the dashboard
+        # document. The nav links to them from every page this build writes, so
+        # they are written unconditionally; only their sitemap date depends on
+        # there being a corpus history to date it by.
         site_updated = site_lastmod(snapshots)
-        about = write_about(sitemap_output.parent, updated=site_updated)
+        about = write_about(sitemap_output.parent)
         page_entries = [(path, site_updated) for path in about["paths"]]
         write_feed(snapshots, feed_output)
         # One page per collection day, plus the blog's own feed. Built from the

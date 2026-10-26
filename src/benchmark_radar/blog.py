@@ -116,7 +116,6 @@ def _post_page(post: BlogPost, chrome: SiteChrome, chrome_i18n: dict[str, str]) 
         body=body,
         chrome=chrome,
         chrome_i18n=chrome_i18n,
-        updated=post.updated,
         schemas=(
             posting,
             breadcrumb_schema(
@@ -187,7 +186,6 @@ def _index_page(
         body=body,
         chrome=chrome,
         chrome_i18n=chrome_i18n,
-        updated=posts[0].updated if posts else "—",
         schemas=(
             webpage_schema(title=title, description=description, canonical=canonical),
             item_list,
