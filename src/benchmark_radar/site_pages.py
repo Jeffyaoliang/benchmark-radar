@@ -24,7 +24,7 @@ import html
 import json
 import re
 import shutil
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -32,6 +32,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from .feed import SITE_URL
+from .site_links import resource_link
 from .site_shell import SOURCE_LABELS, website_reference
 
 DEFAULT_SHARD_DIR = Path("site/data/benchmarks")
@@ -179,11 +180,11 @@ def _artifacts(record: dict[str, Any]) -> list[tuple[str, str, str]]:
         for artifact in record.get("artifacts") or []:
             if not isinstance(artifact, dict) or artifact.get("kind") != kind:
                 continue
-            url = artifact.get("url")
-            if not isinstance(url, str) or not url.strip() or url in seen:
+            url = _http_url(artifact.get("url"))
+            if not url or url in seen:
                 continue
             seen.add(url)
-            found.append((kind, _ARTIFACT_LABELS[kind], url.strip()))
+            found.append((kind, _ARTIFACT_LABELS[kind], url))
     return found
 
 
@@ -444,12 +445,11 @@ def _http_url(value: Any) -> str | None:
 def _provenance_section(record: dict[str, Any]) -> str:
     provenance = record.get("provenance") or {}
     clean = _http_url(provenance.get("source_url"))
-    if not clean:
+    if not clean or any(url == clean for _, _, url in _artifacts(record)):
         return ""
     return (
-        '<section><h2>Source provenance</h2><ul class="links"><li>'
-        '<span class="artifact-kind">Original evidence</span> '
-        f'<a href="{_esc(clean)}" rel="nofollow noopener">{_esc(clean)}</a>'
+        '<section><h2>Source provenance</h2><ul class="links benchmark-resources"><li>'
+        f"{resource_link(clean, 'Original evidence')}"
         "</li></ul></section>"
     )
 
@@ -465,12 +465,16 @@ def _artifacts_section(name: str, artifacts: list[tuple[str, str, str]]) -> str:
         return ""
     labels = [_ARTIFACT_LABELS[kind].lower() for kind in _facet_kinds(artifacts)]
     heading = f"{name} {_join_words(labels).replace(' & ', ' and ')}" if labels else f"{name} links"
-    items = "".join(
-        f'<li><span class="artifact-kind">{_esc(label)}</span> '
-        f'<a href="{_esc(url)}" rel="nofollow noopener">{_esc(url)}</a></li>'
+    groups = Counter((label, urlsplit(url).hostname) for _, label, url in artifacts)
+    links = (
+        resource_link(url, label, distinguish=groups[label, urlsplit(url).hostname] > 1)
         for _, label, url in artifacts
     )
-    return f'<section><h2>{_esc(heading)}</h2><ul class="links">{items}</ul></section>'
+    items = "".join(f"<li>{link}</li>" for link in links)
+    return (
+        f"<section><h2>{_esc(heading)}</h2>"
+        f'<ul class="links benchmark-resources">{items}</ul></section>'
+    )
 
 
 def _documents_section(name: str, record: dict[str, Any]) -> str:

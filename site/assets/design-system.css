@@ -143,6 +143,28 @@
   overflow-wrap: anywhere;
 }
 
+.benchmark-resource-link {
+  min-height: 44px;
+  gap: 0.5rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+a.benchmark-resource-link::after {
+  content: none;
+}
+
+.record-page ul.benchmark-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.record-page ul.benchmark-resources li {
+  border: 0;
+  padding: 0;
+}
+
 @media (max-width: 700px) {
   .blog-page .blog-panel,
   .blog-page .blog-card {

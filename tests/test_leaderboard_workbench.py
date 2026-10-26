@@ -296,7 +296,7 @@ def test_detail_panel_renders_for_any_selected_record():
         "function catalogOpennessBlock", 1
     )[0]
     assert 't("Importer")' in identity
-    assert 't("Original evidence")' in identity
+    assert "catalogResourceLinks(detail)" in identity
     assert 't("Review status")' in identity
     assert "provenance.review_state" in identity
     assert 't("not reviewed")' not in identity

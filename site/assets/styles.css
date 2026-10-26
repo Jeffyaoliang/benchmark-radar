@@ -5188,6 +5188,17 @@ footer {
   text-decoration: underline;
 }
 
+.catalog-resources {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 0.8rem;
+}
+
+.catalog-artifacts .benchmark-resource-link {
+  color: var(--blue-deep);
+}
+
 .catalog-sizes li {
   display: flex;
   flex-wrap: wrap;

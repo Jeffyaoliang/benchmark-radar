@@ -19,7 +19,7 @@ class Node {
 }
 let language = 'en';
 const document = { createElement: tag => new Node(tag) };
-const functions = ['t', 'element', 'formatDate', 'safeHttpUrl', 'catalogSourceMeta', 'catalogDisplayFactor', 'catalogSourceTable', 'catalogScoreResults', 'catalogScoresBlock'];
+const functions = ['t', 'element', 'formatDate', 'safeHttpUrl', 'catalogSourceMeta', 'catalogDisplayFactor', 'catalogSourceTable', 'catalogScoreResults', 'catalogScoresBlock', 'artifactKindLabel', 'linkHost', 'catalogResourceLinks'];
 const render = new Function('document', 'getLang', `
 ${constant('I18N')}
 ${constant('CATALOG_SOURCE_META')}
@@ -27,7 +27,7 @@ const dateValue = value => Date.parse(value);
 const catalogScoreChart = () => null;
 const infoDisclosure = text => element('details', {text});
 ${functions.map(fn).join('\n')}
-return {catalogScoreResults, catalogScoresBlock};
+return {catalogScoreResults, catalogScoresBlock, catalogResourceLinks};
 `)(document, () => language);
 const all = (node, predicate) => [node, ...node.children.flatMap(child => all(child, predicate))].filter(predicate);
 const rows = Array.from({length: 1100}, (_, i) => ({
@@ -68,4 +68,19 @@ for (const label of ['模型发布日期', '文档发布日期', '日期未知',
 for (const label of ['Reported benchmark scores', 'Model reports', 'model release date', 'Document publication date', 'Date unknown', 'Open source record']) assert(!chinese.textContent.includes(label), label);
 language = 'en';
 assert(render.catalogScoreResults('model_reports', rows).textContent.includes('Reported benchmark scores · Model reports'));
+const resources = {artifacts: [
+  {kind: 'repo', url: 'https://github.com/example/bench'},
+  {kind: 'repo', url: ' https://github.com/example/bench '},
+  {kind: 'repo', url: 'https://github.com/example/other'},
+  {kind: 'dataset', url: 'https://huggingface.co/datasets/example/bench'},
+  {kind: 'paper', url: 'ftp://example.org/paper'},
+], provenance: {source_url: 'https://github.com/example/bench'}};
+const input = JSON.stringify(resources);
+const links = render.catalogResourceLinks(resources);
+assert.equal(links.length, 3, 'repeat destinations fold, distinct resources remain');
+assert.equal(new Set(links.map(link => link.label)).size, 3, 'different resources remain distinguishable');
+assert(links.every(link => link.label && link.kind));
+assert.equal(JSON.stringify(resources), input, 'rendering does not change source records');
+assert.equal(render.catalogResourceLinks({provenance: {source_url: 'https://example.org/evidence'}})[0].label, 'Original evidence');
+assert.deepEqual(render.catalogResourceLinks({provenance: {source_url: 'ftp://example.org/evidence'}}), []);
 console.log('Complete histories, undated zero scores, source partitions, run variants, safe links, and Chinese/English rendering passed.');
