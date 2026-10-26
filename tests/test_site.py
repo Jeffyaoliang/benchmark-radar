@@ -1774,7 +1774,8 @@ def test_leaderboard_has_an_honest_time_based_score_track():
     prose = " ".join(html.split())
 
     assert 'id="adoption-frontier"' in html
-    assert 'id="frontier-benchmark"' in html
+    # The left benchmark browser is the one selector (issue #995).
+    assert 'id="frontier-benchmark"' not in html
     assert 'id="frontier-chart"' in html
     # `frontierEvents` outlives the staircase it was written for: the leaderboard
     # still counts first reports, and the score chart still reads the newest
@@ -2905,10 +2906,10 @@ def test_issue_286_navigation_is_backable_but_typing_is_not():
     # hit, because it carries a reader from a search into another view.
     assert 'function setView(view, update = true, mode = "push")' in script
     assert "if (update) writeUrl(mode);" in script
-    picker = script.split('byId("frontier-benchmark").addEventListener("change"', 1)[1].split(
-        "});", 1
-    )[0]
-    assert 'writeUrl("push")' in picker
+    browser = script.split(
+        'button.addEventListener("click", () => {\n    selectFrontier(record.slug);', 1
+    )[1].split("});", 1)[0]
+    assert 'writeUrl("push")' in browser
 
     # Continuous refinement of the current view replaces. Both debounced
     # renderers are the keystroke path, and neither may push.

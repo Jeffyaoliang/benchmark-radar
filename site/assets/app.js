@@ -774,7 +774,6 @@ const I18N = {
     "Stated findings": "明确结论",
     "Scores over time": "分数随时间变化",
     "Benchmark reported scores over time": "benchmark报告分数随时间的变化",
-    "All tracked benchmarks": "所有追踪的benchmark",
     "Search every benchmark": "搜索全部benchmark",
     "Most documented benchmarks": "来源文档最多的 benchmark",
     Rank: "排名",
@@ -5285,17 +5284,13 @@ function syncScoreFilters(value = state.lscore) {
   }
 }
 
-function renderScoreSelectionNote() {
-  const item = scorePopulation(state.benchmarkIndex || []).find((row) => row.id === state.lfrontier);
-  const summary = item?.summary;
-  const outside = Boolean(state.lfrontierExplicit && item
+// A record opened by link can sit above the score cutoff, so the left list
+// does not show it. The subline says so in the same line as its source,
+// rather than in a row of its own above the chart.
+function outsideScoreFilter(slug) {
+  const item = scorePopulation(state.benchmarkIndex || []).find((row) => row.id === slug);
+  return Boolean(state.lfrontierExplicit && item
     && !saturationRows().some((row) => row.id === item.id));
-  const note = byId("frontier-filter-note");
-  note.hidden = !outside;
-  note.textContent = outside ? t("Outside current filter") : "";
-  const highest = byId("frontier-highest-score");
-  highest.hidden = !summary?.numeric_count;
-  highest.textContent = summary?.numeric_count ? scoreSummaryLabel(summary) : "";
 }
 
 function renderScoreRanking(rows) {
@@ -8376,7 +8371,7 @@ function setCanonicalFrontierChrome(visible) {
     if (visible) replaceChildren(external, []);
   }
   // Catalog records replace the eyebrow with a source subline. Restore both
-  // pieces of title chrome when the picker returns to curated data; otherwise
+  // pieces of title chrome when the selection returns to curated data; otherwise
   // AIME kept saying "115 reported scores · LLM Stats" and "Scores over time"
   // stayed hidden even though the chart and heading had switched layers.
   if (visible) {
@@ -8390,40 +8385,7 @@ function setCanonicalFrontierChrome(visible) {
   }
 }
 
-// The picker follows Saturation's browser, including the full-catalog search.
-function frontierPickerGroups(scored) {
-  return [[t("Browse all benchmarks"), scored.map((row) => [
-    row.id, `${row.name} · ${scoreSourceLabel(row.source)}`,
-  ])]];
-}
-
-function renderFrontierPicker(scored, selectedValue) {
-  replaceChildren(
-    byId("frontier-benchmark"),
-    frontierPickerGroups(scored).map(([label, rows]) =>
-      element(
-        "optgroup",
-        // The count is on the label because the groups are wildly uneven (59
-        // curated against several hundred crawled) and a reader scrolling a
-        // long list deserves to know how far the group runs.
-        { attrs: { label: `${label} (${rows.length.toLocaleString()})` } },
-        rows.map(([value, name]) => option(value, name, value === selectedValue)),
-      ),
-    ),
-  );
-  const picker = byId("frontier-benchmark");
-  if (selectedValue && ![...picker.options].some((row) => row.value === selectedValue)) {
-    const record = (state.benchmarkIndex || []).find((row) => row.slug === selectedValue);
-    picker.prepend(option(selectedValue, record?.name || selectedValue, true));
-  }
-  renderScoreSelectionNote();
-}
-
-function renderCatalogShell(
-  board,
-  scored,
-  { eyebrow, heading, badge, message, prependOption, subline },
-) {
+function renderCatalogShell(board, { eyebrow, heading, message, subline }) {
   clearFrontierPointSelection();
   setCanonicalFrontierChrome(false);
   // A shell replaces whatever chart was on screen, so no completion timer may
@@ -8436,25 +8398,15 @@ function renderCatalogShell(
   eyebrowNode.textContent = eyebrow || "";
   eyebrowNode.hidden = !eyebrow;
   byId("frontier-heading").textContent = heading;
-  const stage = byId("frontier-stage");
-  stage.className = "frontier-stage";
-  stage.hidden = !badge;
-  stage.textContent = badge || "";
   const sublineNode = byId("frontier-subline");
   if (sublineNode) {
-    sublineNode.textContent = subline || "";
-    sublineNode.hidden = !subline;
+    const text = [subline, outsideScoreFilter(state.lfrontier) ? t("Outside current filter") : ""]
+      .filter(Boolean).join(" · ");
+    sublineNode.textContent = text;
+    sublineNode.hidden = !text;
   }
   const infoHost = byId("frontier-heading-info");
   if (infoHost) replaceChildren(infoHost, []);
-  renderFrontierPicker(scored, state.lfrontier);
-  if (prependOption) {
-    const picker = byId("frontier-benchmark");
-    const [value, label] = prependOption;
-    const existing = [...picker.options].find((candidate) => candidate.value === value);
-    if (existing) existing.selected = true;
-    else picker.prepend(option(value, label, true));
-  }
   replaceChildren(byId("frontier-catalog"), [
     element("p", { className: "empty-state", text: message }),
   ]);
@@ -8466,26 +8418,17 @@ function renderCatalogShell(
 // drew the first frame.
 let catalogRenderSeq = 0;
 
-function renderCatalogBenchmark(board, scored, record) {
+function renderCatalogBenchmark(board, record) {
   const meta = catalogSourceMeta(record.source);
   // One title, one metadata line. The eyebrow ("Catalog catalog record") and
   // the source badge both said what this line says, and the reader had to read
   // three elements to learn one fact (issue #298).
-  renderCatalogShell(board, scored, {
+  renderCatalogShell(board, {
     eyebrow: "",
     heading: record.name,
-    badge: "",
     subline: meta.name,
     message: t("Loading benchmark details…"),
   });
-  // Scored crawled records are in the picker already. An unscored one is not,
-  // and it is still reachable by search, so it is prepended as its own option:
-  // a <select> displaying a different benchmark than the one rendered would be
-  // lying about the state.
-  const picker = byId("frontier-benchmark");
-  const existing = [...picker.options].find((candidate) => candidate.value === record.slug);
-  if (existing) existing.selected = true;
-  else picker.prepend(option(record.slug, `${record.name} · ${meta.name}`, true));
   const container = byId("frontier-catalog");
   const renderToken = ++catalogRenderSeq;
   loadBenchmarkShard(record.slug).then((shard) => {
@@ -8524,7 +8467,7 @@ function renderCatalogBenchmark(board, scored, record) {
 // Every row is a curated benchmark, because `card_count` is a curated fact:
 // the crawled catalog records scores, not who chose to report them. The
 // crawled layer is not hidden by this, it is reached from the search box and
-// the picker, both of which cover all 679 scored crawled records alongside
+// the benchmark browser, both of which cover all 679 scored crawled records alongside
 // these.
 const BENCHMARK_EXAMPLE_LIMIT = 20;
 
@@ -8773,7 +8716,7 @@ function renderScoreReadout(entry) {
   const host = byId("frontier-score-readout");
   if (!host) return;
   const record = scoreRecord(entry.benchmark_id);
-  // Unreachable on the canonical path (the picker only lists scored benchmarks),
+  // Unreachable on the canonical path (the browser only lists scored benchmarks),
   // but the message stays honest rather than naming a chart that does not draw.
   if (!record) {
     replaceChildren(host, [
@@ -9630,11 +9573,6 @@ function clearAdoptionFrontier(message) {
   // timer must not spend its reveal.
   drawnFrontierEntranceKey = null;
   byId("frontier-eyebrow").textContent = t("Scores over time");
-  const stage = byId("frontier-stage");
-  stage.textContent = "";
-  // The badge only carries the source name on the catalog path; an empty one
-  // would render as a bare outline beside the picker.
-  stage.hidden = true;
   replaceChildren(byId("frontier-task-preview"), []);
   replaceChildren(byId("frontier-score-readout"), []);
   replaceChildren(byId("frontier-legend"), []);
@@ -9648,35 +9586,33 @@ function clearAdoptionFrontier(message) {
 }
 
 function renderAdoptionFrontier(board) {
-  const scored = saturationRows();
   const defaultEntry = frontierDefaultEntry(board);
   if (!state.lfrontierExplicit) state.lfrontier = defaultEntry?.id || "";
   renderBenchmarkNavigator(board);
   if (!state.benchmarkIndex) {
-    renderCatalogShell(board, scored, {
-      eyebrow: "", heading: state.lfrontier || t("Reported benchmark scores"), badge: "",
+    renderCatalogShell(board, {
+      eyebrow: "", heading: state.lfrontier || t("Reported benchmark scores"),
       message: t(state.benchmarkIndexLoaded
         ? "Full benchmark catalog could not be loaded." : "Loading benchmark details…"),
     });
     return;
   }
   if (!state.lfrontier) {
-    renderCatalogShell(board, scored, {
-      eyebrow: "", heading: t("Reported benchmark scores"), badge: "",
+    renderCatalogShell(board, {
+      eyebrow: "", heading: t("Reported benchmark scores"),
       message: t("No benchmarks match these filters."),
     });
     return;
   }
   const record = state.benchmarkIndex.find((row) => row.slug === state.lfrontier);
   if (record) {
-    renderCatalogBenchmark(board, scored, record);
+    renderCatalogBenchmark(board, record);
     return;
   }
   // Preserve unresolved links and say what failed. Never paint a different
   // benchmark or fall back to a source-specific shortlist under this URL.
-  renderCatalogShell(board, scored, {
-    eyebrow: "", heading: state.lfrontier, badge: "",
-    prependOption: [state.lfrontier, state.lfrontier],
+  renderCatalogShell(board, {
+    eyebrow: "", heading: state.lfrontier,
     message: t("This benchmark is not in the loaded catalog."),
   });
 }
@@ -11802,11 +11738,6 @@ function bindEvents() {
   byId("benchmark-search-more").addEventListener("click", () => {
     state.benchmarkVisibleLimit += BENCHMARK_SEARCH_LIMIT;
     renderBenchmarkSearch();
-  });
-  byId("frontier-benchmark").addEventListener("change", (event) => {
-    selectFrontier(event.target.value);
-    renderAdoptionFrontier(catalogDocumentBoard());
-    writeUrl("push");
   });
   document.querySelectorAll("[data-today-window]").forEach((button) => {
     button.addEventListener("click", () => {
