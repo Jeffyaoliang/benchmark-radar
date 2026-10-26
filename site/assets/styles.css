@@ -7496,7 +7496,7 @@ a.radar-source::after {
   margin-top: 0.4rem;
 }
 
-/* Share control (issue #671): opens or copies the day's pre-rendered image for
+/* Share control (issue #671): opens the day's pre-rendered image for
    one benchmark. It reads as a quiet text action like the card links, with 44px
    touch targets and negative margins so the card does not grow. */
 .share-control {
@@ -7507,8 +7507,7 @@ a.radar-source::after {
   font-size: 0.98rem;
 }
 
-.share-link,
-.share-copy {
+.share-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -7523,14 +7522,8 @@ a.radar-source::after {
   cursor: pointer;
 }
 
-.share-link:hover,
-.share-copy:hover {
+.share-link:hover {
   text-decoration: underline;
-}
-
-.share-status {
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 .briefing-insight .share-control {
@@ -7548,12 +7541,6 @@ a.radar-source::after {
 
 .today-share[hidden] {
   display: none;
-}
-
-.today-share-label {
-  color: var(--muted);
-  font-family: var(--utility);
-  font-size: 0.8rem;
 }
 
 /* Primary discovery controls remain visible at every viewport width. */
