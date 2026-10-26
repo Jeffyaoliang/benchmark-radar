@@ -227,7 +227,6 @@ def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
         description="A tough reasoning test.",
         categories=["math", "Official"],
         released="2025-03-04",
-        scores=[{"model_name": "M", "value": 1, "reported_date": "2025-06-01"}],
     )
     shard["record"]["publisher"] = {"name": "Alpha Lab", "role": "hub_publisher"}
     shard["record"]["artifacts"] = [
@@ -246,7 +245,9 @@ def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
     assert entity["publisher"] == {"@type": "Organization", "name": "Alpha Lab"}
     assert entity["datePublished"] == "2025-03-04"
     assert entity["keywords"] == ["math"]
-    assert webpage["dateModified"] == "2025-06-01"
+    # Score dates are evidence dates, not when the page changed, so no
+    # modification time is claimed.
+    assert "dateModified" not in webpage
     assert (
         '<link rel="alternate" type="application/json" '
         'href="https://benchmark-radar.org/data/benchmarks/alpha-bench.json">'
@@ -255,7 +256,6 @@ def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
     beta = _jsonld_blocks(_page_text(output, "beta-bench"))[0]
     for missing in ("citation", "sameAs", "publisher", "datePublished", "keywords"):
         assert missing not in beta["about"]
-    assert "dateModified" not in beta
 
 
 def test_node_references_carry_their_own_type_so_they_resolve_off_the_homepage(tmp_path):

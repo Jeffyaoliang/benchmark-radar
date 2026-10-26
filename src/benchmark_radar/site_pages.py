@@ -415,7 +415,6 @@ def _webpage_jsonld(
     title: str,
     record: dict[str, Any] | None = None,
     artifacts: list[tuple[str, str, str]] | None = None,
-    lastmod: str | None = None,
 ) -> str:
     entity = _benchmark_entity(slug, name, description, record or {}, artifacts or [])
     payload = {
@@ -430,8 +429,6 @@ def _webpage_jsonld(
         "about": entity,
         "mainEntity": {"@type": "Dataset", "@id": entity["@id"]},
     }
-    if lastmod:
-        payload["dateModified"] = lastmod
     return _json_ld(payload)
 
 
@@ -681,9 +678,7 @@ def _page_html(
         body,
         flags=re.S,
     )
-    jsonld = _webpage_jsonld(
-        slug, name, description, title, record, artifacts, _shard_lastmod(shard)
-    )
+    jsonld = _webpage_jsonld(slug, name, description, title, record, artifacts)
     interactive = f"{SITE_URL}/saturation/?lfrontier={slug}"
     nav = _benchmark_nav(interactive)
     return f"""<!doctype html>
