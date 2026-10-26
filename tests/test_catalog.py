@@ -17,6 +17,7 @@ import yaml
 from benchmark_radar.catalog import (
     CatalogError,
     assign_slugs,
+    https_url,
     normalize_snapshot,
     slugify,
     write_catalog,
@@ -1345,3 +1346,13 @@ def test_no_curated_layer_still_attributes_a_model_to_google_deepmind():
     for name in ("data/benchmark_scores.yml", "data/model_cards.yml"):
         text = Path(name).read_text(encoding="utf-8")
         assert "Google DeepMind" not in text, name
+
+
+def test_https_url_upgrades_only_hosts_that_redirect_to_https():
+    assert https_url("http://arxiv.org/abs/2608.23390v1") == "https://arxiv.org/abs/2608.23390v1"
+    assert https_url("HTTP://github.com/a/b") == "https://github.com/a/b"
+    assert https_url("https://arxiv.org/abs/1") == "https://arxiv.org/abs/1"
+    # A host not known to serve https keeps its scheme: rewriting it could break the link.
+    assert https_url("http://example.org/bench") == "http://example.org/bench"
+    assert https_url("http://arxiv.org.evil.example/x") == "http://arxiv.org.evil.example/x"
+    assert https_url("") == ""

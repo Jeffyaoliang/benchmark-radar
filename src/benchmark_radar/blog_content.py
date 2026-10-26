@@ -156,7 +156,7 @@ def _description(snapshot: dict[str, Any]) -> str:
     sources = {str(item.get("source") or "") for item in evidence if item.get("source")}
     return (
         f"Benchmark Radar collected {len(evidence)} evidence observations from "
-        f"{len(sources)} sources on {snapshot.get('date')}."
+        f"{len(sources)} source{'' if len(sources) == 1 else 's'} on {snapshot.get('date')}."
     )
 
 
