@@ -509,7 +509,7 @@ def test_resource_chips_share_marks_and_only_remove_repeated_destinations(tmp_pa
     shard["record"]["artifacts"] = [
         {"kind": "repo", "url": "https://github.com/example/bench"},
         {"kind": "repo", "url": " https://github.com/example/bench "},
-        {"kind": "repo", "url": "https://github.com/example/other"},
+        {"kind": "repo", "url": "https://www.github.com/example/other"},
         {"kind": "paper", "url": "https://arxiv.org/abs/example"},
         {"kind": "dataset", "url": "https://huggingface.co/datasets/example/bench"},
         {"kind": "paper", "url": "ftp://example.org/paper"},
@@ -518,11 +518,11 @@ def test_resource_chips_share_marks_and_only_remove_repeated_destinations(tmp_pa
     shard["record"]["provenance"] = {"source_url": "https://github.com/example/bench"}
     page = _page_text(_generated_pages(tmp_path, shard), "alpha-bench")
     assert page.count('href="https://github.com/example/bench"') == 1
-    assert 'href="https://github.com/example/other"' in page
+    assert 'href="https://www.github.com/example/other"' in page
     for brand in ("github", "arxiv", "huggingface"):
         assert f'href="/assets/source-icons.svg#{brand}"' in page
-    assert 'aria-label="Code · example/bench · GitHub"' in page
-    assert 'aria-label="Code · example/other · GitHub"' in page
+    assert 'aria-label="Code · https://github.com/example/bench · GitHub"' in page
+    assert 'aria-label="Code · https://www.github.com/example/other · GitHub"' in page
     assert 'aria-label="Website · github.com.example.org"' in page
     assert "Original evidence" not in page
     assert 'href="ftp://example.org/paper"' not in page

@@ -465,9 +465,15 @@ def _artifacts_section(name: str, artifacts: list[tuple[str, str, str]]) -> str:
         return ""
     labels = [_ARTIFACT_LABELS[kind].lower() for kind in _facet_kinds(artifacts)]
     heading = f"{name} {_join_words(labels).replace(' & ', ' and ')}" if labels else f"{name} links"
-    groups = Counter((label, urlsplit(url).hostname) for _, label, url in artifacts)
+    groups = Counter(
+        (label, (urlsplit(url).hostname or "").removeprefix("www.")) for _, label, url in artifacts
+    )
     links = (
-        resource_link(url, label, distinguish=groups[label, urlsplit(url).hostname] > 1)
+        resource_link(
+            url,
+            label,
+            distinguish=groups[label, (urlsplit(url).hostname or "").removeprefix("www.")] > 1,
+        )
         for _, label, url in artifacts
     )
     items = "".join(f"<li>{link}</li>" for link in links)

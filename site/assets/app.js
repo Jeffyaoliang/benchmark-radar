@@ -7646,9 +7646,7 @@ function catalogResourceLinks(detail) {
   }
   return resources.map((resource) => {
     if (counts.get(group(resource)) < 2) return resource;
-    const url = new URL(resource.href);
-    const identifier = `${url.pathname.replace(/^\/|\/$/g, "") || linkHost(resource.href)}${url.search}${url.hash}`;
-    return { ...resource, label: `${resource.label} · ${identifier}` };
+    return { ...resource, label: `${resource.label} · ${resource.href}` };
   });
 }
 

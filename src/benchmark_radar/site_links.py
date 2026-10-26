@@ -18,12 +18,7 @@ def resource_link(url: str, label: str, *, distinguish: bool = False) -> str:
     parsed = urlsplit(url)
     host = (parsed.hostname or "").removeprefix("www.")
     if distinguish:
-        identifier = parsed.path.strip("/") or host
-        if parsed.query:
-            identifier += f"?{parsed.query}"
-        if parsed.fragment:
-            identifier += f"#{parsed.fragment}"
-        label = f"{label} · {identifier}"
+        label = f"{label} · {url}"
     provider, brand = _PROVIDERS.get(host, (host, None))
     mark = (
         '<svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">'
