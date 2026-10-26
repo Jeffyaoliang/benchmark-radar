@@ -4621,7 +4621,6 @@ footer {
   gap: 0.65rem;
   min-height: 0;
   overflow: hidden;
-  padding-top: 0.85rem;
   color: var(--muted);
   font-family: var(--body);
   font-size: 13px;
@@ -4629,7 +4628,10 @@ footer {
   line-height: 1.5;
 }
 
+/* Spacing sits on the first child, not as padding on the clipped wrapper,
+   because padding would keep the closed panel 0.85rem tall. */
 .email-signup-consent {
+  margin-top: 0.85rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.15rem 0.55rem;
