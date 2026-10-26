@@ -6346,7 +6346,7 @@ results:
   - benchmark_id: gobench
     instrument: gobench_9x9_track1_api_2026_10_19
     protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
-    model: DeepSeek V4.1 Flash
+    model: DeepSeek-V4.1-Flash
     organization: DeepSeek
     source_id: gobench_llm_results_2026_10_19
     reported_at: '2026-10-19'
@@ -6390,7 +6390,7 @@ results:
   - benchmark_id: gobench
     instrument: gobench_9x9_track1_api_2026_10_19
     protocol: Track 1; multi-turn API; no tools; reasoning effort max; 7 komi; random-player Elo 0
-    model: DeepSeek V4 Flash 0731
+    model: DeepSeek-V4-Flash-0731
     organization: DeepSeek
     source_id: gobench_llm_results_2026_10_19
     reported_at: '2026-10-19'
@@ -6423,7 +6423,7 @@ results:
   - benchmark_id: gobench
     instrument: gobench_9x9_track1_api_2026_10_19
     protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
-    model: DeepSeek V4.1 Flash
+    model: DeepSeek-V4.1-Flash
     organization: DeepSeek
     source_id: gobench_llm_results_2026_10_19
     reported_at: '2026-10-19'
@@ -6445,7 +6445,7 @@ results:
   - benchmark_id: gobench
     instrument: gobench_9x9_track1_api_2026_10_19
     protocol: Track 1; multi-turn API; no tools; reasoning effort high; 7 komi; random-player Elo 0
-    model: DeepSeek V4 Flash 0731
+    model: DeepSeek-V4-Flash-0731
     organization: DeepSeek
     source_id: gobench_llm_results_2026_10_19
     reported_at: '2026-10-19'
