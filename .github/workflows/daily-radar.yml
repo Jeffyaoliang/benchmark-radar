@@ -231,8 +231,10 @@ jobs:
         run: python -m pip install '.[dev]'
       # The briefing's benchmarks, or the radar-score top 3 on a day without a
       # model briefing, and who made them. Cards an earlier pass recorded are
-      # kept as they are, so a rerun never changes a posted card.
-      - name: Record the day's share cards in the snapshot
+      # kept as they are, so a rerun never changes a posted card. The block is
+      # committed only after the images are published, so the site never links
+      # to an image that does not exist.
+      - name: Compute the day's share cards
         env:
           GITHUB_TOKEN: ${{ github.token }}
         shell: bash
@@ -240,26 +242,6 @@ jobs:
           set -euo pipefail
           snapshot_date="$(cat generated/out/snapshot-date.txt)"
           benchmark-radar share --items generated/out/items.json
-          git config user.name "benchmark-radar[bot]"
-          git config user.email "benchmark-radar[bot]@users.noreply.github.com"
-          git add "data/snapshots/${snapshot_date}.json"
-          if git diff --cached --name-only |
-            grep -Fvx "data/snapshots/${snapshot_date}.json"
-          then
-            echo "::error::Share step attempted to modify an unexpected path"
-            exit 1
-          fi
-          if git diff --cached --quiet; then
-            echo "Share cards are already recorded"
-            exit 0
-          fi
-          # [skip ci]: the site does not read the share block, so this commit
-          # must not start a second full Pages build after persist-snapshot's.
-          git commit -m "Record daily share cards [skip ci]"
-          git push origin HEAD:main || {
-            git pull --rebase origin main
-            git push origin HEAD:main
-          }
       - name: Render and publish the day's share images
         env:
           CARDS_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -294,6 +276,36 @@ jobs:
           fi
           git commit -q -m "Share images for ${snapshot_date}"
           git push -q "${remote}" "HEAD:refs/heads/${branch}"
+      - name: Record the day's share cards in the snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          snapshot_date="$(cat generated/out/snapshot-date.txt)"
+          git config user.name "benchmark-radar[bot]"
+          git config user.email "benchmark-radar[bot]@users.noreply.github.com"
+          git add "data/snapshots/${snapshot_date}.json"
+          if git diff --cached --name-only |
+            grep -Fvx "data/snapshots/${snapshot_date}.json"
+          then
+            echo "::error::Share step attempted to modify an unexpected path"
+            exit 1
+          fi
+          if git diff --cached --quiet; then
+            echo "Share cards are already recorded"
+            exit 0
+          fi
+          # No [skip ci]: the site reads the share block (the Share buttons),
+          # and persist-snapshot's push built Pages from a snapshot without
+          # it. This push touches data/snapshots/**, so it starts the second
+          # Pages build that adds the buttons. The images are already
+          # published, so no button can open a 404. The App token is used so the
+          # push triggers workflows; the github-pages concurrency group queues
+          # the build behind one already running instead of cancelling it.
+          git commit -m "Record daily share cards"
+          git push origin HEAD:main || {
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
 
   # Issue #88: one daily Issue carrying only the day's social posting checklist.
   # The dashboard and site/feed.xml remain the reading surface (issue #37), so
@@ -360,8 +372,8 @@ jobs:
           existing="$(gh issue list --state open --search "\"${title}\" in:title" \
             --json number,title --jq ".[] | select(.title == \"${title}\") | .number" | head -1)"
           existing_body_args=()
-          # The share block is committed before its images are pushed, so a
-          # failed push would leave the checklist embedding missing images.
+          # A failed image push also leaves the share block uncommitted, and
+          # the checklist must not embed images that were never published.
           share_args=()
           if [[ "${SHARE_IMAGES_RESULT}" != "success" ]]; then
             share_args=(--skip-share-images)

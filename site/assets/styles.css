@@ -7491,3 +7491,63 @@ a.radar-source::after {
 .radar-links {
   margin-top: 0.4rem;
 }
+
+/* Share control (issue #671): opens or copies the day's pre-rendered image for
+   one benchmark. It reads as a quiet text action like the card links, with 44px
+   touch targets and negative margins so the card does not grow. */
+.share-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  font-size: 0.98rem;
+}
+
+.share-link,
+.share-copy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue-deep);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.share-link:hover,
+.share-copy:hover {
+  text-decoration: underline;
+}
+
+.share-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.briefing-insight .share-control {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.today-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.today-share[hidden] {
+  display: none;
+}
+
+.today-share-label {
+  color: var(--muted);
+  font-family: var(--utility);
+  font-size: 0.8rem;
+}

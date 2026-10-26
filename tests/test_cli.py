@@ -1188,3 +1188,22 @@ def test_first_day_report_projection_preserves_committed_metadata(monkeypatch, t
     assert items["generated_at"] == committed["generated_at"]
     assert items["since"] == committed["since"]
     print("FIRST_DAY_METADATA_PROOF=" + json.dumps({"committed": committed, "items": items}))
+
+
+def test_share_commit_starts_a_pages_build():
+    """Issue #671: the site reads the share block, so its commit must deploy."""
+    workflow = Path(".github/workflows/daily-radar.yml").read_text(encoding="utf-8")
+    pages = Path(".github/workflows/pages.yml").read_text(encoding="utf-8")
+    commit = next(
+        line for line in workflow.splitlines() if "git commit" in line and "share cards" in line
+    )
+    assert "skip ci" not in commit
+    assert '"data/snapshots/**"' in pages
+
+
+def test_share_block_is_committed_only_after_its_images_are_published():
+    """A failed image push must not leave site buttons pointing at missing images."""
+    workflow = Path(".github/workflows/daily-radar.yml").read_text(encoding="utf-8")
+    publish = workflow.index("- name: Render and publish the day's share images")
+    record = workflow.index("- name: Record the day's share cards in the snapshot")
+    assert publish < record
