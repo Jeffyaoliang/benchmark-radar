@@ -215,3 +215,10 @@ def test_preflight_checks_segments_but_never_creates_a_broadcast(tmp_path, monke
     args = ["--date", day, "--snapshots", str(snapshots), "--out", str(tmp_path / "e.html")]
     assert email_brief.main([*args, "--mode", "send", "--preflight"]) == 0
     assert [method for method, _, _ in calls] == ["GET"]
+
+
+def test_the_live_check_does_not_pipe_curl_into_grep_q():
+    """Under pipefail, `curl | grep -q` fails on a match, so a live brief never sent."""
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    assert not re.search(r"curl[^\n|]*\|\s*grep -q", workflow)
+    assert 'page="$(curl -fsS --max-time 30 "$url" || true)"' in workflow
