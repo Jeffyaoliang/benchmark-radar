@@ -822,7 +822,7 @@ def test_issue_298_a_crawled_record_names_itself_once():
     assert 'eyebrow: ""' in external
     assert 'badge: ""' in external
     assert 'eyebrow: t("External catalog record")' not in script
-    assert "subline: catalogSubline(record, meta)" in external
+    assert "subline: meta.name" in external
 
     shell = script.split("function renderCatalogShell(", 1)[1].split("\nfunction ", 1)[0]
     # Empty means hidden, not rendered blank.

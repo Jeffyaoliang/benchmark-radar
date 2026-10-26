@@ -5121,6 +5121,12 @@ footer {
   font-size: 0.85rem;
 }
 
+.catalog-description {
+  color: white;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
 /* The #262 inheritance note: a borrowed identity is flagged, never silent. A
    left rule and muted panel set it apart from the record's own description. */
 .catalog-inherited {
@@ -5284,9 +5290,11 @@ footer {
   margin-top: 1.5rem;
 }
 
-.catalog-result-section h3 {
+.catalog-result-section > summary {
+  padding: 0.5rem 0;
   margin-bottom: 0.75rem;
   font-size: 1rem;
+  cursor: pointer;
 }
 
 .catalog-result-list {

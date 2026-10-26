@@ -7,6 +7,7 @@ and fail loudly rather than silently writing an empty directory.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -207,6 +208,47 @@ def test_description_is_present_and_derived_from_the_shard(tmp_path):
     assert len(beta.split('content="', 1)[1].split('"', 1)[0]) <= 160
 
 
+def test_visible_overview_is_complete_and_has_no_observation_count(tmp_path):
+    description = (
+        "A benchmark of scientific reasoning across biology, chemistry and physics. "
+        "Each question requires specialist knowledge and has been checked by independent experts. "
+        "The final sentence explains the evaluation task in full."
+    )
+    output = _generated_pages(
+        tmp_path,
+        _shard("alpha-bench", "Alpha Bench", description=description, scores=[{"value": 0}]),
+        _shard("beta-bench", "Beta Bench", scores=[{"value": 0}]),
+    )
+    page = _page_text(output, "alpha-bench")
+    assert f'<p class="lede">{description}</p>' in page
+    assert len(page.split('name="description" content="')[1].split('"')[0]) <= 160
+    overview = page.split('<p class="lede">')[1].split("</section>")[0]
+    assert "Reported scores" not in overview
+    fallback = _page_text(output, "beta-bench").split('<p class="lede">')[1].split("</p>")[0]
+    assert fallback == "Beta Bench is an AI benchmark in the Benchmark Radar catalog."
+
+
+def test_score_evidence_is_complete_inside_closed_source_disclosures(tmp_path):
+    shard = _shard("alpha-bench", "Alpha Bench", scores=[{"model_name": "Zero", "value": 0}])
+    shard["scores_by_source"]["llm_stats"] = {
+        "rows": [{"model_name": "Other model", "value": 42}],
+        "series": {},
+    }
+    page = _page_text(_generated_pages(tmp_path, shard), "alpha-bench")
+    disclosures = re.findall(r'<details class="record-scores">(.*?)</details>', page, re.S)
+    assert len(disclosures) == 2
+    for disclosure in disclosures:
+        summary = disclosure.split("</summary>")[0]
+        assert "Reported benchmark scores · " in summary
+        assert "Reported scores: 1" not in summary
+        assert "Reported scores: 1" in disclosure
+        assert "<table>" in disclosure
+        assert disclosure.count("<tbody><tr>") == 1
+    assert any("Zero</td>" in part and "<td>0</td>" in part for part in disclosures)
+    assert any("Other model</td>" in part for part in disclosures)
+    assert 'record-scores" open' not in page
+
+
 def test_jsonld_blocks_are_single_objects_with_expected_types(tmp_path):
     output = _generated_pages(tmp_path, _shard("alpha-bench", "Alpha Bench"))
     blocks = _jsonld_blocks(_page_text(output, "alpha-bench"))
@@ -287,7 +329,9 @@ def test_scores_are_partitioned_by_source(tmp_path):
     assert "LLM Stats" in page
     assert "llm_stats" not in page
     assert "never merged into a single cross-source ranking" in page
-    assert "<dt>Reported scores</dt><dd>2</dd>" in page
+    evidence = page.split('<details class="record-scores">', 1)[1].split("</details>")[0]
+    assert '<p class="caveat">Reported scores: 2</p>' in evidence
+    assert "<dt>Reported scores</dt>" not in page
 
 
 def test_directory_page_lists_every_benchmark(tmp_path):

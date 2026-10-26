@@ -87,6 +87,24 @@
   margin-top: var(--space-6);
 }
 
+.record-page .lede {
+  max-width: 75ch;
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.record-page .record-scores > summary {
+  padding-block: var(--space-3);
+  cursor: pointer;
+}
+
+.record-page .record-scores > summary:focus-visible,
+.catalog-result-section > summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
 .record-page dl {
   display: grid;
   grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);

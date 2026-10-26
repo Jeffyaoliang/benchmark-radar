@@ -492,7 +492,7 @@ def test_the_axis_and_header_name_the_score_reading():
     # time". What must not drift is that a single reading is never presented as
     # a track over time.
     assert "heading: record.name" in script
-    assert "subline: catalogSubline(record, meta)" in script
+    assert "subline: meta.name" in script
     assert "adoption trajectory" not in script
     # The counts line and the reporting-stage sentence are gone from the markup,
     # so nothing can repopulate them.

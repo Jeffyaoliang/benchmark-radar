@@ -317,7 +317,7 @@ def _canonical(slug: str) -> str:
     return f"{SITE_URL}/benchmarks/{slug}/"
 
 
-def _facts(record: dict[str, Any], scores_by_source: dict[str, Any]) -> list[tuple[str, str]]:
+def _facts(record: dict[str, Any]) -> list[tuple[str, str]]:
     facts: list[tuple[str, str]] = []
     publisher = _text(record, "publisher")
     if publisher:
@@ -342,7 +342,6 @@ def _facts(record: dict[str, Any], scores_by_source: dict[str, Any]) -> list[tup
     review_state = provenance.get("review_state")
     if isinstance(review_state, str) and review_state.strip():
         facts.append(("Review status", review_state.strip()))
-    facts.append(("Reported scores", str(_score_count(scores_by_source))))
     return facts
 
 
@@ -420,11 +419,13 @@ def _scores_sections(scores_by_source: dict[str, Any]) -> str:
         if not body:
             continue
         sections.append(
-            "<section>"
-            f"<h3>{_esc(SOURCE_LABELS.get(source, source))}</h3>"
+            '<details class="record-scores">'
+            "<summary>Reported benchmark scores · "
+            f"{_esc(SOURCE_LABELS.get(source, source))}</summary>"
+            f'<p class="caveat">Reported scores: {len(rows)}</p>'
             "<table><thead><tr><th>Model</th><th>Organization</th>"
             "<th>Reported value</th><th>Reported</th><th>Evidence</th></tr></thead>"
-            f"<tbody>{body}</tbody></table></section>"
+            f"<tbody>{body}</tbody></table></details>"
         )
     return "".join(sections)
 
@@ -581,28 +582,29 @@ def _page_html(
     scores_by_source = shard.get("scores_by_source") or {}
     name = _text(record, "name") or slug
     description = _description(record, scores_by_source)
+    # Search snippets are clipped; the visible explanation must remain complete.
+    overview = _own_description(record) or _summary_sentence(name, record)
     canonical = _canonical(slug)
     artifacts = _artifacts(record)
     title = _title(name, record, artifacts, scores_by_source, context)
     facts = "".join(
-        f"<dt>{_esc(label)}</dt><dd>{_esc(value)}</dd>"
-        for label, value in _facts(record, scores_by_source)
+        f"<dt>{_esc(label)}</dt><dd>{_esc(value)}</dd>" for label, value in _facts(record)
     )
     scores = _scores_sections(scores_by_source)
     if scores:
         scores_html = (
-            f"<section><h2>{_esc(name)} results and reported scores</h2>{scores}</section>"
+            f"<section><h2>{_esc(name)} results and reported scores</h2>{scores}"
             '<p class="caveat">Scores are partitioned by the source that reported '
             "them and are never merged into a single cross-source ranking, because "
-            "the sources measure different things and say so.</p>"
+            "the sources measure different things and say so.</p></section>"
         )
     else:
         scores_html = (
             '<p class="caveat">No reported scores are on record for this benchmark yet.</p>'
         )
     body = (
-        f"<section><h2>What is {_esc(name)}?</h2>"
-        f'<p class="lede">{_esc(description)}</p>'
+        f"<section><h2>About {_esc(name)}</h2>"
+        f'<p class="lede">{_esc(overview)}</p>'
         f"<dl>{facts}</dl></section>"
         f"{_provenance_section(record)}"
         f"{_artifacts_section(name, artifacts)}"

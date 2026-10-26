@@ -1122,6 +1122,7 @@ const I18N = {
     Cite: "引用",
     About: "关于",
     "About this site": "关于本站",
+    "About this benchmark": "关于这个 benchmark",
     Publications: "论文与引用",
     "Search AI, LLM, agent, multimodal, and AI-for-science benchmarks":
       "搜索 AI、大模型、智能体、多模态与科学智能 benchmark",
@@ -7546,7 +7547,7 @@ function catalogIdentityBlock(detail) {
     safeHttpUrl(artifact.url),
   );
   return element("section", { className: "catalog-block" }, [
-    element("h3", { text: t("Identity") }),
+    element("h3", { text: t("About this benchmark") }),
     // Crawled descriptions are third-party text. They only ever go through
     // text(), which sets textContent, so markup in the crawl can never execute.
     element("p", {
@@ -7695,10 +7696,8 @@ function catalogSizesBlock(detail) {
 function catalogScoresBlock(shard) {
   const bySource = shard.scores_by_source || {};
   const sources = Object.keys(bySource).sort();
-  // No "Scores" heading: the panel title names the benchmark and the subline
-  // names the source and the count, so this said nothing the reader had not
-  // just read, and it was the top half of ~150px of dead space above the
-  // chart (issue #298).
+  // The panel title and source subline already identify the chart; a second
+  // heading would add empty space above it (issue #298).
   return element("section", { className: "catalog-block" }, [
     // Spread, not nesting: element() appends children verbatim, so a mapped
     // array passed as one child would stringify into "[object HTMLDivElement]".
@@ -8091,7 +8090,7 @@ function catalogSourceTable(source, payload) {
   const meta = catalogSourceMeta(source);
   const rows = payload.rows || [];
   const series = payload.series || {};
-  const notes = [t(meta.noteKey)];
+  const notes = [`${rows.length.toLocaleString()} ${t("Reported scores")}.`, t(meta.noteKey)];
   // A declared maximum that observed values exceed is a fact about the source,
   // not a scale. Printed as a claim, used as nothing.
   if (series.max_score_contradicted) {
@@ -8156,8 +8155,8 @@ function catalogScoreResults(source, rows) {
     String(b.reported_date || "").localeCompare(String(a.reported_date || "")) ||
     String(a.model_name || "").localeCompare(String(b.model_name || "")) ||
     String(a.obs_id || "").localeCompare(String(b.obs_id || "")));
-  return element("section", { className: "catalog-result-section" }, [
-    element("h3", { text: `${t("Reported benchmark scores")} · ${t(meta.name)} (${ordered.length.toLocaleString()})` }),
+  return element("details", { className: "catalog-result-section" }, [
+    element("summary", { text: `${t("Reported benchmark scores")} · ${t(meta.name)}` }),
     element("ol", { className: "catalog-result-list" }, ordered.map((row) =>
       element("li", { className: "catalog-result" }, [
         element("div", { className: "catalog-result-main" }, [
@@ -8234,14 +8233,11 @@ function catalogDocumentsBlock(record) {
 
 function catalogBenchmarkDetail(shard) {
   const detail = shard.record || {};
-  // Scores first: it is the one block a reader came for on this panel (the
-  // adjacent curated chart is a saturation-over-time view, and this is its
-  // catalog-record counterpart), and it is the block most likely to have
-  // content -- identity, openness and size are frequently "not established".
+  // Explain the benchmark before asking the reader to interpret its scores.
   return [
+    catalogIdentityBlock(detail),
     catalogScoresBlock(shard),
     catalogDocumentsBlock(detail),
-    catalogIdentityBlock(detail),
     catalogOpennessBlock(detail),
     catalogSizesBlock(detail),
     catalogSiblingsBlock(shard),
@@ -8320,16 +8316,6 @@ function renderFrontierPicker(scored, selectedValue) {
   renderScoreSelectionNote();
 }
 
-// State the source and numeric observation count once, under the benchmark name.
-function catalogSubline(record, meta) {
-  const parts = [];
-  if (record.score_count) {
-    parts.push(metricLabel(record.score_count, "reported score", "reported scores"));
-  }
-  parts.push(meta.name);
-  return parts.join(" \u00b7 ");
-}
-
 function renderCatalogShell(
   board,
   scored,
@@ -8386,7 +8372,7 @@ function renderCatalogBenchmark(board, scored, record) {
     eyebrow: "",
     heading: record.name,
     badge: "",
-    subline: catalogSubline(record, meta),
+    subline: meta.name,
     message: t("Loading benchmark details…"),
   });
   // Scored crawled records are in the picker already. An unscored one is not,

@@ -39,6 +39,10 @@ rows[1] = {obs_id: 'document', model_name: 'Same model', value: 42, reported_dat
 rows[2] = {obs_id: 'variant', model_name: 'Same model', value: 43, reported_date: '2026-09-02', date_precision: 'document_publication', instrument: 'Variant B', protocol: 'with tools'};
 const originalOrder = rows.map(row => row.obs_id);
 const section = render.catalogScoreResults('model_reports', rows);
+assert.equal(section.tag, 'details', 'raw scores are folded by default');
+assert(!('open' in section.attrs));
+assert.equal(section.children[0].tag, 'summary');
+assert.equal(section.children[0].textContent, 'Reported benchmark scores · Model reports');
 const items = all(section, node => node.tag === 'li');
 assert.equal(items.length, rows.length, 'large histories never truncate observations');
 for (const row of rows) assert(items.some(item => item.textContent.includes(row.model_name)));
@@ -59,7 +63,7 @@ assert.deepEqual(sources.map(node => all(node, item => item.tag === 'li').length
 assert.equal(sources.filter(node => node.textContent.includes('Registry-only model')).length, 1);
 language = 'zh';
 const chinese = render.catalogScoreResults('model_reports', rows);
-assert(all(chinese, node => node.tag === 'h3')[0].textContent.includes('Benchmark 已报告成绩 · 模型报告'));
+assert.equal(all(chinese, node => node.tag === 'summary')[0].textContent, 'Benchmark 已报告成绩 · 模型报告');
 for (const label of ['模型发布日期', '文档发布日期', '日期未知', '打开来源记录 ↗']) assert(chinese.textContent.includes(label), label);
 for (const label of ['Reported benchmark scores', 'Model reports', 'model release date', 'Document publication date', 'Date unknown', 'Open source record']) assert(!chinese.textContent.includes(label), label);
 language = 'en';
