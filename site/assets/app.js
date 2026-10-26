@@ -676,16 +676,17 @@ const I18N = {
     Filters: "筛选",
     "More filters": "更多筛选",
     "Date:": "日期:",
+    "Latest": "最新",
+    "Past 90 days": "近 90 天",
+    "Time window": "时间范围",
+    "Sort by": "排序方式",
+    "Sort: Newest": "排序：最新",
+    "Sort: Recorded stars + likes + downloads + points; missing signals last": "排序：已记录的星标、点赞、下载和积分总数；缺少数据的记录排在最后",
     "Search benchmarks…": "搜索benchmark…",
     "Refresh data": "刷新数据",
     "Today's radar": "今日雷达",
     "Past 30 days": "近 30 天",
     "Past 60 days": "近 60 天",
-    "Past 90 days": "近 90 天",
-    "Time window": "时间范围",
-    "Sort by": "排序方式",
-    "Latest": "最新一期",
-    "Sort: Attention ↓ (GitHub stars, downloads), then Newest": "排序:关注度 ↓(GitHub 星标、下载量),再按最新",
     "Data through": "数据截至",
     "Reported benchmark scores": "Benchmark 已报告成绩",
     "Browse scored benchmarks": "查找已有成绩的 benchmark",
@@ -878,13 +879,9 @@ const I18N = {
     // --- Today / health ------------------------------------------------------
     "Evidence cited by GPT": "GPT 引用的证据",
     "Share image": "分享图片",
-    "Top 3 of the day": "今日前三",
-    "Top 2 of the day": "今日前二",
-    "Top benchmark of the day": "今日第一",
-    "Copy link": "复制链接",
-    "Copy image link": "复制图片链接",
-    "Link copied": "链接已复制",
-    "Could not copy. Open the image and copy its address.": "复制失败。请打开图片后复制其地址。",
+    "Share the top 3 benchmark of the day": "分享今日前三个 benchmark",
+    "Share the top 2 benchmarks of the day": "分享今日前两个 benchmark",
+    "Share the top benchmark of the day": "分享今日第一 benchmark",
     "opens in a new tab": "在新标签页打开",
     "Caveat: ": "注意: ",
     "No briefing was recorded for this day.": "这一天没有记录简报。",
@@ -1432,9 +1429,7 @@ const state = {
   data: null,
   view: "today",
   todayDate: "",
-  // "newest" keeps the release-led recency order; "attention" ranks by the
-  // public-attention signal each record carries (issue #978).
-  todaySort: "newest",
+  todaySort: "attention",
   q: "",
   kind: "",
   category: "",
@@ -1730,7 +1725,7 @@ function readUrl() {
   // A bare search permalink has archive-wide intent. An explicit date remains
   // a deliberate narrow search, including the "today" link in the scope banner.
   state.todayDate = params.get("date") || (state.q ? "all" : "");
-  state.todaySort = params.get("sort") === "attention" ? "attention" : "newest";
+  state.todaySort = params.get("sort") === "newest" ? "newest" : "attention";
   state.kind = params.get("kind") || "";
   state.category = params.get("category") || "";
   state.source = params.get("source") || "";
@@ -1832,13 +1827,13 @@ function writeUrl(mode = "replace") {
       // on reload after the reader clicked "Search today" in the scope banner.
       params.set("date", state.todayDate);
     }
+    if (state.todaySort === "newest") params.set("sort", "newest");
     if (state.q) params.set("q", state.q);
     if (state.kind) params.set("kind", state.kind);
     if (state.category) params.set("category", state.category);
     if (state.source) params.set("source", state.source);
     if (state.organization) params.set("organization", state.organization);
     if (state.event) params.set("event", state.event);
-    if (state.todaySort !== "newest") params.set("sort", state.todaySort);
     if (state.todayPage > 1) params.set("page", state.todayPage);
   }
   if (!utility && state.view === "map" && state.entity) params.set("entity", state.entity);
@@ -2651,37 +2646,18 @@ function shareCardFor(day, url) {
   return image ? { image } : null;
 }
 
-function shareControl(image, label) {
-  const status = element("span", {
-    className: "share-status",
-    attrs: { role: "status" },
-  });
-  const copy = element("button", {
-    className: "share-copy",
-    text: t("Copy link"),
-    attrs: { type: "button", "aria-label": `${t("Copy image link")}: ${label}` },
-  });
-  copy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(image);
-      status.textContent = t("Link copied");
-    } catch {
-      status.textContent = t("Could not copy. Open the image and copy its address.");
-    }
-  });
+function shareControl(image, label, linkLabel = t("Share image")) {
   return element("div", { className: "share-control" }, [
     element("a", {
       className: "share-link",
-      text: `${t("Share image")} \u2197`,
+      text: `${linkLabel} \u2197`,
       attrs: {
         href: image,
         target: "_blank",
         rel: "noopener noreferrer",
-        "aria-label": `${t("Share image")}: ${label} (${t("opens in a new tab")})`,
+        "aria-label": `${linkLabel === label ? linkLabel : `${linkLabel}: ${label}`} (${t("opens in a new tab")})`,
       },
     }),
-    copy,
-    status,
   ]);
 }
 
@@ -2696,8 +2672,8 @@ function briefingShare(parts, citations, day) {
 // top3.png holds the first three cards, or fewer when the day has fewer, so
 // the label follows the number of cards the picture really shows.
 function topShareLabel(count) {
-  if (count >= 3) return t("Top 3 of the day");
-  return count === 2 ? t("Top 2 of the day") : t("Top benchmark of the day");
+  if (count >= 3) return t("Share the top 3 benchmark of the day");
+  return count === 2 ? t("Share the top 2 benchmarks of the day") : t("Share the top benchmark of the day");
 }
 
 function renderTopShare(day, visible) {
@@ -2709,10 +2685,7 @@ function renderTopShare(day, visible) {
   replaceChildren(
     host,
     image
-      ? [
-          element("span", { className: "today-share-label", text: topShareLabel(count) }),
-          shareControl(image, topShareLabel(count)),
-        ]
+      ? [shareControl(image, topShareLabel(count), topShareLabel(count))]
       : [],
   );
 }
@@ -3217,41 +3190,6 @@ function renderSearchScopeBanner(observationCount, benchmarkMatches) {
   banner.hidden = false;
 }
 
-// The Time window and Sort by buttons mirror state rather than hold it, so a
-// permalink, the drawer's Date select and a search that widens to All dates
-// all leave the right button pressed, or none when no window button names
-// the current range.
-function syncTodayControls() {
-  const windowKey = state.todayDate === state.data?.latest_date ? "latest" : state.todayDate;
-  document.querySelectorAll("[data-twindow]").forEach((control) => {
-    control.setAttribute("aria-pressed", String(control.dataset.twindow === windowKey));
-  });
-  document.querySelectorAll("[data-tsort]").forEach((control) => {
-    control.setAttribute("aria-pressed", String(control.dataset.tsort === state.todaySort));
-  });
-}
-
-// Attention ranks by the public-attention signal a record already carries:
-// adoption_score, the log-scaled strongest of its GitHub stars and download
-// counts (pipeline.py). That score saturates, so every widely starred
-// repository ties at the top; raw stars, then downloads, separate them.
-// Discussion rows such as Hacker News carry none of these, so they follow the
-// scored records. The sort is stable, so the Newest order breaks any remaining
-// tie. Records are only reordered, never dropped.
-function sortTodayObservations(observations) {
-  if (state.todaySort !== "attention") return observations;
-  const signal = (item) => [
-    Number(item.adoption_score || 0),
-    Number(item.metrics?.stars || 0),
-    Number(item.metrics?.downloads || 0),
-  ];
-  return [...observations].sort((a, b) => {
-    const left = signal(a);
-    const right = signal(b);
-    return right[0] - left[0] || right[1] - left[1] || right[2] - left[2];
-  });
-}
-
 function renderToday({ resultsOnly = false } = {}) {
   // Events are bound before the data file resolves (initialize), so a nav
   // click or filter keystroke in the load window must no-op, not throw.
@@ -3275,7 +3213,13 @@ function renderToday({ resultsOnly = false } = {}) {
   }
   state.todayRenderedDate = state.todayDate;
   byId("today-date").value = state.todayDate;
-  syncTodayControls();
+  document.querySelectorAll("[data-today-window]").forEach((button) => {
+    const value = button.dataset.todayWindow === "latest" ? state.data.latest_date : button.dataset.todayWindow;
+    button.setAttribute("aria-pressed", String(value === state.todayDate));
+  });
+  document.querySelectorAll("[data-today-sort]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.todaySort === state.todaySort));
+  });
   const range = todayDateRange();
   const heading = range ? `Past ${TODAY_WINDOWS[state.todayDate]} days`
     : showingAllDates ? "All dates" : "Today's radar";
@@ -3301,7 +3245,7 @@ function renderToday({ resultsOnly = false } = {}) {
   // The badge tracks the secondary filters live, including during the
   // resultsOnly re-renders that follow each drawer interaction.
   updateFiltersCount();
-  const observations = sortTodayObservations(filteredObservations());
+  const observations = filteredObservations();
   const benchmarkMatches = renderTodayBenchmarks();
   renderSearchScopeBanner(observations.length, benchmarkMatches);
   const resultsKey = [
@@ -3336,37 +3280,9 @@ function renderToday({ resultsOnly = false } = {}) {
   const attentionCount = observations.length - evidenceCount;
   byId("today-breakdown").textContent =
     `${evidenceCount} ${t("normal")} · ${attentionCount} ${t("attention")}`;
-  // The list is sorted by priority within a day; say so at the point of use
-  // rather than making the reader infer it. Attention rows carry no priority,
-  // so a kind-filtered attention set falls back to date order, and in All
-  // dates mode the archive is ordered by date first and priority second
-  // (issue #248).
-  //
-  // Releases lead each day ahead of priority (issue #332), so the caption says
-  // that too whenever the result set actually mixes releases with anything
-  // else. A set that is all releases, or has none, is ordered by priority
-  // alone, and naming a tie-break that changed nothing would misdescribe it.
-  // Read off the whole result set rather than the current page: the caption
-  // describes the ordering the reader is paging through, and page one of a
-  // release-led day is all releases even when later pages are not.
-  //
-  // The caption stops at "new releases first" rather than claiming a strict
-  // timestamp order across release tiers. Inside each tier, scored recency now
-  // leads priority so v5's event-kind discount changes the visible order.
-  const priorityScored = visibleObservations.some((item) => Number(item.total_score) > 0);
-  const releases = observations.filter(isRelease).length;
-  const releasesLead = releases > 0 && releases < observations.length;
-  byId("today-sort").textContent = state.todaySort === "attention"
-    ? t("Sort: Attention ↓ (GitHub stars, downloads), then Newest")
-    : !priorityScored
-    ? t("Sort: Date ↓")
-    : showingAllDates
-      ? releasesLead
-        ? t("Sort: Date, then new releases, then Recency ↓, then Priority ↓")
-        : t("Sort: Date, then Recency ↓, then Priority ↓")
-      : releasesLead
-        ? t("Sort: New releases first, then Recency ↓, then Priority ↓")
-        : t("Sort: Recency ↓, then Priority ↓");
+  byId("today-sort").textContent = state.todaySort === "newest"
+    ? t("Sort: Newest")
+    : t("Sort: Recorded stars + likes + downloads + points; missing signals last");
   renderTopShare(day, !showingAllDates && !range);
   const listHost = byId("today-list");
   replaceChildren(
@@ -4255,6 +4171,8 @@ function updateFiltersCount() {
     state.source,
     state.organization,
     state.event,
+    state.todayDate && state.todayDate !== state.data?.latest_date
+      && !["30d", "90d"].includes(state.todayDate),
   ].filter(Boolean).length;
   byId("filters-count").textContent = `(${active})`;
 }
@@ -4265,6 +4183,14 @@ function closeFiltersDrawer() {
     drawer.hidden = true;
     byId("filters-toggle").setAttribute("aria-expanded", "false");
   }
+}
+
+// Missing activity stays inspectable, after records with measured signals.
+function observationAttention(item) {
+  const values = ["stars", "likes", "downloads", "points"]
+    .map((key) => item.metrics?.[key])
+    .filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : -1;
 }
 
 function filteredObservations() {
@@ -4285,7 +4211,15 @@ function filteredObservations() {
       (!query || haystack.includes(query))
     );
   });
-  return todayIsMultiDate() ? latestObservationsByRecord(matches) : matches;
+  const records = todayIsMultiDate() ? latestObservationsByRecord(matches) : matches;
+  return records.sort((a, b) => {
+    if (state.todaySort !== "newest") {
+      const attentionOrder = observationAttention(b) - observationAttention(a);
+      if (attentionOrder) return attentionOrder;
+    }
+    const timestamp = (item) => Date.parse(eventTimestamp(item)) || Date.parse(item.snapshot_date) || 0;
+    return timestamp(b) - timestamp(a);
+  });
 }
 
 // Generated utility pages ship their sheet already open so it is useful before
@@ -11871,12 +11805,25 @@ function bindEvents() {
     renderAdoptionFrontier(catalogDocumentBoard());
     writeUrl("push");
   });
-  // The drawer's Date select and the Time window buttons choose the same
-  // thing, so both go through one loader.
-  const selectTodayDate = async (selectedDate) => {
+  document.querySelectorAll("[data-today-window]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!state.data) return;
+      const select = byId("today-date");
+      select.value = button.dataset.todayWindow === "latest" ? state.data.latest_date : button.dataset.todayWindow;
+      select.dispatchEvent(new Event("change"));
+    });
+  });
+  document.querySelectorAll("[data-today-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.todaySort = button.dataset.todaySort;
+      renderToday({ resultsOnly: true });
+    });
+  });
+  byId("today-date").addEventListener("change", async (event) => {
     // A newer date or range must also supersede a pending Trends-day load.
     viewNavigationSequence += 1;
     const previousDate = state.todayRenderedDate || state.todayDate;
+    const selectedDate = event.target.value;
     state.todayDate = selectedDate;
     const notice = byId("today-load-error");
     notice.hidden = false;
@@ -11895,21 +11842,6 @@ function bindEvents() {
     if (state.todayDate !== selectedDate) return;
     notice.hidden = true;
     renderToday();
-  };
-  byId("today-date").addEventListener("change", (event) => selectTodayDate(event.target.value));
-  document.querySelectorAll("[data-twindow]").forEach((control) => {
-    control.addEventListener("click", () => {
-      if (!state.data) return;
-      const key = control.dataset.twindow;
-      selectTodayDate(key === "latest" ? state.data.latest_date : key);
-    });
-  });
-  document.querySelectorAll("[data-tsort]").forEach((control) => {
-    control.addEventListener("click", () => {
-      if (!state.data || state.todaySort === control.dataset.tsort) return;
-      state.todaySort = control.dataset.tsort;
-      renderToday({ resultsOnly: true });
-    });
   });
   byId("today-page-prev").addEventListener("click", () => {
     if (state.todayPage <= 1) return;

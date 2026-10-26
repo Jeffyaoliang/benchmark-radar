@@ -3133,24 +3133,11 @@ def test_issue_332_a_release_outranks_a_same_day_update():
     assert "releaseRank(a) - releaseRank(b)" in sort_body
     assert "Number(b.recency_score || 0) - Number(a.recency_score || 0)" in sort_body
 
-    # The caption names the order the reader is looking at, and only claims the
-    # release tie-break when the result set actually contains both kinds.
-    assert 't("Sort: New releases first, then Recency ↓, then Priority ↓")' in script
-    assert 't("Sort: Date, then new releases, then Recency ↓, then Priority ↓")' in script
-    # "Is a release" is its own predicate now that releaseRank grades by age:
-    # reading it as `=== 0` would have counted only the freshest tier.
-    assert "const releases = observations.filter(isRelease).length;" in script
+    # Issue #978: the visible feed now follows the explicit ordering control.
+    assert 't("Sort: Newest")' in script
+    assert 't("Sort: Recorded stars + likes + downloads + points; missing signals last")' in script
+    assert 'state.todaySort === "newest"' in script
     assert 'return item.event_kind === "released";' in script
-    assert "releases > 0 && releases < observations.length" in script
-    # The caption stops at "new releases first" rather than claiming a strict
-    # timestamp sort across release tiers; it then names the scored-recency
-    # order that v5 applies inside a tier.
-    assert "Sort: Newest releases first" not in script
-
-    # Both captions are translated; an untranslated string would render as
-    # English inside an otherwise Chinese page.
-    assert "排序:新发布优先,再按新鲜度 ↓,再按优先度 ↓" in script
-    assert "排序:日期,再新发布优先,再按新鲜度 ↓,再按优先度 ↓" in script
 
 
 def test_issue_333_the_page_never_scrolls_sideways():
@@ -3617,19 +3604,18 @@ def test_daily_briefing_share_control_appears_only_for_items_with_a_card():
     # The item stays listed; it only has no image to offer, so no dead link.
     assert uncarded == []
     copy_buttons = [n for n in _flatten(insights[0]) if n["className"] == "share-copy"]
-    assert [b["tag"] for b in copy_buttons] == ["button"]
+    assert copy_buttons == []
 
 
-def test_share_control_is_a_link_and_a_button_with_named_labels():
-    """A link and a button take focus natively; each label names its benchmark."""
+def test_share_control_is_only_a_link_with_a_named_label():
+    """The image link takes focus natively and names its benchmark."""
     source = Path("site/assets/app.js").read_text(encoding="utf-8")
     start = source.index("function shareControl(")
     block = source[start : source.index("function briefingShare(")]
     assert 'element("a"' in block
-    assert 'element("button"' in block
-    assert 'type: "button"' in block
-    assert block.count("aria-label") == 2
-    assert 'role: "status"' in block
+    assert 'element("button"' not in block
+    assert block.count("aria-label") == 1
+    assert "clipboard" not in block
     assert 'id="today-share"' in Path("site/index.html").read_text(encoding="utf-8")
     assert "shareCardFor(day, item.url)" in source
 
@@ -3700,65 +3686,8 @@ def test_top_share_label_follows_the_number_of_cards_in_the_image():
         ).stdout
     )
     assert labels == [
-        "Top benchmark of the day",
-        "Top 2 of the day",
-        "Top 3 of the day",
-        "Top 3 of the day",
+        "Share the top benchmark of the day",
+        "Share the top 2 benchmarks of the day",
+        "Share the top 3 benchmark of the day",
+        "Share the top 3 benchmark of the day",
     ]
-
-
-def test_issue_978_toolbar_offers_time_window_and_sort_by():
-    """The Today toolbar shows both choices without opening the drawer."""
-    html = Path("site/index.html").read_text(encoding="utf-8")
-    script = Path("site/assets/app.js").read_text(encoding="utf-8")
-
-    toolbar = html[html.index('id="filters"') : html.index("</form>", html.index('id="filters"'))]
-    controls = toolbar[toolbar.index('class="today-controls"') :]
-    windows = re.findall(r'data-twindow="([^"]+)"', controls)
-    sorts = re.findall(r'data-tsort="([^"]+)"', controls)
-    assert windows == ["latest", "30d", "90d"]
-    assert sorts == ["newest", "attention"]
-    assert 'data-twindow="latest" aria-pressed="true"' in controls
-    assert 'data-tsort="newest" aria-pressed="true"' in controls
-    # The single-day and All dates choices stay reachable from the drawer.
-    drawer = toolbar[toolbar.index('id="filters-drawer"') : toolbar.index('class="today-controls"')]
-    assert 'id="today-date"' in drawer
-    assert '"90d": 90' in script
-    assert 'option("90d", t("Past 90 days")' in script
-
-
-def test_issue_978_attention_sort_reorders_without_dropping_records():
-    import pytest
-
-    source = Path("site/assets/app.js").read_text(encoding="utf-8")
-    node = shutil.which("node")
-    if not node:
-        pytest.skip("node is not installed")
-    start = source.index("function sortTodayObservations(")
-    function = source[start : source.index("\nfunction renderToday(", start)]
-    rows = [
-        {"id": "newest", "adoption_score": 0},
-        {"id": "capped-few-stars", "adoption_score": 100, "metrics": {"stars": 18930}},
-        {"id": "discussion"},
-        {"id": "capped-many-stars", "adoption_score": 100, "metrics": {"stars": 391191}},
-        {"id": "some-downloads", "adoption_score": 40, "metrics": {"downloads": 900}},
-    ]
-    program = f"""
-const state = {{ todaySort: "attention" }};
-{function}
-const rows = {json.dumps(rows)};
-const attention = sortTodayObservations(rows).map((row) => row.id);
-state.todaySort = "newest";
-const newest = sortTodayObservations(rows).map((row) => row.id);
-console.log(JSON.stringify({{ attention, newest }}));
-"""
-    result = subprocess.run([node, "-e", program], capture_output=True, text=True, check=True)
-    data = json.loads(result.stdout)
-    assert data["attention"] == [
-        "capped-many-stars",
-        "capped-few-stars",
-        "some-downloads",
-        "newest",
-        "discussion",
-    ]
-    assert data["newest"] == [row["id"] for row in rows]

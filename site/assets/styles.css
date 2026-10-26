@@ -2226,6 +2226,14 @@ td a {
   background-color: white;
 }
 
+.today-filters .date-field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  white-space: nowrap;
+}
+
 .today-filters .filters-toggle {
   display: inline-flex;
   gap: 0.4rem;
@@ -2283,58 +2291,6 @@ td a {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-/* Issue #978: two segmented groups under the search box. Each sits on its
-   own labelled line so the reader sees both choices without opening the
-   drawer; the pressed option inverts, as in the Landscape mode strip. */
-.today-controls {
-  display: flex;
-  flex: 1 1 100%;
-  flex-wrap: wrap;
-  gap: 0.75rem 2rem;
-}
-
-.today-control-group {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.today-control-label {
-  color: var(--muted);
-  font-family: var(--utility);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-}
-
-.today-control-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.today-control {
-  min-height: var(--control-height);
-  padding: 0.35rem 1rem;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--ink);
-  font-family: var(--utility);
-  font-size: 0.72rem;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-}
-
-.today-control[aria-pressed="true"] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--panel);
-}
-
-.today-control:hover,
-.today-control:focus-visible {
-  border-color: var(--blue);
 }
 
 /* The popover floats over the results, so it stays out of the document
@@ -6420,12 +6376,30 @@ dialog {
 
   .today-filters {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--control-height);
+    grid-template-columns: minmax(0, 1fr) auto var(--control-height);
   }
 
-  .today-filters .search-field,
-  .today-filters .today-controls {
+  .today-filters .search-field {
     grid-column: 1 / -1;
+  }
+
+  .today-filters .date-field {
+    min-width: 0;
+  }
+
+  .today-filters .date-field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .today-filters .date-field select {
+    min-width: 0;
+    width: 100%;
+    padding-inline: var(--space-2);
+    font-size: 13px;
   }
 
   .today-filters .filters-toggle {
@@ -7522,7 +7496,7 @@ a.radar-source::after {
   margin-top: 0.4rem;
 }
 
-/* Share control (issue #671): opens or copies the day's pre-rendered image for
+/* Share control (issue #671): opens the day's pre-rendered image for
    one benchmark. It reads as a quiet text action like the card links, with 44px
    touch targets and negative margins so the card does not grow. */
 .share-control {
@@ -7533,8 +7507,7 @@ a.radar-source::after {
   font-size: 0.98rem;
 }
 
-.share-link,
-.share-copy {
+.share-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -7549,14 +7522,8 @@ a.radar-source::after {
   cursor: pointer;
 }
 
-.share-link:hover,
-.share-copy:hover {
+.share-link:hover {
   text-decoration: underline;
-}
-
-.share-status {
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 .briefing-insight .share-control {
@@ -7576,8 +7543,16 @@ a.radar-source::after {
   display: none;
 }
 
-.today-share-label {
-  color: var(--muted);
-  font-family: var(--utility);
-  font-size: 0.8rem;
+/* Primary discovery controls remain visible at every viewport width. */
+.today-filters { align-items: end; }
+.today-segments { border: 0; padding: 0; margin: 0; min-width: 0; }
+.today-segments legend { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.today-segments > div { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+.today-segments button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 5px; background: white; color: #171717; white-space: nowrap; font: inherit; font-size: 14px; }
+.today-segments button[aria-pressed="true"] { background: #e2e6e9; color: #171717; }
+.today-segments button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .today-filters { grid-template-columns: minmax(0, 1fr) auto; }
+  .today-segments { grid-column: 1 / -1; }
+  .today-segments button { flex: 1; min-height: 40px; }
 }
