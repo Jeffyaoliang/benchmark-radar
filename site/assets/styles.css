@@ -7562,7 +7562,7 @@ a.radar-source::after {
 .today-segments legend { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .today-segments > div { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: white; }
 .today-segments button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 5px; background: white; color: #171717; white-space: nowrap; font: inherit; font-size: 14px; }
-.today-segments button[aria-pressed="true"] { background: #171717; color: white; }
+.today-segments button[aria-pressed="true"] { background: #e2e6e9; color: #171717; }
 .today-segments button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 @media (max-width: 760px) {
   .today-filters { grid-template-columns: minmax(0, 1fr) auto; }
