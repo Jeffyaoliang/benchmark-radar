@@ -631,7 +631,7 @@ const I18N = {
     Daily: "每天",
     "the latest each day": "每天最新动态",
     Weekly: "每周",
-    "one roundup a week": "每周一次汇总",
+    "every Monday": "每周一",
     "Download the dataset": "下载数据集",
     "Command-line tool": "命令行工具",
     "RSS feed": "RSS 订阅",
