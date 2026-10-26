@@ -3700,8 +3700,8 @@ def test_top_share_label_follows_the_number_of_cards_in_the_image():
         ).stdout
     )
     assert labels == [
-        "Top benchmark of the day",
-        "Top 2 of the day",
-        "Top 3 of the day",
-        "Top 3 of the day",
+        "Share the top benchmark of the day",
+        "Share the top 2 benchmarks of the day",
+        "Share the top 3 benchmark of the day",
+        "Share the top 3 benchmark of the day",
     ]
