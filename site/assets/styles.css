@@ -4384,8 +4384,7 @@ dialog::backdrop {
   font-size: 1.05rem;
 }
 
-.adoption-actions,
-.footer-dataset-actions {
+.adoption-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -4395,25 +4394,6 @@ dialog::backdrop {
 .adoption-actions button {
   background: transparent;
   cursor: pointer;
-}
-
-.footer-dataset {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0.7rem 0 0;
-  padding: 0.9rem;
-  border-left: 3px solid var(--orange);
-  background: #fff4d6;
-  color: var(--ink);
-  font-family: var(--utility);
-  font-size: 0.75rem;
-}
-
-.footer-dataset a {
-  color: var(--ink);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .stale-banner {

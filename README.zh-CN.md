@@ -172,4 +172,4 @@ saturation 和趋势视图、每日 feed、可下载的证据数据，以及一�
 
 </details>
 
-© 2026 Koutian Wu and contributors
+© 2026 Benchmark Radar contributors
