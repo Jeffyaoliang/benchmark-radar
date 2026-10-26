@@ -83,7 +83,11 @@ jobs:
           url="https://benchmark-radar.org/blog/${DAY}/"
           for wait in 0 30 60 120 240; do
             sleep "$wait"
-            if curl -fsS --max-time 30 "$url" | grep -qF "<link rel=\"canonical\" href=\"${url}\">"; then
+            # Fetch first, then search. Piping curl into `grep -q` fails under
+            # pipefail even on a match: grep exits at the first hit and curl's
+            # next write errors, so a live page read as unpublished.
+            page="$(curl -fsS --max-time 30 "$url" || true)"
+            if grep -qF "<link rel=\"canonical\" href=\"${url}\">" <<< "$page"; then
               echo "Live: $url"
               exit 0
             fi
