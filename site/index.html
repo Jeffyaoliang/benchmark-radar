@@ -509,16 +509,31 @@
                  the weekly email repeats, so a reader decides with the sample
                  in view (issue #906). -->
             <section class="email-signup email-signup-card" aria-labelledby="briefing-signup-heading">
-              <h2 class="email-signup-title" id="briefing-signup-heading" data-i18n="Get the weekly benchmark briefing">Get the weekly benchmark briefing</h2>
-              <p class="email-signup-note" data-i18n="email.signup.note">
-                One email a week: new benchmarks, score changes and what they mean. Unsubscribe anytime.
-              </p>
+              <h2 class="email-signup-title" id="briefing-signup-heading" data-i18n="Get benchmark updates by email">Get benchmark updates by email</h2>
               <form class="email-signup-form" action="https://app.convertkit.com/forms/KIT_FORM_ID/subscriptions" method="post" target="_blank">
-                <label>
-                  <span class="visually-hidden" data-i18n="Email address">Email address</span>
-                  <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
-                </label>
-                <button type="submit" data-i18n="Subscribe">Subscribe</button>
+                <div class="email-signup-row">
+                  <label>
+                    <span class="visually-hidden" data-i18n="Email address">Email address</span>
+                    <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
+                  </label>
+                  <button type="submit" data-i18n="Subscribe">Subscribe</button>
+                </div>
+                <!-- Consent and cadence open only once an address is typed, so the
+                     resting form is a title, a field and a button. -->
+                <div class="email-signup-more">
+                  <div class="email-signup-more-inner">
+                    <label class="email-signup-consent">
+                      <input type="checkbox" required>
+                      <span data-i18n="email.signup.consent">I agree to receive Benchmark Radar emails and can unsubscribe anytime.</span>
+                      <a href="#privacy-notice" data-i18n="Privacy notice">Privacy notice</a>
+                    </label>
+                    <fieldset class="email-signup-frequency">
+                      <legend data-i18n="How often?">How often?</legend>
+                      <label><input type="radio" name="fields[frequency]" value="weekly" checked> <span data-i18n="Weekly">Weekly</span></label>
+                      <label><input type="radio" name="fields[frequency]" value="daily"> <span data-i18n="Daily">Daily</span></label>
+                    </fieldset>
+                  </div>
+                </div>
               </form>
             </section>
             <section class="daily-briefing" id="daily-briefing" aria-labelledby="daily-briefing-heading">
@@ -1186,23 +1201,32 @@
            never open Today (issue #906). The form posts straight to Kit, with
            no script, so it works on the blog and benchmark pages too. -->
       <section class="email-signup footer-signup" aria-labelledby="footer-signup-heading">
-        <div>
-          <h2 class="email-signup-title" id="footer-signup-heading" data-i18n="Get the weekly benchmark briefing">Get the weekly benchmark briefing</h2>
-          <p class="email-signup-note" data-i18n="email.signup.note">
-            One email a week: new benchmarks, score changes and what they mean. Unsubscribe anytime.
-          </p>
-        </div>
+        <h2 class="email-signup-title" id="footer-signup-heading" data-i18n="Get benchmark updates by email">Get benchmark updates by email</h2>
         <form class="email-signup-form" action="https://app.convertkit.com/forms/KIT_FORM_ID/subscriptions" method="post" target="_blank">
-          <label>
-            <span class="visually-hidden" data-i18n="Email address">Email address</span>
-            <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
-          </label>
-          <button type="submit" data-i18n="Subscribe">Subscribe</button>
+          <div class="email-signup-row">
+            <label>
+              <span class="visually-hidden" data-i18n="Email address">Email address</span>
+              <input type="email" name="email_address" required autocomplete="email" placeholder="you@lab.org">
+            </label>
+            <button type="submit" data-i18n="Subscribe">Subscribe</button>
+          </div>
+          <!-- Consent and cadence open only once an address is typed, so the
+               resting form is a title, a field and a button. -->
+          <div class="email-signup-more">
+            <div class="email-signup-more-inner">
+              <label class="email-signup-consent">
+                <input type="checkbox" required>
+                <span data-i18n="email.signup.consent">I agree to receive Benchmark Radar emails and can unsubscribe anytime.</span>
+                <a href="#privacy-notice" data-i18n="Privacy notice">Privacy notice</a>
+              </label>
+              <fieldset class="email-signup-frequency">
+                <legend data-i18n="How often?">How often?</legend>
+                <label><input type="radio" name="fields[frequency]" value="weekly" checked> <span data-i18n="Weekly">Weekly</span></label>
+                <label><input type="radio" name="fields[frequency]" value="daily"> <span data-i18n="Daily">Daily</span></label>
+              </fieldset>
+            </div>
+          </div>
         </form>
-        <p class="email-signup-alt">
-          <span data-i18n="Prefer a feed reader?">Prefer a feed reader?</span>
-          <a href="/feed.xml" data-i18n="Get the RSS feed">Get the RSS feed</a>
-        </p>
       </section>
       <div class="footer-columns">
         <aside class="adoption-cta" aria-label="Support Benchmark Radar">
@@ -1267,7 +1291,7 @@
       <div class="footer-bottom">
         <div class="footer-legal">
           <p class="copyright">© 2026 Koutian Wu and contributors</p>
-          <details class="privacy-note">
+          <details class="privacy-note" id="privacy-notice">
             <summary data-i18n="Privacy notice">Privacy notice</summary>
             <p>
               If you accept, we use Microsoft Clarity cookies, session replays and heatmaps to understand

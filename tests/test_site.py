@@ -114,7 +114,8 @@ def test_privacy_notice_is_collapsible_and_collapsed_by_default():
     styles = Path("site/assets/styles.css").read_text(encoding="utf-8")
     renderer = Path("site/assets/app.js").read_text(encoding="utf-8")
 
-    disclosure = homepage.split('<details class="privacy-note">', 1)[1].split("</details>", 1)[0]
+    opening = '<details class="privacy-note" id="privacy-notice">'
+    disclosure = homepage.split(opening, 1)[1].split("</details>", 1)[0]
     assert "<summary" in disclosure
     assert "Privacy notice" in disclosure.split("<summary", 1)[1].split("</summary>", 1)[0]
     assert "session replays and heatmaps" in disclosure
@@ -3359,16 +3360,42 @@ def test_both_signup_forms_post_to_the_same_kit_form():
         assert 'type="email" name="email_address" required' in form
         # A visible-only placeholder is not a label for screen readers.
         assert '<span class="visually-hidden" data-i18n="Email address">' in form
+        # Consent and cadence live in the panel that opens once an address is
+        # typed; consent is required, and weekly is the default cadence.
+        more = form.split('class="email-signup-more"', 1)[1]
+        assert '<input type="checkbox" required>' in more
+        assert 'name="fields[frequency]" value="weekly" checked' in more
+        assert 'name="fields[frequency]" value="daily"' in more
+        assert 'href="#privacy-notice"' in more
+    # Nothing but the title sits beside the resting form.
+    assert "email-signup-note" not in html
+    assert 'id="privacy-notice"' in html
     card = html.index('class="email-signup email-signup-card"')
     assert card < html.index('id="daily-briefing"') < html.index("<footer>")
+
+
+def test_signup_panel_opens_only_after_an_address_is_typed():
+    styles = Path("site/assets/styles.css").read_text(encoding="utf-8")
+    closed = _css_rule(styles, ".email-signup-more {")
+    assert "grid-template-rows: 0fr;" in closed
+    assert "visibility: hidden;" in closed
+    assert (
+        '.email-signup-form:has(input[type="email"]:not(:placeholder-shown)) .email-signup-more {'
+        in styles
+    )
+    # A browser without :has() must still be able to tick the required box.
+    assert "@supports not selector(:has(*))" in styles
 
 
 def test_footer_and_signup_strings_are_translated():
     app_js = Path("site/assets/app.js").read_text(encoding="utf-8")
     table = app_js.split("const I18N = {", 1)[1]
     for key in (
-        "Get the weekly benchmark briefing",
-        "email.signup.note",
+        "Get benchmark updates by email",
+        "email.signup.consent",
+        "How often?",
+        "Weekly",
+        "Daily",
         "Email address",
         "Subscribe",
         "Contribute",
