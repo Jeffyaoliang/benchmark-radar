@@ -226,10 +226,10 @@ def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
         "Alpha Bench",
         description="A tough reasoning test.",
         categories=["math", "Official"],
-        publisher="Alpha Lab",
         released="2025-03-04",
         scores=[{"model_name": "M", "value": 1, "reported_date": "2025-06-01"}],
     )
+    shard["record"]["publisher"] = {"name": "Alpha Lab", "role": "hub_publisher"}
     shard["record"]["artifacts"] = [
         {"kind": "repo", "url": "https://github.com/alpha/bench"},
         {"kind": "paper", "url": "https://arxiv.org/abs/2501.00001"},
@@ -243,7 +243,7 @@ def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
     assert webpage["mainEntity"] == {"@type": "Dataset", "@id": entity["@id"]}
     assert entity["citation"] == ["https://arxiv.org/abs/2501.00001"]
     assert entity["sameAs"] == ["https://github.com/alpha/bench"]
-    assert entity["creator"] == {"@type": "Organization", "name": "Alpha Lab"}
+    assert entity["publisher"] == {"@type": "Organization", "name": "Alpha Lab"}
     assert entity["datePublished"] == "2025-03-04"
     assert entity["keywords"] == ["math"]
     assert webpage["dateModified"] == "2025-06-01"
@@ -253,7 +253,7 @@ def test_benchmark_is_described_as_a_dataset_from_its_own_fields(tmp_path):
     ) in alpha_text
 
     beta = _jsonld_blocks(_page_text(output, "beta-bench"))[0]
-    for missing in ("citation", "sameAs", "creator", "datePublished", "keywords"):
+    for missing in ("citation", "sameAs", "publisher", "datePublished", "keywords"):
         assert missing not in beta["about"]
     assert "dateModified" not in beta
 

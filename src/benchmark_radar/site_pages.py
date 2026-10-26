@@ -389,9 +389,16 @@ def _benchmark_entity(
     same_as = [url for kind, _, url in artifacts if kind != "paper" and _http_url(url)]
     if same_as:
         entity["sameAs"] = same_as
-    publisher = _text(record, "publisher")
+    # Shards store the publisher as {"name", "role", "locator"}; a plain string
+    # is accepted too so a hand-built record still says who published it.
+    raw_publisher = record.get("publisher")
+    publisher = (
+        _text(raw_publisher, "name")
+        if isinstance(raw_publisher, dict)
+        else _text(record, "publisher")
+    )
     if publisher:
-        entity["creator"] = {"@type": "Organization", "name": publisher}
+        entity["publisher"] = {"@type": "Organization", "name": publisher}
     released = _text(record, "released")
     if released and _is_calendar_date(released):
         entity["datePublished"] = released
