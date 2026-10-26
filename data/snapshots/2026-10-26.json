@@ -71326,5 +71326,154 @@
     "taxonomy_version": "sha256:5ee3bd8146ce",
     "watchlisted": 0
   },
+  "share": {
+    "basis": "briefing",
+    "cards": [
+      {
+        "affiliations": [
+          "\\addr Department of Computer Science",
+          "Vanderbilt University",
+          "Nashville, TN 37235, USA"
+        ],
+        "authors": [
+          "Stefan Larson",
+          "Kevin Leach"
+        ],
+        "blurb": "The new RVL-CDIP document-classification audit reports that about 10.5% of 400,000 documents have incorrect labels and 35.2% of the test set has a duplicate or near-duplicate in training.",
+        "categories": [
+          "benchmark",
+          "dataset",
+          "data_quality"
+        ],
+        "published_at": "2026-10-26T04:00:00+00:00",
+        "source": "arXiv",
+        "title": "Data Quality in RVL-CDIP: A Systematic Audit",
+        "url": "https://arxiv.org/abs/2610.32126"
+      },
+      {
+        "affiliations": [
+          "Temple University",
+          "Temple Universtiy"
+        ],
+        "authors": [
+          "Javad Mohammad Alizadeh",
+          "Huanmei Wu"
+        ],
+        "blurb": "The new THReD Agent Benchmark evaluates an electronic health record preprocessing assistant with 141 tasks covering simple and multi-step transformations, failure recovery, requests where the agent should not act, schema changes, and prompt injection hidden in data.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "dataset",
+          "agentic"
+        ],
+        "published_at": "2026-10-26T04:51:52+00:00",
+        "source": "DataCite",
+        "title": "THReD Agent Benchmark: Evaluation of an LLM Agent for Preprocessing Electronic Health Records into AI-Ready Datasets",
+        "url": "https://doi.org/10.5281/zenodo.23656217"
+      },
+      {
+        "affiliations": [
+          "Shanghai Artificial Intelligence Laboratory {zhangshao,hushuyue}@pjlab.org.cn"
+        ],
+        "authors": [
+          "Shao Zhang",
+          "Hangfan Zhang",
+          "Yuanyuan Shi",
+          "Hao Li",
+          "Min-Le Su",
+          "Kangcong Li",
+          "Jingping Wang",
+          "Chunjiang Mu",
+          "Chen Zhang",
+          "Yang Chen",
+          "Bo Zhang",
+          "Shuyue Hu"
+        ],
+        "blurb": "The new “When Agents Fail” framework separates model behavior from the software harness that manages tools and execution.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "agentic"
+        ],
+        "published_at": "2026-10-26T04:00:00+00:00",
+        "source": "arXiv",
+        "title": "When Agents Fail: Model or Harness--Who's to Blame?",
+        "url": "https://arxiv.org/abs/2610.32483"
+      },
+      {
+        "affiliations": [],
+        "authors": [
+          "Detao Zeng",
+          "Guilin Ou",
+          "Nuo Chen",
+          "Yunhao Feng",
+          "Hongliang Wang",
+          "Qinli Yang",
+          "Junming Shao",
+          "Zhong Zhang"
+        ],
+        "blurb": "The new Async-RBench contains 200 executable tasks in eight scenarios where a main large language model agent continues working while delayed subagent results arrive under controlled task-state conditions.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "agentic"
+        ],
+        "published_at": "2026-10-26T04:00:00+00:00",
+        "source": "arXiv",
+        "title": "Async-RBench: Benchmarking Asynchronous Task Execution in LLM Agents",
+        "url": "https://arxiv.org/abs/2610.32429"
+      },
+      {
+        "affiliations": [
+          "KAIST Correspondence: ella94.ai@gmail.com"
+        ],
+        "authors": [
+          "Kyeongseon Kim",
+          "Jiyeon Son",
+          "Tae-Hyun Oh"
+        ],
+        "blurb": "The new Interactive Graphical User Interface Grounding benchmark changes interface testing from locating an already visible target to first revealing it and then clicking it.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "agentic"
+        ],
+        "published_at": "2026-10-26T04:00:00+00:00",
+        "source": "arXiv",
+        "title": "IGG: A Benchmark for Interactive GUI Grounding under Visibility Constraints",
+        "url": "https://arxiv.org/abs/2610.32536"
+      },
+      {
+        "affiliations": [
+          "Xiwei Technology (Guangzhou) Co., Ltd.",
+          "The Hong Kong University of Science and Technology (Guangzhou)Emails: speng349@connect.hkust-gz.edu.cn ; jialee@hkust-gz.edu.cn * Corresponding author."
+        ],
+        "authors": [
+          "Shan Peng",
+          "Shuaiqi Cheng",
+          "Miao Peng",
+          "Chenyi Zi",
+          "Jia Li"
+        ],
+        "blurb": "The new DMAIC-Bench tests whether an analytical agent changes its next action after reviewing intermediate evidence, a capability it calls self-restraint.",
+        "categories": [
+          "benchmark",
+          "evaluation",
+          "agentic"
+        ],
+        "published_at": "2026-10-26T04:00:00+00:00",
+        "source": "arXiv",
+        "title": "DMAIC-Bench: From Self-Reflection to Self-Restraint for Agents in Multi-Stage Analytical Tasks",
+        "url": "https://arxiv.org/abs/2610.32305"
+      }
+    ],
+    "date": "2026-10-26",
+    "schema_version": 1,
+    "top": [
+      "https://arxiv.org/abs/2610.32126",
+      "https://doi.org/10.5281/zenodo.23656217",
+      "https://arxiv.org/abs/2610.32483"
+    ]
+  },
   "since": "2026-10-24T10:37:55.359321+00:00"
 }
