@@ -108,6 +108,7 @@ graphify-out/
 /site/cite/
 /site/rubric/
 /site/about/
+/site/media/
 # Redirect stubs written beside /about/, pointing at /site/cite/.
 /site/publications/
 /site/publication/

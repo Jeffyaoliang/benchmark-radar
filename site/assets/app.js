@@ -360,7 +360,6 @@ function rerenderCurrentView() {
   if (state.view === "trends") renderTrends();
   if (state.view === "map") renderTrendMap();
   renderStaleBanner();
-  renderBuildMeta();
 }
 
 function toggleLang() {
@@ -623,6 +622,26 @@ const I18N = {
     Trend: "趋势",
     Explore: "探索",
     Blog: "博客",
+    Media: "媒体报道",
+    "Get benchmark updates by email": "通过邮件获取 benchmark 更新",
+    "Email address": "邮箱地址",
+    Subscribe: "订阅",
+    "email.signup.consent": "我同意接收 Benchmark Radar 的邮件，并可随时退订。",
+    "How often?": "多久一封？",
+    Daily: "每天",
+    "the latest each day": "每天最新动态",
+    Weekly: "每周",
+    "one roundup a week": "每周一次汇总",
+    "Download the dataset": "下载数据集",
+    "Command-line tool": "命令行工具",
+    "RSS feed": "RSS 订阅",
+    "Source code": "源代码",
+    Project: "项目",
+    Contribute: "参与贡献",
+    "Suggest a benchmark or source": "推荐 benchmark 或数据源",
+    "Report a mistake": "报告错误",
+    "Share how you use it": "分享你的使用场景",
+    "In the media": "媒体报道",
     Rubric: "评分标准",
     "Daily briefing": "每日简报",
     "Questions for today": "今日问答",
@@ -1125,7 +1144,6 @@ const I18N = {
       "完整数据集可以免费下载。如果它帮你节省了研究时间，请给仓库点个 Star，让更多评测开发者找到它。",
     Download: "下载",
     "Star the repository": "给仓库点 Star",
-    "Free dataset. No crawler needed.": "免费数据集，无需爬虫。",
     "If this saved you research time, cite the work, star the repo and help other eval builders find it.":
       "如果它帮你节省了研究时间，请引用这项工作、给仓库点 Star，让更多评测开发者找到它。",
     Cite: "引用",
@@ -3033,17 +3051,6 @@ function renderTodayDateOptions() {
       ),
     ],
   );
-}
-
-function renderBuildMeta() {
-  if (!state.data) return;
-  byId("build-meta").textContent = `${t("Updated")} ${formatDate(
-    state.data.generated_at,
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  )} UTC`;
 }
 
 // The search box reads the daily feed: titles, summaries and source names of
@@ -11503,6 +11510,50 @@ function citeCredit() {
   return node;
 }
 
+// Coverage under the citation formats. This mirrors MEDIA_COVERAGE in
+// media.py, which also feeds the seeded card and the /media/ page.
+const MEDIA_COVERAGE = [
+  ["Daily AI Wire News", "https://dailyaiwire.news/article/benchmark-radar-ai-evaluation-database-search-engine", "Article"],
+  ["Moonlight", "https://www.themoonlight.io/en/review/benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-evaluation", "Paper summary"],
+  ["Papers with Code", "https://paperswithcode.co/paper/2609.11115", "Paper listing"],
+  ["alphaXiv", "https://www.alphaxiv.org/abs/2609.11115", "Paper discussion"],
+  ["Hugging Face Papers", "https://huggingface.co/papers/2609.11115", "Paper discussion"],
+  ["arXivDaily", "https://www.arxivdaily.com/universities/sjtu", "Shanghai Jiao Tong University paper feed (rolling)"],
+  ["Geepity", "https://geepity.com/2609.11115/", "Paper page"],
+  ["Isfahan AI", "https://isfahan-ai.ir/news/1248", "News post"],
+  ["Collected", "https://collected.ga/typesafe-ai-daily-benchmark-radar-a-living-database-and-search-engine-for-ai-benchmarks-and-eval/", "Typesafe AI Daily"],
+  ["Alexy Khrabrov on LinkedIn", "https://www.linkedin.com/posts/chiefscientist_typesafe-ai-daily-benchmark-radar-a-living-share-7504531089483309056-9uO7/", "Community post"],
+  ["Daily AI Wire News on LinkedIn", "https://www.linkedin.com/posts/benchmark-radar-launches-as-centralized-ai-share-7504478957413527552-jdN_/", "Article announcement"],
+  ["@SciFi on X", "https://x.com/SciFi/status/2098817718036127993", "Community post"],
+  ["@HuggingPapers on X", "https://x.com/HuggingPapers/status/2099412410264060340", "Community post"],
+  ["@marcel_butucea on X", "https://x.com/marcel_butucea/status/2098914581204680765", "Community post"],
+  ["Moltbook", "https://www.moltbook.com/post/a65591a2-d28d-4f3d-b381-fe2836c4e4c3", "Community post"],
+];
+
+function citeMedia() {
+  return element("section", { className: "cite-media", attrs: { "aria-labelledby": "cite-media-title" } }, [
+    element("h3", {
+      className: "cite-media-title",
+      text: t("In the media"),
+      attrs: { id: "cite-media-title" },
+    }),
+    element(
+      "ul",
+      { className: "cite-media-list" },
+      MEDIA_COVERAGE.map(([label, url, note]) =>
+        element("li", {}, [
+          element("a", {
+            text: label,
+            attrs: { href: url, target: "_blank", rel: "noopener noreferrer" },
+          }),
+          document.createTextNode(" "),
+          element("span", { className: "cite-media-note", text: note }),
+        ]),
+      ),
+    ),
+  ]);
+}
+
 // Reachable at /cite/, so the card has a short link that can be pasted into a
 // paper, a README or a message instead of a reader hunting the footer for it.
 function openCite(updateUrl = true) {
@@ -11539,6 +11590,7 @@ function openCite(updateUrl = true) {
       attrs: { href: CITE_CFF_URL, target: "_blank", rel: "noopener noreferrer" },
     }),
     citeCredit(),
+    citeMedia(),
   ]);
   showModalDialog(dialog);
 }
@@ -11621,6 +11673,11 @@ function bindEvents() {
   window.addEventListener("popstate", onPopState);
   const langToggle = byId("lang-toggle");
   if (langToggle) langToggle.addEventListener("click", toggleLang);
+  // The footer switch is a second door to the masthead toggle, so both stay
+  // one control with one state.
+  document.querySelectorAll("[data-lang-switch]").forEach((item) => {
+    item.addEventListener("click", toggleLang);
+  });
   document.querySelectorAll("[data-view]").forEach((item) => {
     item.addEventListener("click", async (event) => {
       // View nav entries are anchors so crawlers can follow them; keep the
@@ -12323,7 +12380,6 @@ async function initialize() {
     if (state.view === "trends") renderTrends();
     if (state.view === "map") renderTrendMap();
 
-    renderBuildMeta();
     renderStaleBanner();
     if (state.rubric) {
       openRubric(null, state.rubric === "current" ? null : state.rubric, false);
@@ -12346,7 +12402,6 @@ async function initialize() {
       syncLeaderboardNav();
       setView(state.view, false);
       rerenderCurrentView();
-      renderBuildMeta();
       renderStaleBanner();
       return;
     }

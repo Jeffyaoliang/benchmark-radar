@@ -22,15 +22,13 @@
 .today-filters .filters-toggle,
 .today-filters .refresh-button,
 .today-pagination button,
-.leaderboard-top-more,
-.footer-dataset-actions a {
+.leaderboard-top-more {
   min-height: var(--control-height);
   font-family: var(--body);
   font-size: 14px;
 }
 
-.today-pagination,
-.footer-dataset-actions {
+.today-pagination {
   gap: var(--space-3);
 }
 

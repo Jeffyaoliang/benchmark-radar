@@ -1549,13 +1549,13 @@ def rebuild_dashboard(
     if feed_output is not None:
         app_pages = write_app_pages(value, sitemap_output.parent)
         view_paths = app_pages["paths"]
-        # /about/ is prose, not a view over the corpus, so it is written from
-        # the shared chrome rather than from the dashboard document. The nav
-        # links to it from every page this build writes, so it is written
-        # unconditionally; only its sitemap date depends on there being a
-        # corpus history to date it by.
+        # /about/ and /media/ are prose, not views over the corpus, so they are
+        # written from the shared chrome rather than from the dashboard
+        # document. The nav links to them from every page this build writes, so
+        # they are written unconditionally; only their sitemap date depends on
+        # there being a corpus history to date it by.
         site_updated = site_lastmod(snapshots)
-        about = write_about(sitemap_output.parent, updated=site_updated)
+        about = write_about(sitemap_output.parent)
         page_entries = [(path, site_updated) for path in about["paths"]]
         write_feed(snapshots, feed_output)
         # One page per collection day, plus the blog's own feed. Built from the
