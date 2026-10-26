@@ -71,5 +71,5 @@ The tag goes up before the workflow calls Kit. A day can be missed, but the list
 ## Legal basics
 
 - Keep double opt-in on in the form settings. It records when each subscriber confirmed.
-- Every email has an unsubscribe link and the postal address. The template adds both through `{{ unsubscribe_url }}` and `{{ address }}`, and Kit refuses a broadcast without the unsubscribe link.
+- Every email has an unsubscribe link and the postal address. Kit's account email template adds both under the brief. Keep a template that has them: Kit refuses to send a broadcast without an unsubscribe link, so a template without one makes the send fail visibly.
 - The privacy notice in the site footer says what Kit stores and how to ask for deletion. Update it if the provider changes.

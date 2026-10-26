@@ -41,9 +41,10 @@ def test_the_email_is_the_english_briefing_with_a_link_and_unsubscribe():
     # One language only: the hidden Chinese body of the blog page must not leak.
     assert "第一条" not in brief.html
     assert 'href="https://benchmark-radar.org/blog/2026-10-26/"' in brief.html
-    # Kit refuses a broadcast without these Liquid tags.
-    assert 'href="{{ unsubscribe_url }}"' in brief.html
-    assert "{{ address }}" in brief.html
+    # Kit's template adds the unsubscribe link and address once; the body must
+    # not add a second copy.
+    assert "unsubscribe_url" not in brief.html
+    assert "{{ address }}" not in brief.html
 
 
 def test_a_day_without_briefing_bullets_is_not_sent():

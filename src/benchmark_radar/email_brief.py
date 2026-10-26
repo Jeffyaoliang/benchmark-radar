@@ -75,9 +75,10 @@ def render_email(snapshot: dict[str, Any]) -> EmailBrief:
         f'<ol style="padding-left:20px;margin:0 0 20px">{items}</ol>'
         f'<p style="margin:0 0 24px"><a href="{link}">Read the full brief, with the '
         "questions, sources and evidence</a></p>"
+        # Kit's account template appends the unsubscribe link and the postal
+        # address under this; repeating them here printed both twice.
         '<p style="font-size:13px;color:#5f7078;margin:0">You get this because you '
-        "subscribed at benchmark-radar.org. "
-        '<a href="{{ unsubscribe_url }}">Unsubscribe</a><br>{{ address }}</p>'
+        "subscribed at benchmark-radar.org.</p>"
         "</div>"
     )
     return EmailBrief(
